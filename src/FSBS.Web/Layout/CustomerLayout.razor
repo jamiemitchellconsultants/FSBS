@@ -1,0 +1,28 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+        <MudText Typo="Typo.h6">FSBS</MudText>
+        <MudSpacer />
+        <MudButton Color="Color.Inherit" Href="/dashboard" Variant="Variant.Text">Dashboard</MudButton>
+        <MudButton Color="Color.Inherit" Href="/availability" Variant="Variant.Text">Book</MudButton>
+        <MudButton Color="Color.Inherit" Href="/bookings" Variant="Variant.Text">My Bookings</MudButton>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudIconButton Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit" Href="/profile" Tooltip="Profile" />
+                <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Href="/logout" Tooltip="Sign out" />
+            </Authorized>
+        </AuthorizeView>
+    </MudAppBar>
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 pa-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>

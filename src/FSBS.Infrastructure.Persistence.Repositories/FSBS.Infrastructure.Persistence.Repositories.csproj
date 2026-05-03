@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\FSBS.Application\FSBS.Application.csproj" />
+    <ProjectReference Include="..\FSBS.Infrastructure.Persistence\FSBS.Infrastructure.Persistence.csproj" />
+    <ProjectReference Include="..\FSBS.Infrastructure.Persistence.Repositories.Interfaces\FSBS.Infrastructure.Persistence.Repositories.Interfaces.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

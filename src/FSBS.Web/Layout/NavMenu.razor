@@ -1,39 +1,104 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">FSBS.Web</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
+<MudNavMenu>
+    <AuthorizeView>
+        <NotAuthorized>
+            <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">Home</MudNavLink>
+            <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login">Sign In</MudNavLink>
+            <MudNavLink Href="/register" Icon="@Icons.Material.Filled.PersonAdd">Register</MudNavLink>
+        </NotAuthorized>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-    </nav>
-</div>
+        <Authorized>
+            @* Customer routes *@
+            <AuthorizeView Roles="PrivateCustomer,CorporateManager,CorporateStudent" Context="_">
+                <Authorized>
+                    <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+                    <MudNavLink Href="/availability" Icon="@Icons.Material.Filled.CalendarMonth">Book Simulator</MudNavLink>
+                    <MudNavLink Href="/bookings" Icon="@Icons.Material.Filled.ListAlt">My Bookings</MudNavLink>
+                    <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.Person">Profile</MudNavLink>
+                    <AuthorizeView Roles="CorporateManager" Context="__">
+                        <Authorized>
+                            <MudNavGroup Title="Organisation" Icon="@Icons.Material.Filled.Business" Expanded="true">
+                                <MudNavLink Href="/organisation">Overview</MudNavLink>
+                                <MudNavLink Href="/organisation/account">Account</MudNavLink>
+                                <MudNavLink Href="/organisation/members">Members</MudNavLink>
+                                <MudNavLink Href="/organisation/invitations">Invitations</MudNavLink>
+                            </MudNavGroup>
+                        </Authorized>
+                    </AuthorizeView>
+                </Authorized>
+            </AuthorizeView>
 
-@code {
-    private bool collapseNavMenu = true;
+            @* Staff routes *@
+            <AuthorizeView Roles="SystemAdmin,ScheduleAdmin,CourseDirector,Instructor,Management,SalesStaff,InternalStudent" Context="_">
+                <Authorized>
+                    <MudNavLink Href="/staff" Icon="@Icons.Material.Filled.Dashboard" Match="NavLinkMatch.All">Dashboard</MudNavLink>
+                    <MudNavLink Href="/staff/schedule" Icon="@Icons.Material.Filled.CalendarViewWeek">Master Schedule</MudNavLink>
 
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+                    <AuthorizeView Roles="ScheduleAdmin,SystemAdmin" Context="__">
+                        <Authorized>
+                            <MudNavGroup Title="Simulators" Icon="@Icons.Material.Filled.Flight" Expanded="false">
+                                <MudNavLink Href="/staff/simulators">All Simulators</MudNavLink>
+                                <MudNavLink Href="/staff/reconfig-templates">Reconfig Templates</MudNavLink>
+                                <MudNavLink Href="/staff/schedule-templates">Schedule Templates</MudNavLink>
+                            </MudNavGroup>
+                        </Authorized>
+                    </AuthorizeView>
 
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
-}
+                    <AuthorizeView Roles="SalesStaff,SystemAdmin" Context="__">
+                        <Authorized>
+                            <MudNavGroup Title="Bookings" Icon="@Icons.Material.Filled.BookOnline" Expanded="false">
+                                <MudNavLink Href="/staff/bookings/pending">Pending Approval</MudNavLink>
+                                <MudNavLink Href="/staff/pricing">Pricing</MudNavLink>
+                                <MudNavLink Href="/staff/discounts">Discounts</MudNavLink>
+                            </MudNavGroup>
+                            <MudNavGroup Title="Organisations" Icon="@Icons.Material.Filled.Business" Expanded="false">
+                                <MudNavLink Href="/staff/organisations">All Organisations</MudNavLink>
+                                <MudNavLink Href="/staff/invitations/corporate">Issue Invitation</MudNavLink>
+                            </MudNavGroup>
+                        </Authorized>
+                    </AuthorizeView>
+
+                    <AuthorizeView Roles="CourseDirector,SystemAdmin" Context="__">
+                        <Authorized>
+                            <MudNavGroup Title="Courses" Icon="@Icons.Material.Filled.School" Expanded="false">
+                                <MudNavLink Href="/staff/courses">Courses</MudNavLink>
+                                <MudNavLink Href="/staff/enrolments">Enrolments</MudNavLink>
+                            </MudNavGroup>
+                        </Authorized>
+                    </AuthorizeView>
+
+                    <AuthorizeView Roles="Instructor" Context="__">
+                        <Authorized>
+                            <MudNavLink Href="/staff/my-schedule" Icon="@Icons.Material.Filled.EventNote">My Schedule</MudNavLink>
+                            <MudNavLink Href="/staff/availability" Icon="@Icons.Material.Filled.EditCalendar">My Availability</MudNavLink>
+                        </Authorized>
+                    </AuthorizeView>
+
+                    <AuthorizeView Roles="Management,SystemAdmin" Context="__">
+                        <Authorized>
+                            <MudNavGroup Title="Reporting" Icon="@Icons.Material.Filled.BarChart" Expanded="false">
+                                <MudNavLink Href="/staff/reports">Reports</MudNavLink>
+                                <MudNavLink Href="/staff/analytics">Analytics</MudNavLink>
+                            </MudNavGroup>
+                        </Authorized>
+                    </AuthorizeView>
+
+                    <AuthorizeView Roles="SystemAdmin" Context="__">
+                        <Authorized>
+                            <MudNavGroup Title="Admin" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
+                                <MudNavLink Href="/staff/users">Users</MudNavLink>
+                                <MudNavLink Href="/staff/qualifications">Qualifications</MudNavLink>
+                            </MudNavGroup>
+                        </Authorized>
+                    </AuthorizeView>
+
+                    <AuthorizeView Roles="InternalStudent" Context="__">
+                        <Authorized>
+                            <MudNavLink Href="/staff/my-bookings" Icon="@Icons.Material.Filled.ListAlt">My Bookings</MudNavLink>
+                            <MudNavLink Href="/bookings/new" Icon="@Icons.Material.Filled.Add">New Booking</MudNavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                </Authorized>
+            </AuthorizeView>
+        </Authorized>
+    </AuthorizeView>
+</MudNavMenu>

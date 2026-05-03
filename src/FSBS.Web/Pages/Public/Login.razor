@@ -1,0 +1,44 @@
+@page "/login"
+@layout PublicLayout
+@inject IConfiguration Config
+
+<PageTitle>Sign In — FSBS</PageTitle>
+
+<MudText Typo="Typo.h4" Align="Align.Center" Class="mb-2">Customer Sign In</MudText>
+<MudText Align="Align.Center" Color="Color.Secondary" Class="mb-6">
+    Sign in with your FSBS customer account.
+</MudText>
+
+<MudPaper Elevation="3" Class="pa-8">
+    <MudButton FullWidth="true"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               Size="Size.Large"
+               StartIcon="@Icons.Material.Filled.Login"
+               Href="@_loginUrl">
+        Continue to Sign In
+    </MudButton>
+
+    <MudDivider Class="my-6" />
+
+    <MudStack Spacing="1" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.body2">
+            New customer? <MudLink Href="/register">Create an account</MudLink>
+        </MudText>
+        <MudText Typo="Typo.body2">
+            Have an invitation? <MudLink Href="/invitations/claim">Claim it here</MudLink>
+        </MudText>
+        <MudText Typo="Typo.body2">
+            FSBS staff? <MudLink Href="/login/staff">Staff sign in</MudLink>
+        </MudText>
+    </MudStack>
+</MudPaper>
+
+@code {
+    private string _loginUrl = "#";
+
+    protected override void OnInitialized()
+    {
+        _loginUrl = Config["Cognito:CustomerPoolLoginUrl"] ?? "#";
+    }
+}

@@ -1,0 +1,36 @@
+@page "/login/staff"
+@layout PublicLayout
+@inject IConfiguration Config
+
+<PageTitle>Staff Sign In — FSBS</PageTitle>
+
+<MudText Typo="Typo.h4" Align="Align.Center" Class="mb-2">Staff Sign In</MudText>
+<MudText Align="Align.Center" Color="Color.Secondary" Class="mb-6">
+    For FSBS staff only. Sign in with your Microsoft work account via Entra ID.
+</MudText>
+
+<MudPaper Elevation="3" Class="pa-8">
+    <MudButton FullWidth="true"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               Size="Size.Large"
+               StartIcon="@Icons.Material.Filled.Badge"
+               Href="@_staffLoginUrl">
+        Sign In with Microsoft
+    </MudButton>
+
+    <MudDivider Class="my-6" />
+
+    <MudText Align="Align.Center" Typo="Typo.body2">
+        Customer? <MudLink Href="/login">Customer sign in</MudLink>
+    </MudText>
+</MudPaper>
+
+@code {
+    private string _staffLoginUrl = "#";
+
+    protected override void OnInitialized()
+    {
+        _staffLoginUrl = Config["Cognito:StaffPoolLoginUrl"] ?? "#";
+    }
+}

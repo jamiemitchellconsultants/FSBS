@@ -1,0 +1,82 @@
+@page "/"
+@layout PublicLayout
+
+<PageTitle>FSBS — Flight Simulator Booking</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+    <MudGrid Justify="Justify.Center">
+        <MudItem xs="12" Class="d-flex flex-column align-center">
+            <MudIcon Icon="@Icons.Material.Filled.Flight" Color="Color.Primary" Style="font-size:5rem" />
+            <MudText Typo="Typo.h3" Align="Align.Center" Class="mt-4">
+                Flight Simulator Booking System
+            </MudText>
+            <MudText Typo="Typo.h6" Align="Align.Center" Color="Color.Secondary" Class="mt-2">
+                Professional simulator scheduling for flight crew and cabin crew training.
+            </MudText>
+        </MudItem>
+
+        <MudItem xs="12" Class="d-flex flex-wrap gap-3 justify-center mt-8">
+            <MudButton Href="/register"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Large"
+                       StartIcon="@Icons.Material.Filled.PersonAdd">
+                Register as Private Customer
+            </MudButton>
+            <MudButton Href="/login"
+                       Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Size="Size.Large"
+                       StartIcon="@Icons.Material.Filled.Login">
+                Sign In
+            </MudButton>
+        </MudItem>
+
+        <MudItem xs="12" Class="d-flex flex-column align-center gap-1 mt-3">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Corporate customer?
+                <MudLink Href="/invitations/claim">Claim your invitation</MudLink>
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                FSBS staff?
+                <MudLink Href="/login/staff">Staff sign in</MudLink>
+            </MudText>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Class="mt-16" Spacing="4">
+        <MudItem xs="12" sm="4">
+            <MudCard Elevation="2">
+                <MudCardContent Class="d-flex flex-column align-center pa-6">
+                    <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Large" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6" Class="mt-3">Real-Time Availability</MudText>
+                    <MudText Align="Align.Center" Color="Color.Secondary" Class="mt-2">
+                        Live simulator availability with colour-coded capacity and reconfiguration windows.
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudCard Elevation="2">
+                <MudCardContent Class="d-flex flex-column align-center pa-6">
+                    <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Large" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6" Class="mt-3">Flight Deck &amp; Cabin Crew</MudText>
+                    <MudText Align="Align.Center" Color="Color.Secondary" Class="mt-2">
+                        Supports Flight Deck (up to 4) and Cabin Crew (up to 10) training configurations.
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudCard Elevation="2">
+                <MudCardContent Class="d-flex flex-column align-center pa-6">
+                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Large" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6" Class="mt-3">Corporate Accounts</MudText>
+                    <MudText Align="Align.Center" Color="Color.Secondary" Class="mt-2">
+                        Volume pricing, credit accounts, and centralised booking management for organisations.
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>

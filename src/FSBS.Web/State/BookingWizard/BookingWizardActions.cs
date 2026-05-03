@@ -1,0 +1,12 @@
+namespace FSBS.Web.State.BookingWizard;
+
+public record SetWizardStepAction(int Step);
+public record SetWizardSimulatorAction(Guid SimulatorId);
+public record SetWizardDateAction(DateOnly Date);
+public record SetWizardSlotAction(TimeOnly Start, TimeOnly End);
+public record SetWizardTrainingTypeAction(string TrainingType);
+public record SetWizardStudentCountAction(int Count);
+public record SetWizardInstructorAction(Guid InstructorId);
+public record SetWizardDeptBudgetAction(string DepartmentName, string BudgetCode);
+public record SetWizardQuoteAction(decimal PriceGbp);
+public record ResetWizardAction;

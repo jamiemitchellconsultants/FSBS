@@ -1,0 +1,231 @@
+@page "/invitations/claim"
+@layout PublicLayout
+@inject InvitationService InvitationSvc
+@inject AuthService AuthSvc
+
+<PageTitle>Accept Invitation — FSBS</PageTitle>
+
+@if (_isValidating)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+    <MudText Align="Align.Center" Color="Color.Secondary">Validating your invitation...</MudText>
+}
+else if (_tokenInvalid)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-6">
+        This invitation link is invalid, has expired, or has already been used.
+        Please contact the person who sent it to you.
+    </MudAlert>
+    <MudText Align="Align.Center">
+        <MudLink Href="/">Return to home</MudLink>
+    </MudText>
+}
+else if (_success)
+{
+    <MudAlert Severity="Severity.Success" Class="mb-6" Elevation="1">
+        <MudText Typo="Typo.subtitle1">Account created!</MudText>
+        <MudText Typo="Typo.body2">
+            Welcome to FSBS. You have joined <strong>@_orgName</strong>
+            as a <strong>@_roleLabel</strong>.
+        </MudText>
+    </MudAlert>
+    <MudText Align="Align.Center" Class="mt-4">
+        <MudLink Href="/login">Sign in to your account</MudLink>
+    </MudText>
+}
+else
+{
+    <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-1">Accept Your Invitation</MudText>
+    <MudText Align="Align.Center" Color="Color.Secondary" Class="mb-6">
+        You have been invited to join <strong>@_orgName</strong> as a <strong>@_roleLabel</strong>.
+        Create a password to complete your registration.
+    </MudText>
+
+    <MudPaper Elevation="3" Class="pa-6" Style="max-width:480px;margin:auto">
+        <EditForm Model="_model" OnValidSubmit="RegisterAsync">
+            <DataAnnotationsValidator />
+            <MudGrid Spacing="3">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.FirstName"
+                                  Label="First name"
+                                  Variant="Variant.Outlined"
+                                  For="@(() => _model.FirstName)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.LastName"
+                                  Label="Last name"
+                                  Variant="Variant.Outlined"
+                                  For="@(() => _model.LastName)" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField Value="@_inviteeEmail"
+                                  Label="Email address"
+                                  Variant="Variant.Outlined"
+                                  Disabled="true"
+                                  ReadOnly="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.Password"
+                                  Label="Password"
+                                  InputType="InputType.Password"
+                                  Variant="Variant.Outlined"
+                                  HelperText="At least 8 characters"
+                                  For="@(() => _model.Password)" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.ConfirmPassword"
+                                  Label="Confirm password"
+                                  InputType="InputType.Password"
+                                  Variant="Variant.Outlined"
+                                  For="@(() => _model.ConfirmPassword)" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.PhoneNumber"
+                                  Label="Phone number (optional)"
+                                  InputType="InputType.Telephone"
+                                  Variant="Variant.Outlined"
+                                  HelperText="E.164 format, e.g. +447911123456"
+                                  For="@(() => _model.PhoneNumber)" />
+                </MudItem>
+            </MudGrid>
+
+            @if (_errorMessage is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-4">@_errorMessage</MudAlert>
+            }
+
+            <MudButton FullWidth="true"
+                       ButtonType="ButtonType.Submit"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Class="mt-6"
+                       Disabled="_isSubmitting">
+                @if (_isSubmitting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Creating account...</span>
+                }
+                else
+                {
+                    <span>Create Account</span>
+                }
+            </MudButton>
+        </EditForm>
+    </MudPaper>
+}
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Token { get; set; }
+
+    private bool _isValidating = true;
+    private bool _tokenInvalid;
+    private bool _success;
+    private string? _inviteeEmail;
+    private string? _orgName;
+    private string? _roleLabel;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+    private readonly InvitationModel _model = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Token))
+        {
+            _isValidating = false;
+            _tokenInvalid = true;
+            return;
+        }
+
+        try
+        {
+            var result = await InvitationSvc.ValidateTokenAsync(Token);
+            if (result is { IsValid: true })
+            {
+                _inviteeEmail = result.InviteeEmail;
+                _orgName      = result.OrgName;
+                _roleLabel    = RoleLabel(result.Role);
+            }
+            else
+            {
+                _tokenInvalid = true;
+            }
+        }
+        catch
+        {
+            _tokenInvalid = true;
+        }
+        finally
+        {
+            _isValidating = false;
+        }
+    }
+
+    private async Task RegisterAsync()
+    {
+        if (_model.Password != _model.ConfirmPassword)
+        {
+            _errorMessage = "Passwords do not match.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            await AuthSvc.RegisterInvitedAsync(
+                Token!,
+                _model.Password,
+                _model.FirstName,
+                _model.LastName,
+                string.IsNullOrWhiteSpace(_model.PhoneNumber) ? null : _model.PhoneNumber);
+
+            _success = true;
+        }
+        catch (HttpRequestException ex) when ((int?)ex.StatusCode == 409)
+        {
+            _errorMessage = "An account with this email already exists. Please sign in instead.";
+        }
+        catch (HttpRequestException ex) when ((int?)ex.StatusCode == 404)
+        {
+            _tokenInvalid = true;
+        }
+        catch
+        {
+            _errorMessage = "Registration failed. Please try again.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private static string RoleLabel(string? role) => role switch
+    {
+        "CorporateManager" => "Corporate Manager",
+        "CorporateStudent" => "Corporate Student",
+        _ => role ?? "user"
+    };
+
+    private sealed class InvitationModel
+    {
+        [Required(ErrorMessage = "First name is required.")]
+        [MaxLength(100)]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Last name is required.")]
+        [MaxLength(100)]
+        public string LastName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required.")]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Please confirm your password.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+
+        [Phone(ErrorMessage = "Enter a valid phone number in E.164 format.")]
+        public string? PhoneNumber { get; set; }
+    }
+}

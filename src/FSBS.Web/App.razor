@@ -1,6 +1,19 @@
-﻿<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-</Router>
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(PublicLayout)">
+                <PageTitle>Not Found — FSBS</PageTitle>
+                <MudContainer MaxWidth="MaxWidth.Small" Class="mt-16 text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.SearchOff" Style="font-size:6rem" Color="Color.Secondary" />
+                    <MudText Typo="Typo.h4" Class="mt-4">Page Not Found</MudText>
+                    <MudText Color="Color.Secondary" Class="mt-2">The page you're looking for doesn't exist.</MudText>
+                    <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mt-6">Go to Home</MudButton>
+                </MudContainer>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

@@ -2,14 +2,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FSBS.Application\FSBS.Application.csproj" />
+    <ProjectReference Include="..\FSBS.Infrastructure.Persistence.Entities\FSBS.Infrastructure.Persistence.Entities.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.7">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.7" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
   </ItemGroup>

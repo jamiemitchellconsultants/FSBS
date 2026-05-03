@@ -1,0 +1,151 @@
+@page "/staff/invitations/corporate"
+@layout MainLayout
+@attribute [Authorize(Roles = "SalesStaff,SystemAdmin")]
+@inject InvitationService InvitationSvc
+@inject OrganisationService OrgSvc
+
+<PageTitle>Invite Corporate Manager — FSBS</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">Invite Corporate Manager</MudText>
+<MudText Typo="Typo.body2" Class="mb-6" Color="Color.Secondary">
+    The invitee will receive an email with a registration link valid for 7 days.
+    Only one pending invitation per email address per organisation is allowed.
+</MudText>
+
+<MudGrid>
+    <MudItem xs="12" sm="8" md="6">
+        <MudCard Elevation="2">
+            <MudCardContent>
+                @if (_isLoadingOrgs)
+                {
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+                }
+
+                <EditForm Model="_model" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+
+                    <MudSelect T="Guid?"
+                               @bind-Value="_model.OrgId"
+                               Label="Organisation"
+                               Placeholder="Select an organisation"
+                               Variant="Variant.Outlined"
+                               Class="mb-4"
+                               Required="true"
+                               Disabled="_isLoadingOrgs || _isSubmitting"
+                               For="@(() => _model.OrgId)">
+                        @foreach (var org in _orgs)
+                        {
+                            <MudSelectItem T="Guid?" Value="org.Id">@org.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudTextField @bind-Value="_model.Email"
+                                  Label="Invitee Email"
+                                  Placeholder="manager@example.com"
+                                  InputType="InputType.Email"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-4"
+                                  Required="true"
+                                  Disabled="_isSubmitting"
+                                  For="@(() => _model.Email)" />
+
+                    @if (_errorMessage is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@_errorMessage</MudAlert>
+                    }
+
+                    <MudButton ButtonType="ButtonType.Submit"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               Disabled="_isSubmitting || _isLoadingOrgs">
+                        @if (_isSubmitting)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Send Invitation
+                    </MudButton>
+                </EditForm>
+            </MudCardContent>
+        </MudCard>
+
+        @if (_result is not null)
+        {
+            <MudAlert Severity="Severity.Success" Class="mt-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2">Invitation sent</MudText>
+                <MudText Typo="Typo.body2">
+                    <b>@_result.InviteeEmail</b> has been invited to join <b>@_result.OrgName</b>
+                    as a Corporate Manager.
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Expires @_result.ExpiresAt.UtcDateTime.ToString("dd MMM yyyy 'at' HH:mm") UTC
+                </MudText>
+            </MudAlert>
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    private readonly InviteFormModel _model = new();
+    private IReadOnlyList<OrganisationSummaryDto> _orgs = [];
+    private IssueInvitationResult? _result;
+    private string? _errorMessage;
+    private bool _isLoadingOrgs;
+    private bool _isSubmitting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoadingOrgs = true;
+        try
+        {
+            _orgs = await OrgSvc.GetOrganisationsAsync();
+        }
+        catch
+        {
+            _errorMessage = "Failed to load organisations. Please refresh the page.";
+        }
+        finally
+        {
+            _isLoadingOrgs = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (_model.OrgId is null)
+            return;
+
+        _errorMessage  = null;
+        _result        = null;
+        _isSubmitting  = true;
+
+        try
+        {
+            _result      = await InvitationSvc.IssueInvitationAsync(_model.Email, _model.OrgId.Value, "CorporateManager");
+            _model.Email = "";
+            _model.OrgId = null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        catch
+        {
+            _errorMessage = "An unexpected error occurred. Please try again.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private sealed class InviteFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Select an organisation.")]
+        public Guid? OrgId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Invitee email is required.")]
+        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        public string Email { get; set; } = "";
+    }
+}

@@ -1,0 +1,165 @@
+@page "/organisation/invitations"
+@layout CustomerLayout
+@attribute [Authorize(Roles = "CorporateManager")]
+@inject InvitationService InvitationSvc
+
+<PageTitle>Invitations — FSBS</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-6">
+    <MudText Typo="Typo.h5" Style="flex:1">Student Invitations</MudText>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.PersonAdd"
+               OnClick="OpenDialog">
+        Invite Student
+    </MudButton>
+</MudStack>
+
+@if (_successResult is not null)
+{
+    <MudAlert Severity="Severity.Success"
+              Class="mb-4"
+              Elevation="1"
+              ShowCloseIcon="true"
+              CloseIconClicked="@(() => _successResult = null)">
+        <MudText Typo="Typo.subtitle2">Invitation sent</MudText>
+        <MudText Typo="Typo.body2">
+            <b>@_successResult.InviteeEmail</b> has been invited to join as a Corporate Student.
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Expires @_successResult.ExpiresAt.UtcDateTime.ToString("dd MMM yyyy 'at' HH:mm") UTC
+        </MudText>
+    </MudAlert>
+}
+
+<MudPaper Elevation="2" Class="pa-0">
+    <MudTable Items="@_pendingInvitations" Hover="true" Dense="true" Loading="_isLoading">
+        <HeaderContent>
+            <MudTh>Email</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Expires</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Email</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Pending</MudChip>
+            </MudTd>
+            <MudTd>@context.ExpiresAt.UtcDateTime.ToString("dd MMM yyyy")</MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">
+                No pending invitations. Use <b>Invite Student</b> to send one.
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+<MudDialog @bind-Visible="_dialogOpen" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Class="mr-2" />
+            Invite Corporate Student
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-4" Color="Color.Secondary">
+            The student will receive an email with a registration link valid for 7 days.
+        </MudText>
+
+        <EditForm Model="_form" OnValidSubmit="HandleSubmit" id="invite-form">
+            <DataAnnotationsValidator />
+
+            <MudTextField @bind-Value="_form.Email"
+                          Label="Student Email"
+                          Placeholder="student@example.com"
+                          InputType="InputType.Email"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Disabled="_isSubmitting"
+                          For="@(() => _form.Email)"
+                          AutoFocus="true" />
+
+            @if (_dialogError is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_dialogError</MudAlert>
+            }
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog" Disabled="_isSubmitting">Cancel</MudButton>
+        <MudButton ButtonType="ButtonType.Submit"
+                   form="invite-form"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="_isSubmitting">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Send Invitation
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _dialogOpen;
+    private bool _isSubmitting;
+    private bool _isLoading;
+    private string? _dialogError;
+    private IssueInvitationResult? _successResult;
+
+    private readonly InviteFormModel _form = new();
+    private readonly List<PendingInvitationRow> _pendingInvitations = [];
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        CloseOnEscapeKey = true,
+    };
+
+    private void OpenDialog()
+    {
+        _form.Email  = "";
+        _dialogError = null;
+        _dialogOpen  = true;
+    }
+
+    private void CloseDialog() => _dialogOpen = false;
+
+    private async Task HandleSubmit()
+    {
+        _dialogError  = null;
+        _isSubmitting = true;
+
+        try
+        {
+            var result = await InvitationSvc.InviteStudentAsync(_form.Email);
+
+            _successResult = result;
+            _pendingInvitations.Insert(0, new PendingInvitationRow(result.InviteeEmail, result.ExpiresAt));
+            CloseDialog();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _dialogError = ex.Message;
+        }
+        catch
+        {
+            _dialogError = "An unexpected error occurred. Please try again.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private sealed class InviteFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Student email is required.")]
+        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        public string Email { get; set; } = "";
+    }
+
+    private sealed record PendingInvitationRow(string Email, DateTimeOffset ExpiresAt);
+}

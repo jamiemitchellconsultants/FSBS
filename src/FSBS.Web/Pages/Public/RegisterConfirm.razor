@@ -1,0 +1,133 @@
+@page "/register/confirm"
+@layout PublicLayout
+@inject AuthService AuthSvc
+@inject NavigationManager Nav
+
+<PageTitle>Confirm Registration — FSBS</PageTitle>
+
+<MudText Typo="Typo.h4" Align="Align.Center" Class="mb-2">Check Your Email</MudText>
+<MudText Align="Align.Center" Color="Color.Secondary" Class="mb-6">
+    We sent a 6-digit code to <strong>@Email</strong>. Enter it below to confirm your account.
+</MudText>
+
+<MudPaper Elevation="3" Class="pa-6">
+    <EditForm Model="_model" OnValidSubmit="SubmitAsync">
+        <DataAnnotationsValidator />
+
+        <MudTextField @bind-Value="_model.Code"
+                      Label="Confirmation code"
+                      MaxLength="6"
+                      InputType="InputType.Text"
+                      For="@(() => _model.Code)"
+                      HelperText="6-digit code from your email"
+                      Immediate="true" />
+
+        @if (_errorMessage is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-4">@_errorMessage</MudAlert>
+        }
+
+        @if (_successMessage is not null)
+        {
+            <MudAlert Severity="Severity.Success" Class="mt-4">@_successMessage</MudAlert>
+        }
+
+        <MudButton FullWidth="true"
+                   ButtonType="ButtonType.Submit"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Class="mt-6"
+                   Disabled="_isSubmitting">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Confirming...</span>
+            }
+            else
+            {
+                <span>Confirm Account</span>
+            }
+        </MudButton>
+    </EditForm>
+
+    <MudDivider Class="my-4" />
+    <MudText Align="Align.Center" Typo="Typo.body2">
+        Didn't receive the code?
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   OnClick="ResendAsync"
+                   Disabled="_isResending">
+            Resend code
+        </MudButton>
+    </MudText>
+</MudPaper>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Email { get; set; }
+
+    private readonly ConfirmModel _model = new();
+    private bool _isSubmitting;
+    private bool _isResending;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(Email))
+            Nav.NavigateTo("/register");
+    }
+
+    private async Task SubmitAsync()
+    {
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            await AuthSvc.ConfirmAsync(Email!, _model.Code);
+            Nav.NavigateTo("/login?confirmed=true");
+        }
+        catch (HttpRequestException ex) when ((int?)ex.StatusCode == 400)
+        {
+            _errorMessage = "Invalid or expired confirmation code. Please check the code and try again.";
+        }
+        catch
+        {
+            _errorMessage = "Confirmation failed. Please try again.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task ResendAsync()
+    {
+        _isResending = true;
+        _successMessage = null;
+        _errorMessage = null;
+
+        try
+        {
+            await AuthSvc.ResendCodeAsync(Email!);
+            _successMessage = "A new code has been sent to your email.";
+        }
+        catch
+        {
+            _errorMessage = "Could not resend code. Please try again.";
+        }
+        finally
+        {
+            _isResending = false;
+        }
+    }
+
+    private sealed class ConfirmModel
+    {
+        [Required(ErrorMessage = "Confirmation code is required.")]
+        [RegularExpression(@"^\d{6}$", ErrorMessage = "Code must be exactly 6 digits.")]
+        public string Code { get; set; } = string.Empty;
+    }
+}
