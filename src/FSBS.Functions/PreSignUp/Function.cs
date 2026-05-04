@@ -1,7 +1,6 @@
 using Amazon.Lambda.CognitoEvents;
 using Amazon.Lambda.Core;
 
-[assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
 
 namespace FSBS.Functions.PreSignUp;
 
