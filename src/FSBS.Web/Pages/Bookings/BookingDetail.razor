@@ -3,6 +3,7 @@
 @attribute [Authorize]
 @inject BookingService BookingSvc
 @inject NavigationManager Nav
+@inject IState<SessionState> SessionState
 
 <PageTitle>Booking Detail — FSBS</PageTitle>
 
@@ -16,8 +17,8 @@ else if (_booking is null)
         <MudIcon Icon="@Icons.Material.Filled.SearchOff" Style="font-size:5rem" Color="Color.Secondary" />
         <MudText Typo="Typo.h6" Class="mt-2">Booking not found</MudText>
         <MudText Color="Color.Secondary">This booking doesn't exist or you don't have permission to view it.</MudText>
-        <MudButton Href="/my-bookings" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
-            Back to My Bookings
+        <MudButton Href="@BackHref" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+            @BackLabel
         </MudButton>
     </MudStack>
 }
@@ -27,8 +28,8 @@ else
 
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
         <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
-                       Href="/my-bookings"
-                       Title="Back to My Bookings" />
+                       Href="@BackHref"
+                       Title="@BackLabel" />
         <MudText Typo="Typo.h5" Style="flex:1">Booking Details</MudText>
         <MudChip T="string"
                  Color="@StatusColour(b.Status)"
@@ -226,15 +227,32 @@ else
 
 @code {
     [Parameter] public Guid Id { get; set; }
+    [SupplyParameterFromQuery(Name = "from")] public string? From { get; set; }
 
     private BookingDetailDto? _booking;
     private bool _loading = true;
 
+    private bool IsFromAvailability => string.Equals(From, "availability", StringComparison.OrdinalIgnoreCase);
+    private string BackHref => IsFromAvailability ? "/availability" : "/my-bookings";
+    private string BackLabel => IsFromAvailability ? "Back to Availability" : "Back to My Bookings";
+
     protected override async Task OnParametersSetAsync()
     {
         _loading = true;
-        _booking = await BookingSvc.GetBookingAsync(Id);
+        var booking = await BookingSvc.GetBookingAsync(Id);
+        _booking = booking is not null && CanAccessBooking(booking) ? booking : null;
         _loading = false;
+    }
+
+    private bool CanAccessBooking(BookingDetailDto booking)
+    {
+        return BookingAccessEvaluator.CanAccess(
+            SessionState.Value.AppRole,
+            SessionState.Value.UserId,
+            SessionState.Value.OrgId,
+            booking.BookerRole,
+            booking.BookerUserId,
+            booking.BookerOrgId);
     }
 
     private static Color StatusColour(string status) => status switch

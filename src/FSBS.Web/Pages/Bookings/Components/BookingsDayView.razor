@@ -28,7 +28,7 @@
             <div style="grid-column:2;border-top:1px solid var(--mud-palette-lines-default);min-height:48px;padding:2px;position:relative">
                 @foreach (var b in inSlot)
                 {
-                    <MudLink Href="@($"/bookings/{b.Id}")" Underline="Underline.None">
+                    <MudLink Href="@($"/bookings/{b.Id}?from=mybookings")" Underline="Underline.None">
                         <MudPaper Elevation="1"
                                   Class="pa-1 mb-1"
                                   Style="@($"background:{StatusBackground(b.Status)};border-left:3px solid {StatusBorder(b.Status)};cursor:pointer")">

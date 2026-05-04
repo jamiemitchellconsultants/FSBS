@@ -142,7 +142,7 @@ else
                     {
                         @if (booking.CanAccess)
                         {
-                            <MudLink Href="@($"/bookings/{booking.Booking.Id}")" Underline="Underline.None">
+                            <MudLink Href="@($"/bookings/{booking.Booking.Id}?from=availability")" Underline="Underline.None">
                                 <MudPaper Elevation="0"
                                           Class="pa-1 mb-1"
                                           Style="@($"background:var(--mud-palette-success-lighten);border-left:3px solid var(--mud-palette-success);border-radius:4px;cursor:pointer")">
@@ -435,59 +435,14 @@ else
 
     private bool CanAccessBooking(BookingSummaryDto booking)
     {
-        var appRole = SessionState.Value.AppRole;
-        if (IsStaff(appRole))
-        {
-            return true;
-        }
-
-        if (booking.BookerUserId is null && booking.BookerOrgId is null)
-        {
-            return appRole switch
-            {
-                "PrivateCustomer" => booking.BookerRole == "PrivateCustomer",
-                "CorporateStudent" => booking.BookerRole == "CorporateStudent",
-                "InternalStudent" => booking.BookerRole == "InternalStudent",
-                "CorporateManager" => booking.BookerRole is "CorporateManager" or "CorporateStudent",
-                _ => false
-            };
-        }
-
-        if (SessionState.Value.UserId == Guid.Empty)
-        {
-            return false;
-        }
-
-        return appRole switch
-        {
-            "PrivateCustomer" => booking.BookerUserId == SessionState.Value.UserId,
-            "CorporateStudent" => booking.BookerUserId == SessionState.Value.UserId,
-            "InternalStudent" => booking.BookerUserId == SessionState.Value.UserId,
-            "CorporateManager" =>
-                booking.BookerUserId == SessionState.Value.UserId ||
-                (TryGetSessionOrgId(out var orgId) && booking.BookerOrgId == orgId),
-            _ => false
-        };
+        return BookingAccessEvaluator.CanAccess(
+            SessionState.Value.AppRole,
+            SessionState.Value.UserId,
+            SessionState.Value.OrgId,
+            booking.BookerRole,
+            booking.BookerUserId,
+            booking.BookerOrgId);
     }
-
-    private bool TryGetSessionOrgId(out Guid orgId)
-    {
-        if (Guid.TryParse(SessionState.Value.OrgId, out orgId))
-        {
-            return true;
-        }
-
-        orgId = Guid.Empty;
-        return false;
-    }
-
-    private static bool IsStaff(string appRole) => appRole is
-        "SystemAdmin" or
-        "ScheduleAdmin" or
-        "CourseDirector" or
-        "Instructor" or
-        "Management" or
-        "SalesStaff";
 
     private enum AvailabilityViewMode
     {
