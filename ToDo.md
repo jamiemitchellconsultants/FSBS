@@ -94,9 +94,9 @@ Each item depends on the previous.
 - [x] `ReconfigurationService` — given a confirmed booking, determine whether a reconfiguration slot is needed, calculate duration from template or `DefaultReconfigMins`, return the slot to insert
 - [x] `BookSimulatorSlotCommand` + handler — provisional/pending-approval branching, idempotency key check, emit `SlotBookedEvent`
 - [x] `BookingCapacityValidator` + `BookingSlotValidator` — FluentValidation for capacity caps, minimum duration, InternalStudent required fields
-- [ ] `ApproveBookingCommand` + handler — reviewer ≠ booker guard, state transition, emit `BookingApprovedEvent`
-- [ ] `RejectBookingCommand` + handler — reason length guard, release slot, remove orphaned reconfig slots, emit `BookingRejectedEvent`
-- [ ] `CancelBookingCommand` + handler — customer and admin variants, reconfig slot cleanup
+- [x] `ApproveBookingCommand` + handler — reviewer ≠ booker guard, state transition, emit `BookingApprovedEvent`
+- [x] `RejectBookingCommand` + handler — reason length guard, release slot, remove orphaned reconfig slots, emit `BookingRejectedEvent`
+- [x] `CancelBookingCommand` + handler — customer and admin variants, reconfig slot cleanup
 
 ### Phase 3 — Infrastructure services
 
