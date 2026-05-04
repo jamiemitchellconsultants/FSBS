@@ -1,3 +1,5 @@
+using FSBS.Domain.Enums;
+
 namespace FSBS.Application.Common.Interfaces;
 
 public interface ICurrentUser
@@ -10,5 +12,6 @@ public interface ICurrentUser
     /// claim. Null for staff users and unauthenticated requests.
     /// </summary>
     Guid? OrgId { get; }
+    AppRole Role { get; }
     bool IsAuthenticated { get; }
 }

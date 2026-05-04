@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FSBS.Application.Common.Interfaces;
+using FSBS.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 
 namespace FSBS.Api.Auth;
@@ -38,6 +39,12 @@ public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor)
     /// <inheritdoc/>
     public Guid? OrgId =>
         Guid.TryParse(User?.FindFirstValue("org_id"), out var id) ? id : null;
+
+    /// <inheritdoc/>
+    public AppRole Role =>
+        Enum.TryParse<AppRole>(User?.FindFirstValue("app_role"), out var role)
+            ? role
+            : AppRole.PrivateCustomer;
 
     /// <inheritdoc/>
     public bool IsAuthenticated =>
