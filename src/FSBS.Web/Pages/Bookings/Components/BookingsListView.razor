@@ -54,11 +54,12 @@
                 @(context.NetPriceGbp.HasValue ? $"£{context.NetPriceGbp:N2}" : "—")
             </MudTd>
             <MudTd Style="text-align:right">
-                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
-                               Size="Size.Small"
-                               Color="Color.Primary"
-                               Href="@($"/bookings/{context.Id}?from=mybookings")"
-                               Title="View details" />
+                <MudTooltip Text="View details">
+                    <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   Href="@($"/bookings/{context.Id}?from=mybookings")" />
+                </MudTooltip>
             </MudTd>
         </RowTemplate>
         <NoRecordsContent>

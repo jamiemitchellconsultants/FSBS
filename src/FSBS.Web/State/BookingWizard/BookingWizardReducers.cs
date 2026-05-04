@@ -9,6 +9,14 @@ public static class BookingWizardReducers
         state with { CurrentStep = a.Step };
 
     [ReducerMethod]
+    public static BookingWizardState OnSetBookerRole(BookingWizardState state, SetWizardBookerRoleAction a) =>
+        state with { BookerRole = a.Role };
+
+    [ReducerMethod]
+    public static BookingWizardState OnSetOrg(BookingWizardState state, SetWizardOrgAction a) =>
+        state with { OrgId = a.OrgId };
+
+    [ReducerMethod]
     public static BookingWizardState OnSetSimulator(BookingWizardState state, SetWizardSimulatorAction a) =>
         state with { SelectedSimulatorId = a.SimulatorId };
 
@@ -39,6 +47,18 @@ public static class BookingWizardReducers
     [ReducerMethod]
     public static BookingWizardState OnSetQuote(BookingWizardState state, SetWizardQuoteAction a) =>
         state with { QuotedPriceGbp = a.PriceGbp };
+
+    [ReducerMethod]
+    public static BookingWizardState OnSetSubmitting(BookingWizardState state, SetWizardSubmittingAction a) =>
+        state with { IsSubmitting = a.IsSubmitting };
+
+    [ReducerMethod]
+    public static BookingWizardState OnSetSubmitError(BookingWizardState state, SetWizardSubmitErrorAction a) =>
+        state with { SubmitError = a.Error };
+
+    [ReducerMethod]
+    public static BookingWizardState OnSetCreatedBooking(BookingWizardState state, SetWizardCreatedBookingAction a) =>
+        state with { CreatedBookingId = a.BookingId };
 
     [ReducerMethod(typeof(ResetWizardAction))]
     public static BookingWizardState OnReset(BookingWizardState _) => new();

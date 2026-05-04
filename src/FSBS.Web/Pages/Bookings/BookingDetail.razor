@@ -27,9 +27,10 @@ else
     var b = _booking;
 
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
-                       Href="@BackHref"
-                       Title="@BackLabel" />
+fix         <MudTooltip Text="@BackLabel">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                           Href="@BackHref" />
+        </MudTooltip>
         <MudText Typo="Typo.h5" Style="flex:1">Booking Details</MudText>
         <MudChip T="string"
                  Color="@StatusColour(b.Status)"
