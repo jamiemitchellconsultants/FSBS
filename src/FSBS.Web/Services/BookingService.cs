@@ -1,12 +1,41 @@
+using System.Net.Http.Json;
+using FSBS.Shared.Bookings;
+using FSBS.Shared.Common;
+
 namespace FSBS.Web.Services;
 
 public sealed class BookingService(HttpClient http)
 {
-    public Task<IReadOnlyList<object>> GetBookingsAsync(string? afterCursor = null, int limit = 20, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<object>>([]);
+    public async Task<PagedResult<BookingSummaryDto>> GetMyBookingsAsync(
+        string? afterCursor = null, int limit = 20, CancellationToken ct = default)
+    {
+        var url = $"v1/bookings?limit={limit}";
+        if (afterCursor is not null)
+            url += $"&after={Uri.EscapeDataString(afterCursor)}";
 
-    public Task<object?> GetBookingAsync(Guid bookingId, CancellationToken ct = default) =>
-        Task.FromResult<object?>(null);
+        var result = await http.GetFromJsonAsync<PagedResult<BookingSummaryDto>>(url, ct);
+        return result ?? new PagedResult<BookingSummaryDto>([], null);
+    }
+
+    public async Task<IReadOnlyList<BookingSummaryDto>> GetMyBookingsForRangeAsync(
+        DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default)
+    {
+        var url = $"v1/bookings/range?from={Uri.EscapeDataString(from.ToString("O"))}&to={Uri.EscapeDataString(to.ToString("O"))}";
+        var result = await http.GetFromJsonAsync<IReadOnlyList<BookingSummaryDto>>(url, ct);
+        return result ?? [];
+    }
+
+    public async Task<BookingDetailDto?> GetBookingAsync(Guid bookingId, CancellationToken ct = default)
+    {
+        try
+        {
+            return await http.GetFromJsonAsync<BookingDetailDto>($"v1/bookings/{bookingId}", ct);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
 
     public Task<Guid> CreateBookingAsync(object command, CancellationToken ct = default) =>
         Task.FromResult(Guid.Empty);
@@ -20,6 +49,7 @@ public sealed class BookingService(HttpClient http)
     public Task CancelBookingAsync(Guid bookingId, CancellationToken ct = default) =>
         Task.CompletedTask;
 
-    public Task<IReadOnlyList<object>> GetPendingApprovalsAsync(string? afterCursor = null, CancellationToken ct = default) =>
+    public Task<IReadOnlyList<object>> GetPendingApprovalsAsync(
+        string? afterCursor = null, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<object>>([]);
 }

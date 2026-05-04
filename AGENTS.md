@@ -3,7 +3,7 @@
 This file is the authoritative technical reference for the FSBS codebase. Read it in full before writing any code. All architectural decisions, naming conventions, business rules, and infrastructure choices are defined here and must be followed exactly.
 
 ---
-imp
+
 ## Project overview
 
 A multi-tenant, role-based flight simulator booking platform for a flight training school. Two user populations: **Staff** (Entra ID auth) and **Customers** (Cognito auth). Supports simulator configuration management, booking with reconfiguration windows, instructor scheduling, student progress tracking, corporate account management, invitation-only customer registration, and management reporting.

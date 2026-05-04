@@ -1,0 +1,80 @@
+@inherits FluxorComponent
+@inject IState<MyBookingsState> State
+
+@{
+    var s = State.Value;
+    var bookings = s.RangeItems;
+    var date = s.SelectedDate;
+}
+
+@if (s.RangeIsLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+
+<MudPaper Elevation="2" Class="pa-0" Style="overflow:auto;max-height:calc(100vh - 240px)">
+    <div style="display:grid;grid-template-columns:60px 1fr;min-width:400px">
+        @for (int hour = 0; hour < 24; hour++)
+        {
+            var h = hour;
+            var slotStart = new DateTimeOffset(date.ToDateTime(new TimeOnly(h, 0)), TimeSpan.Zero);
+            var slotEnd   = slotStart.AddHours(1);
+            var inSlot    = bookings.Where(b => b.StartAt < slotEnd && b.EndAt > slotStart).ToList();
+
+            <div style="grid-column:1;border-top:1px solid var(--mud-palette-lines-default);padding:4px 8px;background:var(--mud-palette-surface)">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@h.ToString("D2"):00</MudText>
+            </div>
+
+            <div style="grid-column:2;border-top:1px solid var(--mud-palette-lines-default);min-height:48px;padding:2px;position:relative">
+                @foreach (var b in inSlot)
+                {
+                    <MudLink Href="@($"/bookings/{b.Id}")" Underline="Underline.None">
+                        <MudPaper Elevation="1"
+                                  Class="pa-1 mb-1"
+                                  Style="@($"background:{StatusBackground(b.Status)};border-left:3px solid {StatusBorder(b.Status)};cursor:pointer")">
+                            <MudText Typo="Typo.caption" Style="font-weight:600">
+                                @b.StartAt.LocalDateTime.ToString("HH:mm") – @b.EndAt.LocalDateTime.ToString("HH:mm")
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="display:block">
+                                @b.AircraftType · @b.BayName
+                            </MudText>
+                            @if (b.InstructorName is not null)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block">
+                                    @b.InstructorName
+                                </MudText>
+                            }
+                        </MudPaper>
+                    </MudLink>
+                }
+            </div>
+        }
+    </div>
+</MudPaper>
+
+@if (!s.RangeIsLoading && bookings.Count == 0)
+{
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4 text-center">
+        No bookings on @date.ToString("dddd d MMMM yyyy").
+    </MudText>
+}
+
+@code {
+    private static string StatusBackground(string status) => status switch
+    {
+        "Confirmed" or "Completed" or "Invoiced" => "var(--mud-palette-success-lighten)",
+        "Provisional" or "PendingApproval"        => "var(--mud-palette-warning-lighten)",
+        "InProgress"                              => "var(--mud-palette-info-lighten)",
+        "Rejected" or "CancelledByCustomer" or "CancelledByAdmin" => "var(--mud-palette-error-lighten)",
+        _                                         => "var(--mud-palette-surface)",
+    };
+
+    private static string StatusBorder(string status) => status switch
+    {
+        "Confirmed" or "Completed" or "Invoiced" => "var(--mud-palette-success)",
+        "Provisional" or "PendingApproval"        => "var(--mud-palette-warning)",
+        "InProgress"                              => "var(--mud-palette-info)",
+        "Rejected" or "CancelledByCustomer" or "CancelledByAdmin" => "var(--mud-palette-error)",
+        _                                         => "var(--mud-palette-lines-default)",
+    };
+}

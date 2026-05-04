@@ -9,6 +9,7 @@ public static class RepositoriesServiceExtensions
     {
         services.AddScoped<IInvitationRepository, InvitationRepository>();
         services.AddScoped<IOrganisationRepository, OrganisationRepository>();
+        services.AddScoped<IBookingRepository, BookingRepository>();
         return services;
     }
 }

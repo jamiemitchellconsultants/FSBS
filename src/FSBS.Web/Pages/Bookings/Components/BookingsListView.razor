@@ -1,0 +1,122 @@
+@inherits FluxorComponent
+@inject IState<MyBookingsState> State
+@inject IDispatcher Dispatcher
+
+@{
+    var s = State.Value;
+}
+
+<MudPaper Elevation="2" Class="pa-0">
+    <MudTable Items="@s.ListItems"
+              Hover="true"
+              Loading="@s.ListIsLoading"
+              Dense="true"
+              Breakpoint="Breakpoint.Sm"
+              FixedHeader="true"
+              Height="calc(100vh - 280px)">
+        <HeaderContent>
+            <MudTh Style="width:130px">Status</MudTh>
+            <MudTh>Aircraft / Simulator</MudTh>
+            <MudTh>Date &amp; Time</MudTh>
+            <MudTh>Duration</MudTh>
+            <MudTh Style="width:80px;text-align:right">Students</MudTh>
+            <MudTh>Instructor</MudTh>
+            <MudTh Style="width:100px;text-align:right">Price</MudTh>
+            <MudTh Style="width:60px" />
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Color="@StatusColour(context.Status)"
+                         Variant="Variant.Filled">
+                    @context.Status
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudText Typo="Typo.body2">@context.AircraftType</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @context.SimulatorUnitName · @context.BayName
+                </MudText>
+            </MudTd>
+            <MudTd>
+                <MudText Typo="Typo.body2">
+                    @context.StartAt.LocalDateTime.ToString("ddd d MMM yyyy")
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @context.StartAt.LocalDateTime.ToString("HH:mm") – @context.EndAt.LocalDateTime.ToString("HH:mm")
+                </MudText>
+            </MudTd>
+            <MudTd>@FormatDuration(context.DurationMins)</MudTd>
+            <MudTd Style="text-align:right">@context.StudentCount</MudTd>
+            <MudTd>@(context.InstructorName ?? "—")</MudTd>
+            <MudTd Style="text-align:right">
+                @(context.NetPriceGbp.HasValue ? $"£{context.NetPriceGbp:N2}" : "—")
+            </MudTd>
+            <MudTd Style="text-align:right">
+                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               Href="@($"/bookings/{context.Id}")"
+                               Title="View details" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-6 text-center">
+                You have no bookings yet.
+            </MudText>
+        </NoRecordsContent>
+        <LoadingContent>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-6 text-center">
+                Loading bookings…
+            </MudText>
+        </LoadingContent>
+    </MudTable>
+</MudPaper>
+
+@if (s.ListHasMore)
+{
+    <div class="d-flex justify-center mt-4">
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   Disabled="@s.ListIsLoading"
+                   OnClick="LoadMore">
+            @if (s.ListIsLoading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Load more
+        </MudButton>
+    </div>
+}
+
+@code {
+    [CascadingParameter] private MyBookings? ParentPage { get; set; }
+
+    private async Task LoadMore()
+    {
+        if (ParentPage is not null)
+            await ParentPage.LoadList(State.Value.ListNextCursor);
+    }
+
+    private static Color StatusColour(string status) => status switch
+    {
+        "Confirmed"       => Color.Success,
+        "Provisional"     => Color.Warning,
+        "PendingApproval" => Color.Warning,
+        "InProgress"      => Color.Info,
+        "Completed"       => Color.Success,
+        "Invoiced"        => Color.Default,
+        "Rejected"        => Color.Error,
+        "CancelledByCustomer" or "CancelledByAdmin" => Color.Error,
+        "Expired"         => Color.Dark,
+        _                 => Color.Default,
+    };
+
+    private static string FormatDuration(int mins)
+    {
+        var h = mins / 60;
+        var m = mins % 60;
+        return m == 0 ? $"{h}h" : $"{h}h {m}m";
+    }
+}

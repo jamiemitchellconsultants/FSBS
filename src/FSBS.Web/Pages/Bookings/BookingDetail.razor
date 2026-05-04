@@ -1,0 +1,271 @@
+@page "/bookings/{id:guid}"
+@layout CustomerLayout
+@attribute [Authorize]
+@inject BookingService BookingSvc
+@inject NavigationManager Nav
+
+<PageTitle>Booking Detail — FSBS</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else if (_booking is null)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="mt-16">
+        <MudIcon Icon="@Icons.Material.Filled.SearchOff" Style="font-size:5rem" Color="Color.Secondary" />
+        <MudText Typo="Typo.h6" Class="mt-2">Booking not found</MudText>
+        <MudText Color="Color.Secondary">This booking doesn't exist or you don't have permission to view it.</MudText>
+        <MudButton Href="/my-bookings" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+            Back to My Bookings
+        </MudButton>
+    </MudStack>
+}
+else
+{
+    var b = _booking;
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       Href="/my-bookings"
+                       Title="Back to My Bookings" />
+        <MudText Typo="Typo.h5" Style="flex:1">Booking Details</MudText>
+        <MudChip T="string"
+                 Color="@StatusColour(b.Status)"
+                 Variant="Variant.Filled"
+                 Size="Size.Medium">
+            @b.Status
+        </MudChip>
+    </MudStack>
+
+    <MudGrid Spacing="3">
+
+        <MudItem xs="12" md="8">
+            <MudPaper Elevation="2" Class="pa-4 mb-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600">Session</MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Aircraft</MudText>
+                        <MudText Typo="Typo.body2">@b.AircraftType</MudText>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Configuration</MudText>
+                        <MudText Typo="Typo.body2">@b.ConfigMode</MudText>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Training Type</MudText>
+                        <MudText Typo="Typo.body2">@b.TrainingType</MudText>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Students</MudText>
+                        <MudText Typo="Typo.body2">@b.StudentCount</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Simulator</MudText>
+                        <MudText Typo="Typo.body2">@b.SimulatorUnitName</MudText>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Booked</MudText>
+                        <MudText Typo="Typo.body2">@b.CreatedAt.LocalDateTime.ToString("d MMM yyyy HH:mm")</MudText>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Booker Role</MudText>
+                        <MudText Typo="Typo.body2">@b.BookerRole</MudText>
+                    </MudItem>
+
+                    @if (b.DepartmentName is not null || b.BudgetCode is not null)
+                    {
+                        <MudItem xs="12"><MudDivider /></MudItem>
+                        @if (b.DepartmentName is not null)
+                        {
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Department</MudText>
+                                <MudText Typo="Typo.body2">@b.DepartmentName</MudText>
+                            </MudItem>
+                        }
+                        @if (b.BudgetCode is not null)
+                        {
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Budget Code</MudText>
+                                <MudText Typo="Typo.body2">@b.BudgetCode</MudText>
+                            </MudItem>
+                        }
+                    }
+                </MudGrid>
+            </MudPaper>
+
+            <MudPaper Elevation="2" Class="pa-4 mb-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600">
+                    Slot@(b.Slots.Count != 1 ? "s" : "") (@b.Slots.Count)
+                </MudText>
+                @foreach (var slot in b.Slots)
+                {
+                    <MudPaper Outlined="true" Class="pa-3 mb-2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="3">
+                            <div>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Date</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @slot.StartAt.LocalDateTime.ToString("ddd d MMM yyyy")
+                                </MudText>
+                            </div>
+                            <div>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Time</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @slot.StartAt.LocalDateTime.ToString("HH:mm") – @slot.EndAt.LocalDateTime.ToString("HH:mm")
+                                </MudText>
+                            </div>
+                            <div>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Duration</MudText>
+                                <MudText Typo="Typo.body2">@FormatDuration(slot.DurationMins)</MudText>
+                            </div>
+                            <div>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Bay</MudText>
+                                <MudText Typo="Typo.body2">@slot.SimulatorUnitName · @slot.BayName</MudText>
+                            </div>
+                            <div>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Instructor</MudText>
+                                <MudText Typo="Typo.body2">@(slot.InstructorName ?? "Not assigned")</MudText>
+                            </div>
+                            <MudChip T="string" Size="Size.Small" Color="@SlotStatusColour(slot.SlotStatus)">
+                                @slot.SlotStatus
+                            </MudChip>
+                        </MudStack>
+                    </MudPaper>
+                }
+            </MudPaper>
+
+            @if (b.Approval is not null)
+            {
+                <MudPaper Elevation="2" Class="pa-4 mb-4">
+                    <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600">Approval</MudText>
+                    <MudGrid Spacing="2">
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Decision</MudText>
+                            <MudChip T="string"
+                                     Color="@ApprovalColour(b.Approval.Decision)"
+                                     Size="Size.Small">
+                                @b.Approval.Decision
+                            </MudChip>
+                        </MudItem>
+                        @if (b.Approval.ReviewedAt.HasValue)
+                        {
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Reviewed</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @b.Approval.ReviewedAt.Value.LocalDateTime.ToString("d MMM yyyy HH:mm")
+                                </MudText>
+                            </MudItem>
+                        }
+                        @if (b.Approval.RejectionReason is not null)
+                        {
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Rejection Reason</MudText>
+                                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-1">
+                                    @b.Approval.RejectionReason
+                                </MudAlert>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudPaper>
+            }
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="2" Class="pa-4 mb-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600">Pricing</MudText>
+
+                @if (b.GrossPriceGbp.HasValue)
+                {
+                    <MudStack Spacing="1">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Gross</MudText>
+                            <MudText Typo="Typo.body2">£@b.GrossPriceGbp.Value.ToString("N2")</MudText>
+                        </MudStack>
+
+                        @if (b.Discounts.Count > 0)
+                        {
+                            @foreach (var d in b.Discounts)
+                            {
+                                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                    <MudText Typo="Typo.caption" Color="Color.Success">
+                                        @d.DiscountType (@d.DiscountPct.ToString("0.##")%)
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Success">
+                                        −£@d.DiscountAmountGbp.ToString("N2")
+                                    </MudText>
+                                </MudStack>
+                            }
+                            <MudDivider />
+                        }
+
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body1" Style="font-weight:600">Total</MudText>
+                            <MudText Typo="Typo.body1" Style="font-weight:600">
+                                £@(b.NetPriceGbp?.ToString("N2") ?? b.GrossPriceGbp.Value.ToString("N2"))
+                            </MudText>
+                        </MudStack>
+                    </MudStack>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Price will be confirmed when the booking is approved.
+                    </MudText>
+                }
+            </MudPaper>
+
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-2" Style="font-weight:600">Reference</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Booking ID</MudText>
+                <MudText Typo="Typo.body2" Style="font-family:monospace;word-break:break-all">@b.Id</MudText>
+            </MudPaper>
+        </MudItem>
+
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private BookingDetailDto? _booking;
+    private bool _loading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _booking = await BookingSvc.GetBookingAsync(Id);
+        _loading = false;
+    }
+
+    private static Color StatusColour(string status) => status switch
+    {
+        "Confirmed" or "Completed" or "Invoiced" => Color.Success,
+        "Provisional" or "PendingApproval"        => Color.Warning,
+        "InProgress"                              => Color.Info,
+        "Rejected" or "CancelledByCustomer" or "CancelledByAdmin" => Color.Error,
+        _                                         => Color.Default,
+    };
+
+    private static Color SlotStatusColour(string status) => status switch
+    {
+        "Scheduled"  => Color.Primary,
+        "InProgress" => Color.Info,
+        "Completed"  => Color.Success,
+        "Cancelled"  => Color.Error,
+        _            => Color.Default,
+    };
+
+    private static Color ApprovalColour(string decision) => decision switch
+    {
+        "Approved" => Color.Success,
+        "Rejected" => Color.Error,
+        _          => Color.Warning,
+    };
+
+    private static string FormatDuration(int mins)
+    {
+        var h = mins / 60;
+        var m = mins % 60;
+        return m == 0 ? $"{h}h" : $"{h}h {m}m";
+    }
+}

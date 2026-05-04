@@ -90,6 +90,15 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                     Status = StatusCodes.Status409Conflict,
                 }),
 
+            BookingNotFoundException bnfex => (
+                StatusCodes.Status404NotFound,
+                new ProblemDetails
+                {
+                    Title  = "Booking not found",
+                    Detail = bnfex.Message,
+                    Status = StatusCodes.Status404NotFound,
+                }),
+
             InvalidConfirmationCodeException or ConfirmationCodeExpiredException => (
                 StatusCodes.Status400BadRequest,
                 new ProblemDetails

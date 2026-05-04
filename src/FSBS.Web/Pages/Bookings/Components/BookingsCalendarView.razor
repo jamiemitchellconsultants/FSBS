@@ -1,0 +1,114 @@
+@inherits FluxorComponent
+@inject IState<MyBookingsState> State
+@inject IDispatcher Dispatcher
+
+@{
+    var s = State.Value;
+    var bookings = s.RangeItems;
+    var year = s.SelectedDate.Year;
+    var month = s.SelectedDate.Month;
+    var firstOfMonth = new DateOnly(year, month, 1);
+    var daysInMonth = DateTime.DaysInMonth(year, month);
+    var today = DateOnly.FromDateTime(DateTime.Today);
+
+    var startOffset = ((int)firstOfMonth.DayOfWeek + 6) % 7;
+    var totalCells = startOffset + daysInMonth;
+    var rows = (int)Math.Ceiling(totalCells / 7.0);
+}
+
+@if (s.RangeIsLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2" />
+}
+
+<MudPaper Elevation="2" Class="pa-0" Style="overflow:hidden">
+    <div style="display:grid;grid-template-columns:repeat(7,1fr)">
+
+        @foreach (var dayName in new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" })
+        {
+            <div style="padding:8px 4px;text-align:center;border-bottom:2px solid var(--mud-palette-primary);background:var(--mud-palette-surface)">
+                <MudText Typo="Typo.caption" Style="font-weight:600">@dayName</MudText>
+            </div>
+        }
+
+        @for (int cell = 0; cell < rows * 7; cell++)
+        {
+            var dayNum = cell - startOffset + 1;
+            var isValidDay = dayNum >= 1 && dayNum <= daysInMonth;
+            var cellDate = isValidDay ? new DateOnly(year, month, dayNum) : (DateOnly?)null;
+            var isToday = cellDate == today;
+            var isSelected = cellDate == s.SelectedDate;
+
+            var dayBookings = isValidDay
+                ? bookings.Where(b => DateOnly.FromDateTime(b.StartAt.LocalDateTime) == cellDate!.Value).ToList()
+                : [];
+
+            <div style="border:1px solid var(--mud-palette-lines-default);min-height:80px;padding:4px;background:@CellBackground(isToday, isSelected, isValidDay)"
+                 @onclick="@(() => { if (isValidDay) SelectDay(cellDate!.Value); })">
+                @if (isValidDay)
+                {
+                    <div style="display:flex;justify-content:flex-end">
+                        <MudText Typo="Typo.caption"
+                                 Style="@($"font-weight:{(isToday ? "700" : "400")};color:{(isToday ? "var(--mud-palette-primary)" : "inherit")}")">
+                            @dayNum
+                        </MudText>
+                    </div>
+
+                    @foreach (var b in dayBookings.Take(3))
+                    {
+                        <MudLink Href="@($"/bookings/{b.Id}")" Underline="Underline.None"
+                                 @onclick:stopPropagation="true">
+                            <div style="@($"background:{StatusBackground(b.Status)};border-left:2px solid {StatusBorder(b.Status)};border-radius:3px;padding:1px 4px;margin-bottom:2px;cursor:pointer")">
+                                <MudText Typo="Typo.caption" Style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                                    @b.StartAt.LocalDateTime.ToString("HH:mm") @b.AircraftType
+                                </MudText>
+                            </div>
+                        </MudLink>
+                    }
+                    @if (dayBookings.Count > 3)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">+@(dayBookings.Count - 3) more</MudText>
+                    }
+                }
+            </div>
+        }
+
+    </div>
+</MudPaper>
+
+@code {
+    [CascadingParameter] private MyBookings? ParentPage { get; set; }
+
+    private void SelectDay(DateOnly date)
+    {
+        Dispatcher.Dispatch(new SetBookingSelectedDateAction(date));
+        Dispatcher.Dispatch(new SetBookingViewModeAction(BookingViewMode.Day));
+        // trigger re-load via parent's mode change — navigation handled by setting state
+    }
+
+    private static string CellBackground(bool isToday, bool isSelected, bool isValid)
+    {
+        if (!isValid) return "var(--mud-palette-background)";
+        if (isSelected) return "var(--mud-palette-primary-hover)";
+        if (isToday) return "var(--mud-palette-primary-hover)";
+        return "var(--mud-palette-surface)";
+    }
+
+    private static string StatusBackground(string status) => status switch
+    {
+        "Confirmed" or "Completed" or "Invoiced" => "var(--mud-palette-success-lighten)",
+        "Provisional" or "PendingApproval"        => "var(--mud-palette-warning-lighten)",
+        "InProgress"                              => "var(--mud-palette-info-lighten)",
+        "Rejected" or "CancelledByCustomer" or "CancelledByAdmin" => "var(--mud-palette-error-lighten)",
+        _                                         => "var(--mud-palette-surface)",
+    };
+
+    private static string StatusBorder(string status) => status switch
+    {
+        "Confirmed" or "Completed" or "Invoiced" => "var(--mud-palette-success)",
+        "Provisional" or "PendingApproval"        => "var(--mud-palette-warning)",
+        "InProgress"                              => "var(--mud-palette-info)",
+        "Rejected" or "CancelledByCustomer" or "CancelledByAdmin" => "var(--mud-palette-error)",
+        _                                         => "var(--mud-palette-lines-default)",
+    };
+}

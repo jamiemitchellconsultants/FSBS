@@ -1,0 +1,195 @@
+@page "/my-bookings"
+@layout CustomerLayout
+@attribute [Authorize]
+@inherits FluxorComponent
+@inject IState<MyBookingsState> State
+@inject IDispatcher Dispatcher
+@inject BookingService BookingSvc
+
+<PageTitle>My Bookings — FSBS</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.h5" Style="flex:1">My Bookings</MudText>
+
+    <MudToggleGroup T="BookingViewMode"
+                    Value="@State.Value.ViewMode"
+                    ValueChanged="OnViewModeChanged"
+                    SelectionMode="SelectionMode.SingleSelection"
+                    Color="Color.Primary"
+                    Size="Size.Small">
+        <MudToggleItem Value="BookingViewMode.List">
+            <MudIcon Icon="@Icons.Material.Filled.FormatListBulleted" Class="mr-1" Size="Size.Small" />List
+        </MudToggleItem>
+        <MudToggleItem Value="BookingViewMode.Day">
+            <MudIcon Icon="@Icons.Material.Filled.ViewDay" Class="mr-1" Size="Size.Small" />Day
+        </MudToggleItem>
+        <MudToggleItem Value="BookingViewMode.Week">
+            <MudIcon Icon="@Icons.Material.Filled.ViewWeek" Class="mr-1" Size="Size.Small" />Week
+        </MudToggleItem>
+        <MudToggleItem Value="BookingViewMode.Calendar">
+            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="mr-1" Size="Size.Small" />Calendar
+        </MudToggleItem>
+    </MudToggleGroup>
+
+    @if (State.Value.ViewMode != BookingViewMode.List)
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft"
+                           Size="Size.Small"
+                           OnClick="PreviousPeriod" />
+            <MudText Typo="Typo.body1" Style="min-width:180px;text-align:center">
+                @GetPeriodLabel()
+            </MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight"
+                           Size="Size.Small"
+                           OnClick="NextPeriod" />
+            <MudButton Variant="Variant.Text"
+                       Size="Size.Small"
+                       OnClick="GoToToday">Today</MudButton>
+        </MudStack>
+    }
+</MudStack>
+
+@if (State.Value.Error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@State.Value.Error</MudAlert>
+}
+
+@switch (State.Value.ViewMode)
+{
+    case BookingViewMode.List:
+        <BookingsListView />
+        break;
+    case BookingViewMode.Day:
+        <BookingsDayView />
+        break;
+    case BookingViewMode.Week:
+        <BookingsWeekView />
+        break;
+    case BookingViewMode.Calendar:
+        <BookingsCalendarView />
+        break;
+}
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentView();
+    }
+
+    private async Task OnViewModeChanged(BookingViewMode mode)
+    {
+        Dispatcher.Dispatch(new SetBookingViewModeAction(mode));
+        await LoadCurrentView(mode);
+    }
+
+    private async Task PreviousPeriod()
+    {
+        var date = State.Value.ViewMode switch
+        {
+            BookingViewMode.Day      => State.Value.SelectedDate.AddDays(-1),
+            BookingViewMode.Week     => State.Value.SelectedDate.AddDays(-7),
+            BookingViewMode.Calendar => State.Value.SelectedDate.AddMonths(-1),
+            _                        => State.Value.SelectedDate,
+        };
+        Dispatcher.Dispatch(new SetBookingSelectedDateAction(date));
+        await LoadCurrentView();
+    }
+
+    private async Task NextPeriod()
+    {
+        var date = State.Value.ViewMode switch
+        {
+            BookingViewMode.Day      => State.Value.SelectedDate.AddDays(1),
+            BookingViewMode.Week     => State.Value.SelectedDate.AddDays(7),
+            BookingViewMode.Calendar => State.Value.SelectedDate.AddMonths(1),
+            _                        => State.Value.SelectedDate,
+        };
+        Dispatcher.Dispatch(new SetBookingSelectedDateAction(date));
+        await LoadCurrentView();
+    }
+
+    private async Task GoToToday()
+    {
+        Dispatcher.Dispatch(new SetBookingSelectedDateAction(DateOnly.FromDateTime(DateTime.Today)));
+        await LoadCurrentView();
+    }
+
+    private async Task LoadCurrentView(BookingViewMode? overrideMode = null)
+    {
+        var mode = overrideMode ?? State.Value.ViewMode;
+        switch (mode)
+        {
+            case BookingViewMode.List:
+                await LoadList(null);
+                break;
+            case BookingViewMode.Day:
+            case BookingViewMode.Week:
+            case BookingViewMode.Calendar:
+                await LoadRange(mode);
+                break;
+        }
+    }
+
+    internal async Task LoadList(string? cursor)
+    {
+        Dispatcher.Dispatch(new LoadMyBookingsAction(cursor));
+        try
+        {
+            var result = await BookingSvc.GetMyBookingsAsync(cursor, limit: 20);
+            Dispatcher.Dispatch(new MyBookingsLoadedAction(result.Items, result.NextCursor, Append: cursor is not null));
+        }
+        catch
+        {
+            Dispatcher.Dispatch(new MyBookingsLoadErrorAction("Failed to load bookings. Please try again."));
+        }
+    }
+
+    private async Task LoadRange(BookingViewMode mode)
+    {
+        var (from, to) = GetRangeBounds(mode, State.Value.SelectedDate);
+        Dispatcher.Dispatch(new LoadMyBookingsForRangeAction(from, to));
+        try
+        {
+            var items = await BookingSvc.GetMyBookingsForRangeAsync(from, to);
+            Dispatcher.Dispatch(new MyBookingsForRangeLoadedAction(items));
+        }
+        catch
+        {
+            Dispatcher.Dispatch(new MyBookingsLoadErrorAction("Failed to load bookings. Please try again."));
+        }
+    }
+
+    private static (DateTimeOffset From, DateTimeOffset To) GetRangeBounds(BookingViewMode mode, DateOnly date)
+    {
+        return mode switch
+        {
+            BookingViewMode.Day => (
+                new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
+                new DateTimeOffset(date.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero)),
+            BookingViewMode.Week => (
+                new DateTimeOffset(GetWeekStart(date).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
+                new DateTimeOffset(GetWeekStart(date).AddDays(7).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero)),
+            BookingViewMode.Calendar => (
+                new DateTimeOffset(new DateOnly(date.Year, date.Month, 1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
+                new DateTimeOffset(new DateOnly(date.Year, date.Month, 1).AddMonths(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero)),
+            _ => (DateTimeOffset.UtcNow.AddDays(-30), DateTimeOffset.UtcNow.AddDays(30)),
+        };
+    }
+
+    private static DateOnly GetWeekStart(DateOnly date)
+    {
+        var dow = (int)date.DayOfWeek;
+        var daysBack = dow == 0 ? 6 : dow - 1;
+        return date.AddDays(-daysBack);
+    }
+
+    private string GetPeriodLabel() => State.Value.ViewMode switch
+    {
+        BookingViewMode.Day => State.Value.SelectedDate.ToString("dddd, d MMMM yyyy"),
+        BookingViewMode.Week =>
+            $"{GetWeekStart(State.Value.SelectedDate):d MMM} – {GetWeekStart(State.Value.SelectedDate).AddDays(6):d MMM yyyy}",
+        BookingViewMode.Calendar => State.Value.SelectedDate.ToString("MMMM yyyy"),
+        _ => string.Empty,
+    };
+}

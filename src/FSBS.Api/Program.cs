@@ -66,5 +66,6 @@ app.UseAuthorization();
 app.MapAuthEndpoints();
 app.MapInvitationEndpoints();
 app.MapOrganisationEndpoints();
+app.MapBookingEndpoints();
 
 app.Run();

@@ -1,0 +1,108 @@
+@inherits FluxorComponent
+@inject IState<MyBookingsState> State
+
+@{
+    var s = State.Value;
+    var bookings = s.RangeItems;
+    var weekStart = GetWeekStart(s.SelectedDate);
+    var days = Enumerable.Range(0, 7).Select(i => weekStart.AddDays(i)).ToList();
+    var today = DateOnly.FromDateTime(DateTime.Today);
+}
+
+@if (s.RangeIsLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2" />
+}
+
+<MudPaper Elevation="2" Class="pa-0" Style="overflow:auto">
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);min-width:560px">
+
+        @foreach (var day in days)
+        {
+            var isToday = day == today;
+            var headerBg = isToday ? "var(--mud-palette-primary-lighten)" : "var(--mud-palette-surface)";
+            var headerFw = isToday ? "700" : "400";
+            <div style="@($"border-bottom:2px solid var(--mud-palette-primary);padding:8px 6px;text-align:center;background:{headerBg}")">
+                <MudText Typo="Typo.caption" Style="@($"display:block;font-weight:{headerFw}")">
+                    @day.ToString("ddd")
+                </MudText>
+                <MudText Typo="Typo.body2" Style="@($"font-weight:{headerFw}")">
+                    @day.Day
+                </MudText>
+            </div>
+        }
+
+        @foreach (var day in days)
+        {
+            var dayStart = new DateTimeOffset(day.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            var dayEnd   = dayStart.AddDays(1);
+            var dayBookings = bookings
+                .Where(b => b.StartAt < dayEnd && b.EndAt > dayStart)
+                .OrderBy(b => b.StartAt)
+                .ToList();
+            var isToday = day == today;
+
+            <div style="border-right:1px solid var(--mud-palette-lines-default);padding:4px;min-height:120px;background:@(isToday ? "var(--mud-palette-primary-hover)" : "transparent")">
+                @foreach (var b in dayBookings)
+                {
+                    <MudLink Href="@($"/bookings/{b.Id}")" Underline="Underline.None">
+                        <MudPaper Elevation="0"
+                                  Class="pa-1 mb-1"
+                                  Style="@($"background:{StatusBackground(b.Status)};border-left:3px solid {StatusBorder(b.Status)};cursor:pointer;border-radius:4px")">
+                            <MudText Typo="Typo.caption" Style="font-weight:600;display:block">
+                                @b.StartAt.LocalDateTime.ToString("HH:mm")
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="display:block">@b.AircraftType</MudText>
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Color="@StatusColour(b.Status)"
+                                     Variant="Variant.Outlined"
+                                     Style="height:18px;font-size:10px;margin:2px 0 0">
+                                @b.Status
+                            </MudChip>
+                        </MudPaper>
+                    </MudLink>
+                }
+                @if (dayBookings.Count == 0 && !s.RangeIsLoading)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Tertiary" Class="pa-1">—</MudText>
+                }
+            </div>
+        }
+
+    </div>
+</MudPaper>
+
+@code {
+    private static DateOnly GetWeekStart(DateOnly date)
+    {
+        var dow = (int)date.DayOfWeek;
+        return date.AddDays(dow == 0 ? -6 : -(dow - 1));
+    }
+
+    private static Color StatusColour(string status) => status switch
+    {
+        "Confirmed" or "Completed" or "Invoiced" => Color.Success,
+        "Provisional" or "PendingApproval"        => Color.Warning,
+        "InProgress"                              => Color.Info,
+        _                                         => Color.Default,
+    };
+
+    private static string StatusBackground(string status) => status switch
+    {
+        "Confirmed" or "Completed" or "Invoiced" => "var(--mud-palette-success-lighten)",
+        "Provisional" or "PendingApproval"        => "var(--mud-palette-warning-lighten)",
+        "InProgress"                              => "var(--mud-palette-info-lighten)",
+        "Rejected" or "CancelledByCustomer" or "CancelledByAdmin" => "var(--mud-palette-error-lighten)",
+        _                                         => "var(--mud-palette-surface)",
+    };
+
+    private static string StatusBorder(string status) => status switch
+    {
+        "Confirmed" or "Completed" or "Invoiced" => "var(--mud-palette-success)",
+        "Provisional" or "PendingApproval"        => "var(--mud-palette-warning)",
+        "InProgress"                              => "var(--mud-palette-info)",
+        "Rejected" or "CancelledByCustomer" or "CancelledByAdmin" => "var(--mud-palette-error)",
+        _                                         => "var(--mud-palette-lines-default)",
+    };
+}
