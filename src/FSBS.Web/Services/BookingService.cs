@@ -6,6 +6,33 @@ namespace FSBS.Web.Services;
 
 public sealed class BookingService(HttpClient http)
 {
+    public async Task<IReadOnlyList<BookingSummaryDto>> GetBookingsForRangeAsync(
+        DateTimeOffset from,
+        DateTimeOffset to,
+        CancellationToken ct = default)
+    {
+        var dateFrom = from.UtcDateTime.ToString("yyyy-MM-dd");
+        var dateTo = to.UtcDateTime.ToString("yyyy-MM-dd");
+
+        try
+        {
+            var result = await http.GetFromJsonAsync<PagedResult<BookingSummaryDto>>(
+                $"v1/bookings?from={Uri.EscapeDataString(dateFrom)}&to={Uri.EscapeDataString(dateTo)}&limit=500",
+                ct);
+
+            if (result?.Items is { Count: > 0 })
+            {
+                return result.Items;
+            }
+        }
+        catch
+        {
+            // Fallback for scaffolding environments that only expose /bookings/range.
+        }
+
+        return await GetMyBookingsForRangeAsync(from, to, ct);
+    }
+
     public async Task<PagedResult<BookingSummaryDto>> GetMyBookingsAsync(
         string? afterCursor = null, int limit = 20, CancellationToken ct = default)
     {

@@ -1,6 +1,7 @@
 namespace FSBS.Web.State.Calendar;
 
-public record SelectCalendarSimulatorAction(Guid SimulatorId);
+public record SelectCalendarSimulatorAction(Guid? SimulatorId);
+public record SetCalendarMonthAction(DateOnly MonthStart);
 public record SetCalendarWeekAction(DateOnly WeekStart);
 public record LoadCalendarAction;
 public record CalendarLoadedAction(

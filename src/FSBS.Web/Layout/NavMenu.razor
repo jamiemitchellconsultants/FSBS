@@ -7,11 +7,12 @@
         </NotAuthorized>
 
         <Authorized>
+            <MudNavLink Href="/availability" Icon="@Icons.Material.Filled.CalendarMonth">Availability (Month)</MudNavLink>
+
             @* Customer routes *@
             <AuthorizeView Roles="PrivateCustomer,CorporateManager,CorporateStudent" Context="_">
                 <Authorized>
                     <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
-                    <MudNavLink Href="/availability" Icon="@Icons.Material.Filled.CalendarMonth">Book Simulator</MudNavLink>
                     <MudNavLink Href="/bookings" Icon="@Icons.Material.Filled.ListAlt">My Bookings</MudNavLink>
                     <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.Person">Profile</MudNavLink>
                     <AuthorizeView Roles="CorporateManager" Context="__">
