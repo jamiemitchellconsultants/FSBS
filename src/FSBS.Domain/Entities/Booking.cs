@@ -30,7 +30,7 @@ namespace FSBS.Domain.Entities;
 /// index on this column allows safe client retries without creating duplicate bookings.
 /// </para>
 /// </remarks>
-public class Booking : AuditableEntity, ISoftDeletable
+public class Booking : AggregateRoot, ISoftDeletable
 {
     /// <summary>
     /// <see cref="AppUser.Id"/> of the user who created the booking.

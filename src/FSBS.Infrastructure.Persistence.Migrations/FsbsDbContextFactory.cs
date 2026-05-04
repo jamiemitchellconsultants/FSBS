@@ -1,4 +1,5 @@
 using FSBS.Application.Common.Interfaces;
+using FSBS.Domain.Enums;
 using FSBS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
@@ -28,6 +29,7 @@ public class FsbsDbContextFactory : IDesignTimeDbContextFactory<FsbsDbContext>
         public Guid UserId => Guid.Empty;
         public Guid TenantId => Guid.Empty;
         public Guid? OrgId => null;
+        public AppRole Role => AppRole.SystemAdmin;
         public bool IsAuthenticated => false;
     }
 }

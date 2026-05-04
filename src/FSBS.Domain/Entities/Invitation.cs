@@ -26,7 +26,7 @@ namespace FSBS.Domain.Entities;
 /// sweeps for expired rows and sets their status to <c>Expired</c>.
 /// </para>
 /// </remarks>
-public class Invitation : AuditableEntity
+public class Invitation : AggregateRoot
 {
     /// <summary>The organisation the invitee will join on registration.</summary>
     public Guid OrgId { get; set; }
