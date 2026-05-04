@@ -56,7 +56,7 @@
 
                     @foreach (var b in dayBookings.Take(3))
                     {
-                        <MudLink Href="@($"/bookings/{b.Id}")" Underline="Underline.None"
+                        <MudLink Href="@($"/bookings/{b.Id}?from=mybookings")" Underline="Underline.None"
                                  @onclick:stopPropagation="true">
                             <div style="@($"background:{StatusBackground(b.Status)};border-left:2px solid {StatusBorder(b.Status)};border-radius:3px;padding:1px 4px;margin-bottom:2px;cursor:pointer")">
                                 <MudText Typo="Typo.caption" Style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">

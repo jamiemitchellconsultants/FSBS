@@ -1,0 +1,565 @@
+@page "/bookings/new"
+@layout CustomerLayout
+@attribute [Authorize(Roles = "PrivateCustomer,CorporateStudent,InternalStudent")]
+@inherits FluxorComponent
+@inject IState<BookingWizardState> WizardState
+@inject IState<SessionState> SessionState
+@inject IDispatcher Dispatcher
+@inject SimulatorService SimulatorService
+@inject PricingService PricingService
+@inject BookingService BookingService
+@inject NavigationManager Nav
+
+<PageTitle>New Booking - FSBS</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.h5" Style="flex:1">New Booking Wizard</MudText>
+    <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary">Step @WizardState.Value.CurrentStep of @TotalSteps</MudChip>
+</MudStack>
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_loadError</MudAlert>
+}
+
+@if (_submitError is not null)
+{
+    <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_submitError</MudAlert>
+}
+
+@if (_submitSuccessId.HasValue)
+{
+    <MudAlert Severity="Severity.Success" Dense="true" Class="mb-3">
+        @(IsInternalStudent ? "Booking submitted for approval." : "Booking created successfully.")
+        <MudLink Href="@($"/bookings/{_submitSuccessId.Value}?from=mybookings")" Class="ml-1">Open booking</MudLink>
+    </MudAlert>
+}
+
+@if (_loadingSimulators)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
+}
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    @if (WizardState.Value.CurrentStep == 1)
+    {
+        <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600">1) Simulator and Slot</MudText>
+
+        <MudSelect T="Guid?"
+                   Label="Simulator"
+                   Dense="true"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Value="@_selectedSimulatorId"
+                   ValueChanged="OnSimulatorChanged"
+                   Style="max-width:420px"
+                   Class="mb-3">
+            @foreach (var simulator in _simulators)
+            {
+                <MudSelectItem T="Guid?" Value="@simulator.UnitId">@simulator.Name</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Date</MudText>
+                <input type="date" class="mud-input-slot pa-2" style="width:100%" value="@_dateText" @onchange="OnDateChanged" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Start</MudText>
+                <input type="time" class="mud-input-slot pa-2" style="width:100%" value="@_startText" @onchange="OnStartChanged" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">End</MudText>
+                <input type="time" class="mud-input-slot pa-2" style="width:100%" value="@_endText" @onchange="OnEndChanged" />
+            </MudItem>
+        </MudGrid>
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">Minimum booking duration is 4 hours.</MudText>
+    }
+    else if (WizardState.Value.CurrentStep == 2)
+    {
+        <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600">2) Training Details</MudText>
+
+        <MudSelect T="string"
+                   Label="Training Type"
+                   Dense="true"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Value="@_trainingType"
+                   ValueChanged="OnTrainingTypeChanged"
+                   Style="max-width:420px"
+                   Class="mb-3">
+            <MudSelectItem T="string" Value='@("FlightDeck")'>FlightDeck</MudSelectItem>
+            <MudSelectItem T="string" Value='@("CabinCrew")'>CabinCrew</MudSelectItem>
+        </MudSelect>
+
+        <MudNumericField T="int"
+                         Label="Student Count"
+                         Variant="Variant.Outlined"
+                         Margin="Margin.Dense"
+                         Min="1"
+                         Max="@(_trainingType == "CabinCrew" ? 10 : 4)"
+                         Value="@_studentCount"
+                         ValueChanged="OnStudentCountChanged"
+                         Style="max-width:220px" />
+    }
+    else if (WizardState.Value.CurrentStep == 3 && IsInternalStudent)
+    {
+        <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600">3) Department and Budget</MudText>
+
+        <MudTextField T="string"
+                      Label="Department"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Value="@_departmentName"
+                      ValueChanged="OnDepartmentChanged"
+                      Style="max-width:420px"
+                      Class="mb-2" />
+
+        <MudTextField T="string"
+                      Label="Budget Code"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Value="@_budgetCode"
+                      ValueChanged="OnBudgetCodeChanged"
+                      Style="max-width:420px" />
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+            Internal student bookings require both Department and Budget Code and will go to Pending Approval.
+        </MudText>
+    }
+    else if (WizardState.Value.CurrentStep == PricingStep)
+    {
+        <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600">@($"{PricingStep}) Pricing")</MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">Review selection and fetch your quote.</MudText>
+
+        <MudStack Spacing="1" Class="mb-3">
+            <MudText Typo="Typo.body2">Simulator: @GetSelectedSimulatorName()</MudText>
+            <MudText Typo="Typo.body2">Date: @(_selectedDate?.ToString("dddd, d MMM yyyy") ?? "-")</MudText>
+            <MudText Typo="Typo.body2">Time: @_startText - @_endText</MudText>
+            <MudText Typo="Typo.body2">Training: @_trainingType</MudText>
+            <MudText Typo="Typo.body2">Students: @_studentCount</MudText>
+            @if (IsInternalStudent)
+            {
+                <MudText Typo="Typo.body2">Pricing Profile: Staff rate (no discounts)</MudText>
+            }
+            else if (IsCorporateStudent)
+            {
+                <MudText Typo="Typo.body2">Pricing Profile: Corporate rate</MudText>
+            }
+        </MudStack>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="RefreshQuoteAsync" Disabled="@_quoting">
+                @(_quoting ? "Calculating..." : "Refresh Quote")
+            </MudButton>
+            @if (_quotedPrice.HasValue)
+            {
+                <MudChip T="string" Color="Color.Success" Variant="Variant.Filled">Quote: £@_quotedPrice.Value.ToString("N2")</MudChip>
+            }
+        </MudStack>
+    }
+    else
+    {
+        <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600">@($"{ConfirmStep}) Confirm")</MudText>
+
+        <MudStack Spacing="1" Class="mb-3">
+            <MudText Typo="Typo.body2">Simulator: @GetSelectedSimulatorName()</MudText>
+            <MudText Typo="Typo.body2">Date: @(_selectedDate?.ToString("dddd, d MMM yyyy") ?? "-")</MudText>
+            <MudText Typo="Typo.body2">Time: @_startText - @_endText</MudText>
+            <MudText Typo="Typo.body2">Training: @_trainingType</MudText>
+            <MudText Typo="Typo.body2">Students: @_studentCount</MudText>
+            @if (IsInternalStudent)
+            {
+                <MudText Typo="Typo.body2">Department: @(_departmentName ?? "-")</MudText>
+                <MudText Typo="Typo.body2">Budget Code: @(_budgetCode ?? "-")</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Warning">Submission result: Pending Approval</MudText>
+            }
+            <MudText Typo="Typo.body2">Estimated Price: @(_quotedPrice.HasValue ? $"£{_quotedPrice.Value:N2}" : "Not calculated")</MudText>
+        </MudStack>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@_submitting" OnClick="SubmitAsync">
+            @(_submitting ? "Submitting..." : "Submit Booking")
+        </MudButton>
+    }
+</MudPaper>
+
+<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+    <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="BackAsync" Disabled="@(WizardState.Value.CurrentStep == 1 || _submitting)">
+        Back
+    </MudButton>
+
+    <MudStack Row="true" Spacing="1">
+        <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="CancelAsync" Disabled="@_submitting">
+            Cancel
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NextAsync" Disabled="@(WizardState.Value.CurrentStep >= TotalSteps || _submitting)">
+            Next
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    private IReadOnlyList<SimulatorSummary> _simulators = [];
+    private bool _loadingSimulators;
+    private string? _loadError;
+    private string? _submitError;
+    private Guid? _submitSuccessId;
+    private bool _submitting;
+    private bool _quoting;
+
+    private Guid? _selectedSimulatorId;
+    private DateOnly? _selectedDate;
+    private Guid? _orgId;
+    private string _appRole = string.Empty;
+    private string? _departmentName;
+    private string? _budgetCode;
+    private string _dateText = string.Empty;
+    private string _startText = "09:00";
+    private string _endText = "13:00";
+    private string _trainingType = "FlightDeck";
+    private int _studentCount = 1;
+    private decimal? _quotedPrice;
+
+    private bool IsInternalStudent => string.Equals(_appRole, "InternalStudent", StringComparison.OrdinalIgnoreCase);
+    private bool IsCorporateStudent => string.Equals(_appRole, "CorporateStudent", StringComparison.OrdinalIgnoreCase);
+    private int TotalSteps => IsInternalStudent ? 5 : 4;
+    private int PricingStep => IsInternalStudent ? 4 : 3;
+    private int ConfirmStep => IsInternalStudent ? 5 : 4;
+
+    protected override async Task OnInitializedAsync()
+    {
+        HydrateFromSession();
+        HydrateFromState();
+        await LoadSimulatorsAsync();
+    }
+
+    private void HydrateFromSession()
+    {
+        _appRole = SessionState.Value.AppRole;
+        _orgId = Guid.TryParse(SessionState.Value.OrgId, out var orgId) ? orgId : null;
+
+        Dispatcher.Dispatch(new SetWizardBookerRoleAction(_appRole));
+        Dispatcher.Dispatch(new SetWizardOrgAction(_orgId));
+    }
+
+    private void HydrateFromState()
+    {
+        var s = WizardState.Value;
+        _selectedSimulatorId = s.SelectedSimulatorId;
+        _selectedDate = s.SelectedDate;
+        _departmentName = s.DepartmentName;
+        _budgetCode = s.BudgetCode;
+        _dateText = s.SelectedDate?.ToString("yyyy-MM-dd") ?? DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
+        _startText = s.SlotStart?.ToString("HH:mm") ?? "09:00";
+        _endText = s.SlotEnd?.ToString("HH:mm") ?? "13:00";
+        _trainingType = s.TrainingType ?? "FlightDeck";
+        _studentCount = s.StudentCount <= 0 ? 1 : s.StudentCount;
+        _quotedPrice = s.QuotedPriceGbp;
+    }
+
+    private async Task LoadSimulatorsAsync()
+    {
+        _loadingSimulators = true;
+        _loadError = null;
+
+        try
+        {
+            _simulators = (await SimulatorService.GetSimulatorsAsync())
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.Name)
+                .ToList();
+        }
+        catch
+        {
+            _loadError = "Unable to load simulators. Please try again.";
+        }
+        finally
+        {
+            _loadingSimulators = false;
+        }
+    }
+
+    private Task OnSimulatorChanged(Guid? simulatorId)
+    {
+        _selectedSimulatorId = simulatorId;
+        if (simulatorId.HasValue)
+        {
+            Dispatcher.Dispatch(new SetWizardSimulatorAction(simulatorId.Value));
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task OnTrainingTypeChanged(string? trainingType)
+    {
+        _trainingType = string.IsNullOrWhiteSpace(trainingType) ? "FlightDeck" : trainingType;
+        Dispatcher.Dispatch(new SetWizardTrainingTypeAction(_trainingType));
+
+        var max = _trainingType == "CabinCrew" ? 10 : 4;
+        if (_studentCount > max)
+        {
+            _studentCount = max;
+            Dispatcher.Dispatch(new SetWizardStudentCountAction(_studentCount));
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task OnStudentCountChanged(int count)
+    {
+        var max = _trainingType == "CabinCrew" ? 10 : 4;
+        _studentCount = Math.Clamp(count, 1, max);
+        Dispatcher.Dispatch(new SetWizardStudentCountAction(_studentCount));
+        return Task.CompletedTask;
+    }
+
+    private Task OnDepartmentChanged(string? value)
+    {
+        _departmentName = value;
+        Dispatcher.Dispatch(new SetWizardDeptBudgetAction(_departmentName ?? string.Empty, _budgetCode ?? string.Empty));
+        return Task.CompletedTask;
+    }
+
+    private Task OnBudgetCodeChanged(string? value)
+    {
+        _budgetCode = value;
+        Dispatcher.Dispatch(new SetWizardDeptBudgetAction(_departmentName ?? string.Empty, _budgetCode ?? string.Empty));
+        return Task.CompletedTask;
+    }
+
+    private async Task NextAsync()
+    {
+        _submitError = null;
+        if (!ValidateCurrentStep())
+        {
+            return;
+        }
+
+        var next = Math.Min(WizardState.Value.CurrentStep + 1, TotalSteps);
+        Dispatcher.Dispatch(new SetWizardStepAction(next));
+
+        if (next == PricingStep && !_quotedPrice.HasValue)
+        {
+            await RefreshQuoteAsync();
+        }
+    }
+
+    private Task BackAsync()
+    {
+        _submitError = null;
+        var prev = Math.Max(WizardState.Value.CurrentStep - 1, 1);
+        Dispatcher.Dispatch(new SetWizardStepAction(prev));
+        return Task.CompletedTask;
+    }
+
+    private Task CancelAsync()
+    {
+        Dispatcher.Dispatch(new ResetWizardAction());
+        Nav.NavigateTo("/availability");
+        return Task.CompletedTask;
+    }
+
+    private async Task RefreshQuoteAsync()
+    {
+        _submitError = null;
+        if (!_selectedSimulatorId.HasValue || !_selectedDate.HasValue || !TryParseTimes(out var start, out var end))
+        {
+            _submitError = "Please provide simulator, date and valid start/end time first.";
+            return;
+        }
+
+        _quoting = true;
+        try
+        {
+            var quote = await PricingService.GetQuoteForRoleAsync(
+                _selectedSimulatorId.Value,
+                _trainingType,
+                _studentCount,
+                _selectedDate.Value,
+                start,
+                end,
+                _appRole,
+                _orgId);
+
+            _quotedPrice = quote;
+            Dispatcher.Dispatch(new SetWizardQuoteAction(quote));
+        }
+        catch
+        {
+            _submitError = "Unable to calculate quote. Please try again.";
+        }
+        finally
+        {
+            _quoting = false;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        _submitError = null;
+        _submitSuccessId = null;
+
+        if (!ValidateAll())
+        {
+            return;
+        }
+
+        if (!TryParseTimes(out var start, out var end) || !_selectedDate.HasValue || !_selectedSimulatorId.HasValue)
+        {
+            _submitError = "Please complete all booking details before submission.";
+            return;
+        }
+
+        _submitting = true;
+        Dispatcher.Dispatch(new SetWizardSubmittingAction(true));
+
+        try
+        {
+            var id = await BookingService.CreateBookingAsync(
+                new CreateBookingRequest(
+                    Guid.NewGuid(),
+                    _selectedSimulatorId.Value,
+                    _selectedDate.Value,
+                    start,
+                    end,
+                    _trainingType,
+                    _studentCount,
+                    InstructorId: null,
+                    OrgId: _orgId,
+                    DepartmentName: IsInternalStudent ? _departmentName : null,
+                    BudgetCode: IsInternalStudent ? _budgetCode : null,
+                    BookerRole: _appRole));
+
+            if (id == Guid.Empty)
+            {
+                _submitError = "Booking was accepted but no identifier was returned.";
+                Dispatcher.Dispatch(new SetWizardSubmitErrorAction(_submitError));
+                return;
+            }
+
+            _submitSuccessId = id;
+            Dispatcher.Dispatch(new SetWizardCreatedBookingAction(id));
+            Dispatcher.Dispatch(new ResetWizardAction());
+            Nav.NavigateTo($"/bookings/{id}?from=mybookings");
+        }
+        catch
+        {
+            _submitError = "Unable to submit booking. Please try again.";
+            Dispatcher.Dispatch(new SetWizardSubmitErrorAction(_submitError));
+        }
+        finally
+        {
+            _submitting = false;
+            Dispatcher.Dispatch(new SetWizardSubmittingAction(false));
+        }
+    }
+
+    private bool ValidateCurrentStep()
+    {
+        if (WizardState.Value.CurrentStep == 1)
+        {
+            if (!_selectedSimulatorId.HasValue)
+            {
+                _submitError = "Select a simulator to continue.";
+                return false;
+            }
+
+            if (!TryParseDate(out var date))
+            {
+                _submitError = "Select a valid date.";
+                return false;
+            }
+
+            _selectedDate = date;
+            Dispatcher.Dispatch(new SetWizardDateAction(date));
+
+            if (!TryParseTimes(out var start, out var end))
+            {
+                _submitError = "Enter valid start/end times.";
+                return false;
+            }
+
+            if (end <= start || (end - start).TotalMinutes < 240)
+            {
+                _submitError = "Minimum slot duration is 4 hours.";
+                return false;
+            }
+
+            Dispatcher.Dispatch(new SetWizardSlotAction(start, end));
+            return true;
+        }
+
+        if (WizardState.Value.CurrentStep == 2)
+        {
+            var max = _trainingType == "CabinCrew" ? 10 : 4;
+            if (_studentCount < 1 || _studentCount > max)
+            {
+                _submitError = $"Student count must be between 1 and {max} for {_trainingType}.";
+                return false;
+            }
+
+            Dispatcher.Dispatch(new SetWizardTrainingTypeAction(_trainingType));
+            Dispatcher.Dispatch(new SetWizardStudentCountAction(_studentCount));
+            return true;
+        }
+
+        if (WizardState.Value.CurrentStep == 3 && IsInternalStudent)
+        {
+            if (string.IsNullOrWhiteSpace(_departmentName) || string.IsNullOrWhiteSpace(_budgetCode))
+            {
+                _submitError = "Department and Budget Code are required for internal student bookings.";
+                return false;
+            }
+
+            Dispatcher.Dispatch(new SetWizardDeptBudgetAction(_departmentName, _budgetCode));
+            return true;
+        }
+
+        return true;
+    }
+
+    private bool ValidateAll()
+    {
+        var current = WizardState.Value.CurrentStep;
+        var maxValidationStep = IsInternalStudent ? 3 : 2;
+
+        for (var step = 1; step <= maxValidationStep; step++)
+        {
+            Dispatcher.Dispatch(new SetWizardStepAction(step));
+            if (!ValidateCurrentStep())
+            {
+                Dispatcher.Dispatch(new SetWizardStepAction(current));
+                return false;
+            }
+        }
+
+        Dispatcher.Dispatch(new SetWizardStepAction(current));
+        return true;
+    }
+
+    private bool TryParseDate(out DateOnly date)
+    {
+        return DateOnly.TryParse(_dateText, out date);
+    }
+
+    private bool TryParseTimes(out TimeOnly start, out TimeOnly end)
+    {
+        var validStart = TimeOnly.TryParse(_startText, out start);
+        var validEnd = TimeOnly.TryParse(_endText, out end);
+        return validStart && validEnd;
+    }
+
+    private void OnDateChanged(ChangeEventArgs e) =>
+        _dateText = e.Value?.ToString() ?? string.Empty;
+
+    private void OnStartChanged(ChangeEventArgs e) =>
+        _startText = e.Value?.ToString() ?? string.Empty;
+
+    private void OnEndChanged(ChangeEventArgs e) =>
+        _endText = e.Value?.ToString() ?? string.Empty;
+
+    private string GetSelectedSimulatorName() =>
+        _simulators.FirstOrDefault(x => x.UnitId == _selectedSimulatorId)?.Name ?? "Not selected";
+}
+
+

@@ -6,6 +6,57 @@ namespace FSBS.Web.Services;
 
 public sealed class BookingService(HttpClient http)
 {
+    public async Task<Guid> CreateBookingAsync(
+        CreateBookingRequest request,
+        CancellationToken ct = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, "v1/bookings")
+        {
+            Content = JsonContent.Create(request)
+        };
+
+        // Booking POSTs require idempotency to avoid duplicate charges/reservations on retries.
+        message.Headers.TryAddWithoutValidation("Idempotency-Key", request.IdempotencyKey.ToString());
+
+        var response = await http.SendAsync(message, ct);
+        response.EnsureSuccessStatusCode();
+
+        var created = await response.Content.ReadFromJsonAsync<BookingCreatedResponse>(cancellationToken: ct);
+        return created?.BookingId ?? Guid.Empty;
+    }
+
+    public Task<Guid> CreatePrivateCustomerBookingAsync(
+        CreateBookingRequest request,
+        CancellationToken ct = default) =>
+        CreateBookingAsync(request, ct);
+
+    public async Task<IReadOnlyList<BookingSummaryDto>> GetBookingsForRangeAsync(
+        DateTimeOffset from,
+        DateTimeOffset to,
+        CancellationToken ct = default)
+    {
+        var dateFrom = from.UtcDateTime.ToString("yyyy-MM-dd");
+        var dateTo = to.UtcDateTime.ToString("yyyy-MM-dd");
+
+        try
+        {
+            var result = await http.GetFromJsonAsync<PagedResult<BookingSummaryDto>>(
+                $"v1/bookings?from={Uri.EscapeDataString(dateFrom)}&to={Uri.EscapeDataString(dateTo)}&limit=500",
+                ct);
+
+            if (result?.Items is { Count: > 0 })
+            {
+                return result.Items;
+            }
+        }
+        catch
+        {
+            // Fallback for scaffolding environments that only expose /bookings/range.
+        }
+
+        return await GetMyBookingsForRangeAsync(from, to, ct);
+    }
+
     public async Task<PagedResult<BookingSummaryDto>> GetMyBookingsAsync(
         string? afterCursor = null, int limit = 20, CancellationToken ct = default)
     {
@@ -53,3 +104,20 @@ public sealed class BookingService(HttpClient http)
         string? afterCursor = null, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<object>>([]);
 }
+
+public sealed record CreateBookingRequest(
+    Guid IdempotencyKey,
+    Guid SimulatorId,
+    DateOnly Date,
+    TimeOnly Start,
+    TimeOnly End,
+    string TrainingType,
+    int StudentCount,
+    Guid? InstructorId = null,
+    Guid? OrgId = null,
+    string? DepartmentName = null,
+    string? BudgetCode = null,
+    string? BookerRole = null);
+
+public sealed record BookingCreatedResponse(Guid BookingId);
+

@@ -13,5 +13,7 @@ public record BookingSummaryDto(
     int StudentCount,
     string? InstructorName,
     decimal? NetPriceGbp,
-    string BookerRole
+    string BookerRole,
+    Guid? BookerUserId = null,
+    Guid? BookerOrgId = null
 );

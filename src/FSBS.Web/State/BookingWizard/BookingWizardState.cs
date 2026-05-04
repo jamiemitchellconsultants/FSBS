@@ -6,6 +6,8 @@ namespace FSBS.Web.State.BookingWizard;
 public record BookingWizardState
 {
     public int CurrentStep { get; init; } = 1;
+    public string? BookerRole { get; init; }
+    public Guid? OrgId { get; init; }
     public Guid? SelectedSimulatorId { get; init; }
     public DateOnly? SelectedDate { get; init; }
     public TimeOnly? SlotStart { get; init; }
@@ -16,4 +18,7 @@ public record BookingWizardState
     public string? DepartmentName { get; init; }
     public string? BudgetCode { get; init; }
     public decimal? QuotedPriceGbp { get; init; }
+    public bool IsSubmitting { get; init; }
+    public string? SubmitError { get; init; }
+    public Guid? CreatedBookingId { get; init; }
 }

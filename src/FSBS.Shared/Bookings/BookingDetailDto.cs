@@ -17,7 +17,9 @@ public record BookingDetailDto(
     DateTimeOffset CreatedAt,
     IReadOnlyList<BookingSlotDto> Slots,
     BookingApprovalDto? Approval,
-    IReadOnlyList<BookingDiscountDto> Discounts
+    IReadOnlyList<BookingDiscountDto> Discounts,
+    Guid? BookerUserId = null,
+    Guid? BookerOrgId = null
 );
 
 public record BookingSlotDto(

@@ -45,7 +45,7 @@
             <div style="border-right:1px solid var(--mud-palette-lines-default);padding:4px;min-height:120px;background:@(isToday ? "var(--mud-palette-primary-hover)" : "transparent")">
                 @foreach (var b in dayBookings)
                 {
-                    <MudLink Href="@($"/bookings/{b.Id}")" Underline="Underline.None">
+                    <MudLink Href="@($"/bookings/{b.Id}?from=mybookings")" Underline="Underline.None">
                         <MudPaper Elevation="0"
                                   Class="pa-1 mb-1"
                                   Style="@($"background:{StatusBackground(b.Status)};border-left:3px solid {StatusBorder(b.Status)};cursor:pointer;border-radius:4px")">

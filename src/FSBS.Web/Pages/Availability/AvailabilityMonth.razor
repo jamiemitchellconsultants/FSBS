@@ -1,0 +1,457 @@
+@page "/availability"
+@attribute [Authorize]
+@inject AvailabilityService AvailabilityService
+@inject SimulatorService SimulatorService
+@inject BookingService BookingService
+@inject IState<CalendarState> CalendarState
+@inject IState<SessionState> SessionState
+@inject IDispatcher Dispatcher
+
+<PageTitle>Simulator Availability</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4" Wrap="Wrap.Wrap">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+        <MudText Typo="Typo.h5">Simulator Availability</MudText>
+        <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small">@(_viewMode == AvailabilityViewMode.Month ? "Month" : "Week")</MudChip>
+    </MudStack>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Wrap="Wrap.Wrap">
+        <MudSelect T="Guid?"
+                   Label="Simulator"
+                   Dense="true"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Value="@_selectedSimulatorId"
+                   ValueChanged="OnSimulatorChanged"
+                   Style="min-width:220px">
+            <MudSelectItem T="Guid?" Value="@(null)">All simulators</MudSelectItem>
+            @foreach (var simulator in _simulators)
+            {
+                <MudSelectItem T="Guid?" Value="@simulator.UnitId">@simulator.Name</MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (_viewMode == AvailabilityViewMode.Month)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" OnClick="PreviousMonth" />
+            <MudText Typo="Typo.body1" Style="min-width:170px;text-align:center">@_monthStart.ToString("MMMM yyyy")</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" OnClick="NextMonth" />
+            <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="GoToCurrentMonth">Current Month</MudButton>
+        }
+        else
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" OnClick="PreviousWeek" />
+            <MudText Typo="Typo.body1" Style="min-width:220px;text-align:center">@GetWeekLabel()</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" OnClick="NextWeek" />
+            <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="GoToCurrentWeek">Current Week</MudButton>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="ShowMonthView">Back to Month</MudButton>
+        }
+    </MudStack>
+</MudStack>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
+}
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_error</MudAlert>
+}
+
+@if (_warning is not null)
+{
+    <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">@_warning</MudAlert>
+}
+
+@if (_viewMode == AvailabilityViewMode.Month)
+{
+    <MudPaper Elevation="2" Class="pa-0" Style="overflow:hidden">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr)">
+            @foreach (var dayName in new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" })
+            {
+                <div style="padding:8px 4px;text-align:center;border-bottom:2px solid var(--mud-palette-primary);background:var(--mud-palette-surface)">
+                    <MudText Typo="Typo.caption" Style="font-weight:600">@dayName</MudText>
+                </div>
+            }
+
+            @for (var cell = 0; cell < _rows * 7; cell++)
+            {
+                var dayNum = cell - _startOffset + 1;
+                var isValidDay = dayNum >= 1 && dayNum <= _daysInMonth;
+                var cellDate = isValidDay ? new DateOnly(_monthStart.Year, _monthStart.Month, dayNum) : (DateOnly?)null;
+                var isToday = cellDate == _today;
+                var hours = isValidDay && cellDate is not null && _hoursByDay.TryGetValue(cellDate.Value, out var value)
+                    ? value
+                    : 0;
+
+                <div style="border:1px solid var(--mud-palette-lines-default);min-height:88px;padding:6px;cursor:@(isValidDay ? "pointer" : "default");background:@GetCellBackground(isValidDay, isToday, hours)"
+                     @onclick="(() => OnMonthDayClicked(cellDate))">
+                    @if (isValidDay)
+                    {
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <MudText Typo="Typo.caption" Style="@($"font-weight:{(isToday ? "700" : "400")}")">@dayNum</MudText>
+                            @if (isToday)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">Today</MudChip>
+                            }
+                        </div>
+
+                        <MudText Typo="Typo.body2" Class="mt-2" Style="font-weight:600">
+                            @hours.ToString("0.##") h
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="@GetAvailabilityColor(hours)">@GetAvailabilityLabel(hours)</MudText>
+                    }
+                </div>
+            }
+        </div>
+    </MudPaper>
+
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-3">
+        Total available this month: <b>@_hoursByDay.Values.Sum().ToString("0.##") hours</b>
+    </MudText>
+}
+else
+{
+    <MudStack Row="true" Spacing="2" Class="mb-3" Wrap="Wrap.Wrap">
+        <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined">Accessible booking</MudChip>
+        <MudChip T="string" Color="Color.Error" Variant="Variant.Outlined">Not accessible booking</MudChip>
+        <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined">Reconfiguration window</MudChip>
+    </MudStack>
+
+    <MudPaper Elevation="2" Class="pa-0" Style="overflow:auto">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);min-width:880px">
+            @foreach (var day in GetWeekDays())
+            {
+                var isToday = day == _today;
+                <div style="padding:8px 6px;text-align:center;border-bottom:2px solid var(--mud-palette-primary);background:@(isToday ? "var(--mud-palette-primary-hover)" : "var(--mud-palette-surface)")">
+                    <MudText Typo="Typo.caption" Style="font-weight:600">@day.ToString("ddd")</MudText>
+                    <MudText Typo="Typo.body2">@day.ToString("d MMM")</MudText>
+                </div>
+            }
+
+            @foreach (var day in GetWeekDays())
+            {
+                var dayStart = new DateTimeOffset(day.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+                var dayEnd = dayStart.AddDays(1);
+                var bookings = _weekBookings.Where(x => x.Booking.StartAt < dayEnd && x.Booking.EndAt > dayStart).OrderBy(x => x.Booking.StartAt).ToList();
+                var reconfigs = _weekReconfiguration.Where(x => x.StartAt < dayEnd && x.EndAt > dayStart).OrderBy(x => x.StartAt).ToList();
+
+                <div style="border-right:1px solid var(--mud-palette-lines-default);padding:6px;min-height:180px;background:var(--mud-palette-surface)">
+                    @foreach (var booking in bookings)
+                    {
+                        @if (booking.CanAccess)
+                        {
+                            <MudLink Href="@($"/bookings/{booking.Booking.Id}?from=availability")" Underline="Underline.None">
+                                <MudPaper Elevation="0"
+                                          Class="pa-1 mb-1"
+                                          Style="@($"background:var(--mud-palette-success-lighten);border-left:3px solid var(--mud-palette-success);border-radius:4px;cursor:pointer")">
+                                    <MudText Typo="Typo.caption" Style="font-weight:600">@booking.Booking.StartAt.LocalDateTime.ToString("HH:mm") - @booking.Booking.EndAt.LocalDateTime.ToString("HH:mm")</MudText>
+                                    <MudText Typo="Typo.caption">@booking.Booking.AircraftType · @booking.Booking.BayName</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Success">Accessible</MudText>
+                                </MudPaper>
+                            </MudLink>
+                        }
+                        else
+                        {
+                            <MudPaper Elevation="0"
+                                      Class="pa-1 mb-1"
+                                      Style="background:var(--mud-palette-error-lighten);border-left:3px solid var(--mud-palette-error);border-radius:4px">
+                                <MudText Typo="Typo.caption" Style="font-weight:600">@booking.Booking.StartAt.LocalDateTime.ToString("HH:mm") - @booking.Booking.EndAt.LocalDateTime.ToString("HH:mm")</MudText>
+                                <MudText Typo="Typo.caption">@booking.Booking.AircraftType · @booking.Booking.BayName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Error">No access</MudText>
+                            </MudPaper>
+                        }
+                    }
+
+                    @foreach (var reconfig in reconfigs)
+                    {
+                        <MudPaper Elevation="0"
+                                  Class="pa-1 mb-1"
+                                  Style="background:var(--mud-palette-grey-light);border-left:3px solid var(--mud-palette-grey-darken);border-radius:4px">
+                            <MudText Typo="Typo.caption" Style="font-weight:600">@reconfig.StartAt.LocalDateTime.ToString("HH:mm") - @reconfig.EndAt.LocalDateTime.ToString("HH:mm")</MudText>
+                            <MudText Typo="Typo.caption">Reconfiguration (@reconfig.DurationMins min)</MudText>
+                        </MudPaper>
+                    }
+
+                    @if (bookings.Count == 0 && reconfigs.Count == 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">No items</MudText>
+                    }
+                </div>
+            }
+        </div>
+    </MudPaper>
+}
+
+@code {
+    private DateOnly _monthStart = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Today);
+    private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
+    private readonly Dictionary<DateOnly, double> _hoursByDay = new();
+    private IReadOnlyList<SimulatorSummary> _simulators = [];
+    private Guid? _selectedSimulatorId;
+    private AvailabilityViewMode _viewMode = AvailabilityViewMode.Month;
+    private IReadOnlyList<WeekBookingViewItem> _weekBookings = [];
+    private IReadOnlyList<WeekReconfigurationWindow> _weekReconfiguration = [];
+
+    private bool _isLoading;
+    private string? _error;
+    private string? _warning;
+
+    private int _daysInMonth => DateTime.DaysInMonth(_monthStart.Year, _monthStart.Month);
+    private int _startOffset => ((int)new DateOnly(_monthStart.Year, _monthStart.Month, 1).DayOfWeek + 6) % 7;
+    private int _rows => (int)Math.Ceiling((_startOffset + _daysInMonth) / 7.0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var persistedMonth = CalendarState.Value.MonthStart;
+        _monthStart = new DateOnly(persistedMonth.Year, persistedMonth.Month, 1);
+        _selectedDate = CalendarState.Value.WeekStart;
+        _selectedSimulatorId = CalendarState.Value.SimulatorId;
+
+        await LoadSimulatorsAsync();
+        await LoadMonthAsync();
+    }
+
+    private async Task PreviousMonth()
+    {
+        _monthStart = _monthStart.AddMonths(-1);
+        Dispatcher.Dispatch(new SetCalendarMonthAction(_monthStart));
+        await LoadMonthAsync();
+    }
+
+    private async Task NextMonth()
+    {
+        _monthStart = _monthStart.AddMonths(1);
+        Dispatcher.Dispatch(new SetCalendarMonthAction(_monthStart));
+        await LoadMonthAsync();
+    }
+
+    private async Task GoToCurrentMonth()
+    {
+        _monthStart = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+        Dispatcher.Dispatch(new SetCalendarMonthAction(_monthStart));
+        await LoadMonthAsync();
+    }
+
+    private async Task PreviousWeek()
+    {
+        _selectedDate = _selectedDate.AddDays(-7);
+        Dispatcher.Dispatch(new SetCalendarWeekAction(GetWeekStart(_selectedDate)));
+        await LoadWeekAsync();
+    }
+
+    private async Task NextWeek()
+    {
+        _selectedDate = _selectedDate.AddDays(7);
+        Dispatcher.Dispatch(new SetCalendarWeekAction(GetWeekStart(_selectedDate)));
+        await LoadWeekAsync();
+    }
+
+    private async Task GoToCurrentWeek()
+    {
+        _selectedDate = _today;
+        Dispatcher.Dispatch(new SetCalendarWeekAction(GetWeekStart(_selectedDate)));
+        await LoadWeekAsync();
+    }
+
+    private void ShowMonthView() => _viewMode = AvailabilityViewMode.Month;
+
+    private async Task OnSimulatorChanged(Guid? simulatorId)
+    {
+        _selectedSimulatorId = simulatorId;
+        Dispatcher.Dispatch(new SelectCalendarSimulatorAction(simulatorId));
+
+        if (_viewMode == AvailabilityViewMode.Month)
+        {
+            await LoadMonthAsync();
+            return;
+        }
+
+        await LoadWeekAsync();
+    }
+
+    private async Task OnMonthDayClicked(DateOnly? day)
+    {
+        if (day is null)
+        {
+            return;
+        }
+
+        _selectedDate = day.Value;
+        _viewMode = AvailabilityViewMode.Week;
+
+        var weekStart = GetWeekStart(_selectedDate);
+        Dispatcher.Dispatch(new SetCalendarWeekAction(weekStart));
+        await LoadWeekAsync();
+    }
+
+    private async Task LoadSimulatorsAsync()
+    {
+        try
+        {
+            _simulators = (await SimulatorService.GetSimulatorsAsync())
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.Name)
+                .ToList();
+
+            if (_selectedSimulatorId.HasValue && _simulators.All(x => x.UnitId != _selectedSimulatorId.Value))
+            {
+                _selectedSimulatorId = null;
+                Dispatcher.Dispatch(new SelectCalendarSimulatorAction(null));
+            }
+        }
+        catch
+        {
+            _simulators = [];
+            _warning = "Unable to load simulator list. Showing all simulators.";
+        }
+    }
+
+    private async Task LoadMonthAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        _warning = null;
+        _hoursByDay.Clear();
+
+        try
+        {
+            var result = await AvailabilityService.GetMonthAvailabilityAsync(_monthStart, _selectedSimulatorId);
+            _warning = result.Warning;
+
+            foreach (var day in result.Days)
+            {
+                _hoursByDay[day.Date] = day.AvailableHours;
+            }
+        }
+        catch
+        {
+            _error = "Failed to load monthly availability. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadWeekAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        _warning = null;
+        _weekBookings = [];
+        _weekReconfiguration = [];
+
+        var weekStart = GetWeekStart(_selectedDate);
+        var weekStartOffset = new DateTimeOffset(weekStart.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        var weekEndOffset = weekStartOffset.AddDays(7);
+
+        try
+        {
+            var bookings = await BookingService.GetBookingsForRangeAsync(weekStartOffset, weekEndOffset);
+            _weekBookings = bookings.Select(b => new WeekBookingViewItem(b, CanAccessBooking(b))).ToList();
+
+            var reconfig = await AvailabilityService.GetWeekReconfigurationAsync(weekStart, _selectedSimulatorId);
+            _weekReconfiguration = reconfig.Windows;
+
+            if (reconfig.Warning is not null)
+            {
+                _warning = reconfig.Warning;
+            }
+        }
+        catch
+        {
+            _error = "Failed to load weekly availability. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private double MaxDailyHours => _selectedSimulatorId.HasValue ? 24d : Math.Max(24d, _simulators.Count * 24d);
+
+    private string GetCellBackground(bool isValidDay, bool isToday, double hours)
+    {
+        if (!isValidDay)
+        {
+            return "var(--mud-palette-background)";
+        }
+
+        var utilization = MaxDailyHours <= 0 ? 0 : hours / MaxDailyHours;
+        var capacityBandBackground = utilization switch
+        {
+            <= 0 => "var(--mud-palette-error-lighten)",
+            <= 0.25 => "var(--mud-palette-warning-lighten)",
+            _ => "var(--mud-palette-success-lighten)"
+        };
+
+        return isToday ? "var(--mud-palette-primary-hover)" : capacityBandBackground;
+    }
+
+    private Color GetAvailabilityColor(double hours)
+    {
+        var utilization = MaxDailyHours <= 0 ? 0 : hours / MaxDailyHours;
+        return utilization switch
+        {
+            <= 0 => Color.Error,
+            <= 0.25 => Color.Warning,
+            _ => Color.Success
+        };
+    }
+
+    private string GetAvailabilityLabel(double hours)
+    {
+        var utilization = MaxDailyHours <= 0 ? 0 : hours / MaxDailyHours;
+        return utilization switch
+        {
+            <= 0 => "Full",
+            <= 0.25 => "Low availability",
+            _ => "Available"
+        };
+    }
+
+    private string GetWeekLabel()
+    {
+        var start = GetWeekStart(_selectedDate);
+        var end = start.AddDays(6);
+        return $"{start:d MMM} - {end:d MMM yyyy}";
+    }
+
+    private IEnumerable<DateOnly> GetWeekDays()
+    {
+        var start = GetWeekStart(_selectedDate);
+        return Enumerable.Range(0, 7).Select(i => start.AddDays(i));
+    }
+
+    private static DateOnly GetWeekStart(DateOnly date)
+    {
+        var dow = (int)date.DayOfWeek;
+        var daysBack = dow == 0 ? 6 : dow - 1;
+        return date.AddDays(-daysBack);
+    }
+
+    private bool CanAccessBooking(BookingSummaryDto booking)
+    {
+        return BookingAccessEvaluator.CanAccess(
+            SessionState.Value.AppRole,
+            SessionState.Value.UserId,
+            SessionState.Value.OrgId,
+            booking.BookerRole,
+            booking.BookerUserId,
+            booking.BookerOrgId);
+    }
+
+    private enum AvailabilityViewMode
+    {
+        Month,
+        Week
+    }
+
+    private sealed record WeekBookingViewItem(BookingSummaryDto Booking, bool CanAccess);
+}
+
+
+

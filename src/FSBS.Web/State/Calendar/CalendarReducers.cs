@@ -9,6 +9,10 @@ public static class CalendarReducers
         state with { SimulatorId = a.SimulatorId, AvailabilityGrid = [], ReconfigWindows = [], MaintenanceWindows = [] };
 
     [ReducerMethod]
+    public static CalendarState OnSetMonth(CalendarState state, SetCalendarMonthAction a) =>
+        state with { MonthStart = new DateOnly(a.MonthStart.Year, a.MonthStart.Month, 1) };
+
+    [ReducerMethod]
     public static CalendarState OnSetWeek(CalendarState state, SetCalendarWeekAction a) =>
         state with { WeekStart = a.WeekStart };
 
