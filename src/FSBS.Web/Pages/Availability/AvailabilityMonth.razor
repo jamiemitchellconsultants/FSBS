@@ -140,15 +140,28 @@ else
                 <div style="border-right:1px solid var(--mud-palette-lines-default);padding:6px;min-height:180px;background:var(--mud-palette-surface)">
                     @foreach (var booking in bookings)
                     {
-                        <MudPaper Elevation="0"
-                                  Class="pa-1 mb-1"
-                                  Style="@($"background:{(booking.CanAccess ? "var(--mud-palette-success-lighten)" : "var(--mud-palette-error-lighten)")};border-left:3px solid {(booking.CanAccess ? "var(--mud-palette-success)" : "var(--mud-palette-error")};border-radius:4px")">
-                            <MudText Typo="Typo.caption" Style="font-weight:600">@booking.Booking.StartAt.LocalDateTime.ToString("HH:mm") - @booking.Booking.EndAt.LocalDateTime.ToString("HH:mm")</MudText>
-                            <MudText Typo="Typo.caption">@booking.Booking.AircraftType · @booking.Booking.BayName</MudText>
-                            <MudText Typo="Typo.caption" Color="@(booking.CanAccess ? Color.Success : Color.Error)">
-                                @(booking.CanAccess ? "Accessible" : "No access")
-                            </MudText>
-                        </MudPaper>
+                        @if (booking.CanAccess)
+                        {
+                            <MudLink Href="@($"/bookings/{booking.Booking.Id}")" Underline="Underline.None">
+                                <MudPaper Elevation="0"
+                                          Class="pa-1 mb-1"
+                                          Style="@($"background:var(--mud-palette-success-lighten);border-left:3px solid var(--mud-palette-success);border-radius:4px;cursor:pointer")">
+                                    <MudText Typo="Typo.caption" Style="font-weight:600">@booking.Booking.StartAt.LocalDateTime.ToString("HH:mm") - @booking.Booking.EndAt.LocalDateTime.ToString("HH:mm")</MudText>
+                                    <MudText Typo="Typo.caption">@booking.Booking.AircraftType · @booking.Booking.BayName</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Success">Accessible</MudText>
+                                </MudPaper>
+                            </MudLink>
+                        }
+                        else
+                        {
+                            <MudPaper Elevation="0"
+                                      Class="pa-1 mb-1"
+                                      Style="background:var(--mud-palette-error-lighten);border-left:3px solid var(--mud-palette-error);border-radius:4px">
+                                <MudText Typo="Typo.caption" Style="font-weight:600">@booking.Booking.StartAt.LocalDateTime.ToString("HH:mm") - @booking.Booking.EndAt.LocalDateTime.ToString("HH:mm")</MudText>
+                                <MudText Typo="Typo.caption">@booking.Booking.AircraftType · @booking.Booking.BayName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Error">No access</MudText>
+                            </MudPaper>
+                        }
                     }
 
                     @foreach (var reconfig in reconfigs)
