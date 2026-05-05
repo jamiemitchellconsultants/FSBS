@@ -98,14 +98,14 @@ Each item depends on the previous.
 - [x] `RejectBookingCommand` + handler — reason length guard, release slot, remove orphaned reconfig slots, emit `BookingRejectedEvent`
 - [x] `CancelBookingCommand` + handler — customer and admin variants, reconfig slot cleanup
 
-### Phase 3 — Infrastructure services
+### Phase 3 — Infrastructure services ✅
 
-- [ ] Remaining repositories — SimulatorUnit, SimulatorBay, SimulatorConfiguration, ReconfigurationTemplate, PricingPolicy, DiscountRule, Instructor
-- [ ] `AvailabilityCache` — Redis wrapper around availability grid; 60-second TTL; invalidate on every booking mutation
-- [ ] `ISqsPublisher` + implementation — generic publish-to-SQS adapter used by domain event handlers
-- [ ] `ISesEmailService` + implementation — SES send wrapper with template support
-- [ ] `IS3Service` — signed URL generation for document bucket
-- [ ] Dapper read layer — complex availability queries that bypass EF (slot grid, reconfig windows, maintenance windows in one query)
+- [x] Remaining repositories — `SimulatorRepository`, `ReconfigurationTemplateRepository`, `ReconfigurationSlotRepository`, `PricingPolicyRepository`, `InstructorRepository`; all registered in `RepositoriesServiceExtensions`
+- [x] `AvailabilityCache` — Redis wrapper (`StackExchange.Redis`) around availability grid; 60-second TTL; wildcard key invalidation on every booking mutation
+- [x] `ISqsPublisher` + `SqsPublisher` — generic publish-to-SQS adapter; includes `MessageType` attribute for worker dispatch
+- [x] `ISesEmailService` + `SesEmailService` — SES send wrapper with templated and plain email support
+- [x] `IS3Service` + `S3Service` — pre-signed GET/PUT URL generation for document bucket (never served via CloudFront)
+- [x] Dapper read layer — `AvailabilityReadService` executes single SQL query returning available slots, reconfig windows, and maintenance windows in one round-trip
 
 ### Phase 4 — API completion
 

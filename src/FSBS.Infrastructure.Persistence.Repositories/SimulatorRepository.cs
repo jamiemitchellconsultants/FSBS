@@ -1,0 +1,34 @@
+using FSBS.Domain.Entities;
+using FSBS.Domain.Enums;
+using FSBS.Domain.Interfaces;
+using FSBS.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace FSBS.Infrastructure.Persistence.Repositories;
+
+internal sealed class SimulatorRepository(FsbsDbContext db) : ISimulatorRepository
+{
+    public Task<SimulatorUnit?> FindByIdAsync(Guid id, CancellationToken ct = default) =>
+        db.SimulatorUnits
+            .Include(u => u.Bays)
+            .Include(u => u.ActiveConfiguration)
+            .FirstOrDefaultAsync(u => u.Id == id, ct);
+
+    public Task<SimulatorBay?> FindBayAsync(Guid bayId, CancellationToken ct = default) =>
+        db.SimulatorBays
+            .Include(b => b.SimulatorUnit)
+                .ThenInclude(u => u.ActiveConfiguration)
+            .FirstOrDefaultAsync(b => b.Id == bayId, ct);
+
+    public Task<SimulatorConfiguration?> FindConfigurationAsync(Guid configurationId, CancellationToken ct = default) =>
+        db.SimulatorConfigurations
+            .FirstOrDefaultAsync(c => c.Id == configurationId, ct);
+
+    public async Task<IReadOnlyList<SimulatorConfiguration>> ListConfigurationsForTrainingTypeAsync(
+        TrainingType trainingType,
+        CancellationToken ct = default) =>
+        await db.SimulatorConfigurations
+            .Where(c => c.SupportedTrainingTypes.Contains(trainingType))
+            .OrderBy(c => c.AircraftType)
+            .ToListAsync(ct);
+}

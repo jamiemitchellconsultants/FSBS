@@ -5,6 +5,10 @@
     <ProjectReference Include="..\FSBS.Infrastructure.Persistence\FSBS.Infrastructure.Persistence.csproj" />
     <ProjectReference Include="..\FSBS.Infrastructure.Persistence.Repositories.Interfaces\FSBS.Infrastructure.Persistence.Repositories.Interfaces.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.66" />
+    <PackageReference Include="Npgsql" Version="10.0.2" />
+  </ItemGroup>
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
