@@ -18,6 +18,7 @@ public sealed class BookSimulatorSlotHandler(
     IInstructorRepository instructorRepository)
     : IRequestHandler<BookSimulatorSlotCommand, BookSimulatorSlotResult>
 {
+    /// <inheritdoc/>
     public async Task<BookSimulatorSlotResult> Handle(
         BookSimulatorSlotCommand command, CancellationToken ct)
     {

@@ -1,0 +1,619 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FSBS.Application</name>
+    </assembly>
+    <members>
+        <member name="T:FSBS.Application.Auth.Commands.ConfirmPrivateCustomerRegistrationCommand">
+            <summary>
+            Submits the 6-digit confirmation code sent to the user's email address by
+            Cognito after a successful <see cref="T:FSBS.Application.Auth.Commands.RegisterPrivateCustomerCommand"/>.
+            On success Cognito fires the Post Confirmation Lambda, which creates the
+            <c>AppUser</c> and <c>UserProfile</c> rows in the database.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Auth.Commands.ConfirmPrivateCustomerRegistrationCommand.#ctor(System.String,System.String)">
+            <summary>
+            Submits the 6-digit confirmation code sent to the user's email address by
+            Cognito after a successful <see cref="T:FSBS.Application.Auth.Commands.RegisterPrivateCustomerCommand"/>.
+            On success Cognito fires the Post Confirmation Lambda, which creates the
+            <c>AppUser</c> and <c>UserProfile</c> rows in the database.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Auth.Commands.RegisterPrivateCustomerCommand">
+            <summary>
+            Initiates Cognito sign-up for a new private customer. Cognito sends a
+            6-digit confirmation code to <see cref="P:FSBS.Application.Auth.Commands.RegisterPrivateCustomerCommand.Email"/>; the client must follow
+            up with <see cref="T:FSBS.Application.Auth.Commands.ConfirmPrivateCustomerRegistrationCommand"/>.
+            </summary>
+            <remarks>
+            No invitation token is required for private customers — they can self-register
+            freely. The <c>custom:registration_type</c> attribute is set to <c>private</c>
+            in the Cognito SignUp request so the Pre Sign-up Lambda can distinguish this
+            path from corporate invitation-based registrations.
+            </remarks>
+        </member>
+        <member name="M:FSBS.Application.Auth.Commands.RegisterPrivateCustomerCommand.#ctor(System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Initiates Cognito sign-up for a new private customer. Cognito sends a
+            6-digit confirmation code to <see cref="P:FSBS.Application.Auth.Commands.RegisterPrivateCustomerCommand.Email"/>; the client must follow
+            up with <see cref="T:FSBS.Application.Auth.Commands.ConfirmPrivateCustomerRegistrationCommand"/>.
+            </summary>
+            <remarks>
+            No invitation token is required for private customers — they can self-register
+            freely. The <c>custom:registration_type</c> attribute is set to <c>private</c>
+            in the Cognito SignUp request so the Pre Sign-up Lambda can distinguish this
+            path from corporate invitation-based registrations.
+            </remarks>
+        </member>
+        <member name="T:FSBS.Application.Auth.Commands.ResendConfirmationCodeCommand">
+            <summary>
+            Asks Cognito to re-send the confirmation code to the user's email address.
+            Use when the original code has expired (24-hour TTL) or was not received.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Auth.Commands.ResendConfirmationCodeCommand.#ctor(System.String)">
+            <summary>
+            Asks Cognito to re-send the confirmation code to the user's email address.
+            Use when the original code has expired (24-hour TTL) or was not received.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Bookings.Commands.ApproveBookingCommand">
+            <summary>
+            Approves a PendingApproval (InternalStudent) booking. Only SalesStaff and
+            SystemAdmin may send this command; that constraint is enforced by the API
+            authorization policy. The reviewer must not be the same user as the booker.
+            Price is calculated and locked here — the booking transitions to Confirmed.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Bookings.Commands.ApproveBookingCommand.#ctor(System.Guid)">
+            <summary>
+            Approves a PendingApproval (InternalStudent) booking. Only SalesStaff and
+            SystemAdmin may send this command; that constraint is enforced by the API
+            authorization policy. The reviewer must not be the same user as the booker.
+            Price is calculated and locked here — the booking transitions to Confirmed.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Bookings.Commands.BookingCapacityValidator">
+            <summary>
+            Enforces the capacity caps defined in CLAUDE.md (FlightDeck ≤ 4,
+            CabinCrew ≤ 10) and the InternalStudent mandatory-field rule
+            (DepartmentName + BudgetCode both required).
+            ICurrentUser is injected so the role-specific rules can be evaluated
+            at request time without embedding role in the command itself.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Bookings.Commands.BookingSlotValidator">
+            <summary>
+            Enforces the time and duration rules that apply to every simulator booking slot.
+            Registered as a standalone validator so it runs independently via the
+            ValidationBehaviour pipeline before the handler executes.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Bookings.Commands.BookSimulatorSlotCommand">
+            <summary>
+            Reserves a simulator bay slot and creates a booking in either
+            <c>Provisional</c> (external customers, 15-min hold) or
+            <c>PendingApproval</c> (InternalStudent) state.
+            The <c>Idempotency-Key</c> header value must be passed as
+            <see cref="P:FSBS.Application.Bookings.Commands.BookSimulatorSlotCommand.IdempotencyKey"/> so that client retries are safe.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Bookings.Commands.BookSimulatorSlotCommand.#ctor(System.Guid,System.Guid,FSBS.Domain.Enums.TrainingType,System.DateTimeOffset,System.DateTimeOffset,System.Int32,System.Guid,System.Nullable{System.Guid},System.String,System.String)">
+            <summary>
+            Reserves a simulator bay slot and creates a booking in either
+            <c>Provisional</c> (external customers, 15-min hold) or
+            <c>PendingApproval</c> (InternalStudent) state.
+            The <c>Idempotency-Key</c> header value must be passed as
+            <see cref="P:FSBS.Application.Bookings.Commands.BookSimulatorSlotCommand.IdempotencyKey"/> so that client retries are safe.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Bookings.Commands.BookSimulatorSlotCommandValidator">
+            <summary>
+            Validates the structural fields of the command (non-empty IDs).
+            Time/duration rules live in <see cref="T:FSBS.Application.Bookings.Commands.BookingSlotValidator"/>;
+            capacity and role rules live in <see cref="T:FSBS.Application.Bookings.Commands.BookingCapacityValidator"/>.
+            All three are discovered by assembly scanning and run independently
+            by the ValidationBehaviour pipeline.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Bookings.Commands.BookSimulatorSlotResult">
+            <param name="BookingId">The newly created (or previously created idempotent) booking.</param>
+            <param name="Status">
+            <c>Provisional</c> for external customers — the slot is held for 15 minutes
+            pending explicit confirmation. <c>PendingApproval</c> for InternalStudents —
+            slot is held indefinitely until SalesStaff acts.
+            </param>
+        </member>
+        <member name="M:FSBS.Application.Bookings.Commands.BookSimulatorSlotResult.#ctor(System.Guid,FSBS.Domain.Enums.BookingStatus)">
+            <param name="BookingId">The newly created (or previously created idempotent) booking.</param>
+            <param name="Status">
+            <c>Provisional</c> for external customers — the slot is held for 15 minutes
+            pending explicit confirmation. <c>PendingApproval</c> for InternalStudents —
+            slot is held indefinitely until SalesStaff acts.
+            </param>
+        </member>
+        <member name="P:FSBS.Application.Bookings.Commands.BookSimulatorSlotResult.BookingId">
+            <summary>The newly created (or previously created idempotent) booking.</summary>
+        </member>
+        <member name="P:FSBS.Application.Bookings.Commands.BookSimulatorSlotResult.Status">
+            <summary>
+            <c>Provisional</c> for external customers — the slot is held for 15 minutes
+            pending explicit confirmation. <c>PendingApproval</c> for InternalStudents —
+            slot is held indefinitely until SalesStaff acts.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Bookings.Commands.CancelBookingCommand">
+            <summary>
+            Cancels a booking. The resulting status — CancelledByCustomer or
+            CancelledByAdmin — is determined at runtime from ICurrentUser:
+            if the caller is the booker (or a corporate manager acting for their org)
+            the booking is marked CancelledByCustomer; staff roles produce CancelledByAdmin.
+            An optional reason may be supplied in either case.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Bookings.Commands.CancelBookingCommand.#ctor(System.Guid,System.String)">
+            <summary>
+            Cancels a booking. The resulting status — CancelledByCustomer or
+            CancelledByAdmin — is determined at runtime from ICurrentUser:
+            if the caller is the booker (or a corporate manager acting for their org)
+            the booking is marked CancelledByCustomer; staff roles produce CancelledByAdmin.
+            An optional reason may be supplied in either case.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Bookings.Commands.RejectBookingCommand">
+            <summary>
+            Rejects a PendingApproval (InternalStudent) booking. Only SalesStaff and
+            SystemAdmin may send this command; that constraint is enforced by the API
+            authorization policy. The reviewer must not be the same user as the booker.
+            All reserved slots are released and orphaned reconfiguration slots are removed.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Bookings.Commands.RejectBookingCommand.#ctor(System.Guid,System.String)">
+            <summary>
+            Rejects a PendingApproval (InternalStudent) booking. Only SalesStaff and
+            SystemAdmin may send this command; that constraint is enforced by the API
+            authorization policy. The reviewer must not be the same user as the booker.
+            All reserved slots are released and orphaned reconfiguration slots are removed.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Bookings.Services.IReconfigurationService.BuildSlotForConfirmedBookingAsync(FSBS.Domain.Entities.Booking,FSBS.Domain.Entities.BookingSlot,System.Threading.CancellationToken)">
+            <summary>
+            Builds the reconfiguration slot to be inserted immediately after a booking
+            is confirmed. Returns null only when the immediately following booking on
+            the same bay uses the same configuration (no turnaround required).
+            In all other cases a slot is always returned — either transitioning to the
+            next booking's config, or returning to the unit's active config for
+            operational readiness when no following booking exists.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Bookings.Services.IReconfigurationService.RemoveOrphanedSlotsAsync(FSBS.Domain.Entities.Booking,System.Threading.CancellationToken)">
+            <summary>
+            Removes the reconfiguration slot attached to a cancelled or rejected
+            booking, then re-evaluates the preceding booking's reconfig slot in case
+            it now needs to point at a different following configuration.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Behaviours.LoggingBehaviour`2">
+            <summary>
+            First pipeline behaviour. Logs the request name on entry and exit so that
+            every command and query appears in structured logs without handler code
+            needing to repeat the boilerplate.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Behaviours.LoggingBehaviour`2.#ctor(Microsoft.Extensions.Logging.ILogger{FSBS.Application.Common.Behaviours.LoggingBehaviour{`0,`1}})">
+            <summary>
+            First pipeline behaviour. Logs the request name on entry and exit so that
+            every command and query appears in structured logs without handler code
+            needing to repeat the boilerplate.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Behaviours.TransactionBehaviour`2">
+            <summary>
+            Third pipeline behaviour. Applies only to ICommand requests. After the
+            handler executes it collects domain events from tracked aggregate roots,
+            flushes changes to the database via IUnitOfWork, then dispatches the events
+            so that side-effects (emails, cache invalidation, SignalR pushes) run after
+            the commit succeeds.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Behaviours.TransactionBehaviour`2.#ctor(FSBS.Domain.Interfaces.IUnitOfWork,FSBS.Domain.Interfaces.IDomainEventDispatcher,Microsoft.Extensions.Logging.ILogger{FSBS.Application.Common.Behaviours.TransactionBehaviour{`0,`1}})">
+            <summary>
+            Third pipeline behaviour. Applies only to ICommand requests. After the
+            handler executes it collects domain events from tracked aggregate roots,
+            flushes changes to the database via IUnitOfWork, then dispatches the events
+            so that side-effects (emails, cache invalidation, SignalR pushes) run after
+            the commit succeeds.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Behaviours.ValidationBehaviour`2">
+            <summary>
+            Second pipeline behaviour. Runs all <see cref="T:FluentValidation.IValidator`1"/> instances
+            registered for <typeparamref name="TRequest"/> and throws a
+            <see cref="T:FluentValidation.ValidationException"/> if any rules fail. Handlers only execute
+            when the request is fully valid.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Behaviours.ValidationBehaviour`2.#ctor(System.Collections.Generic.IEnumerable{FluentValidation.IValidator{`0}})">
+            <summary>
+            Second pipeline behaviour. Runs all <see cref="T:FluentValidation.IValidator`1"/> instances
+            registered for <typeparamref name="TRequest"/> and throws a
+            <see cref="T:FluentValidation.ValidationException"/> if any rules fail. Handlers only execute
+            when the request is fully valid.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Events.DomainEventNotification`1">
+            <summary>
+            Wraps a domain event in a MediatR INotification so that application-layer
+            handlers can subscribe to specific event types via
+            INotificationHandler&lt;DomainEventNotification&lt;TEvent&gt;&gt;.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Events.DomainEventNotification`1.#ctor(`0)">
+            <summary>
+            Wraps a domain event in a MediatR INotification so that application-layer
+            handlers can subscribe to specific event types via
+            INotificationHandler&lt;DomainEventNotification&lt;TEvent&gt;&gt;.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Exceptions.ConfirmationCodeExpiredException">
+            <summary>
+            Raised when the confirmation code submitted to Cognito has passed its TTL
+            (24 hours by default). Maps to HTTP 400 Bad Request. The client should
+            direct the user to request a new code via the resend endpoint.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Exceptions.ConfirmationCodeExpiredException.#ctor">
+            <summary>
+            Raised when the confirmation code submitted to Cognito has passed its TTL
+            (24 hours by default). Maps to HTTP 400 Bad Request. The client should
+            direct the user to request a new code via the resend endpoint.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Exceptions.InvalidConfirmationCodeException">
+            <summary>
+            Raised when the confirmation code submitted to Cognito does not match the
+            code that was issued. Maps to HTTP 400 Bad Request.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Exceptions.InvalidConfirmationCodeException.#ctor">
+            <summary>
+            Raised when the confirmation code submitted to Cognito does not match the
+            code that was issued. Maps to HTTP 400 Bad Request.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Exceptions.RegistrationEmailAlreadyExistsException">
+            <summary>
+            Raised when a Cognito sign-up is attempted with an email address that is
+            already registered in the customer pool. Maps to HTTP 409 Conflict.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Exceptions.RegistrationEmailAlreadyExistsException.#ctor(System.String)">
+            <summary>
+            Raised when a Cognito sign-up is attempted with an email address that is
+            already registered in the customer pool. Maps to HTTP 409 Conflict.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Exceptions.SelfApprovalException">
+            <summary>
+            Thrown when the user attempting to approve a booking is the same user
+            who created it. Enforced here and reinforced by the DB CHECK constraint
+            on booking_approvals.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Exceptions.SelfApprovalException.#ctor(System.Guid)">
+            <summary>
+            Thrown when the user attempting to approve a booking is the same user
+            who created it. Enforced here and reinforced by the DB CHECK constraint
+            on booking_approvals.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Interfaces.IAvailabilityCache">
+            <summary>
+            Redis-backed cache for the simulator availability grid.
+            TTL is 60 seconds. Every booking mutation must call
+            <see cref="M:FSBS.Application.Common.Interfaces.IAvailabilityCache.InvalidateAsync(System.Guid,System.Threading.CancellationToken)"/> so the next read rebuilds from the DB.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Interfaces.IAvailabilityCache.GetAsync(System.Guid,System.DateTimeOffset,System.DateTimeOffset,System.Threading.CancellationToken)">
+            <summary>
+            Returns the cached availability grid for the given simulator and date
+            range, or null if the cache entry has expired or does not exist.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Interfaces.IAvailabilityCache.SetAsync(System.Guid,System.DateTimeOffset,System.DateTimeOffset,FSBS.Application.Simulators.Queries.AvailabilityGridDto,System.Threading.CancellationToken)">
+            <summary>
+            Stores the availability grid in Redis with a 60-second TTL.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Interfaces.IAvailabilityCache.InvalidateAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Removes all cache entries for the given simulator. Called on every
+            booking create, modify, or cancel so the next read is fresh.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Interfaces.IAvailabilityReadService">
+            <summary>
+            Dapper-based read service that executes the complex availability query
+            bypassing EF Core. Returns the full slot grid in a single round-trip.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Interfaces.IAvailabilityReadService.GetAvailabilityAsync(System.Guid,System.DateTimeOffset,System.DateTimeOffset,System.Threading.CancellationToken)">
+            <summary>
+            Returns the availability grid for the given simulator and date range,
+            including available slots, reconfiguration windows, and maintenance windows.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Interfaces.ICognitoService">
+            <summary>
+            Abstracts AWS Cognito Identity Provider operations so that handlers in the
+            Application layer remain decoupled from the AWS SDK.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Interfaces.ICognitoService.SignUpPrivateCustomerAsync(System.String,System.String,System.String,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Initiates Cognito sign-up for a private customer. Cognito will send a
+            confirmation code to <paramref name="email"/>; the user must then call
+            <see cref="M:FSBS.Application.Common.Interfaces.ICognitoService.ConfirmSignUpAsync(System.String,System.String,System.Threading.CancellationToken)"/> to complete registration.
+            </summary>
+            <exception cref="T:FSBS.Application.Common.Exceptions.RegistrationEmailAlreadyExistsException">
+            Thrown when an account with <paramref name="email"/> already exists in the pool.
+            </exception>
+        </member>
+        <member name="M:FSBS.Application.Common.Interfaces.ICognitoService.ConfirmSignUpAsync(System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Confirms a Cognito sign-up using the 6-digit code sent to the user's email.
+            On success Cognito fires the Post Confirmation Lambda, which creates the
+            <c>AppUser</c> and <c>UserProfile</c> rows in the database.
+            </summary>
+            <exception cref="T:FSBS.Application.Common.Exceptions.InvalidConfirmationCodeException">
+            Thrown when the code does not match.
+            </exception>
+            <exception cref="T:FSBS.Application.Common.Exceptions.ConfirmationCodeExpiredException">
+            Thrown when the code has expired (default TTL: 24 hours).
+            </exception>
+        </member>
+        <member name="M:FSBS.Application.Common.Interfaces.ICognitoService.ResendConfirmationCodeAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Asks Cognito to re-send the confirmation code to <paramref name="email"/>.
+            Use this when the original code has expired or was not received.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Interfaces.ICommand`1">
+            <summary>
+            Marker interface for commands. TransactionBehaviour constrains itself to
+            ICommand so that read-only queries are never wrapped in a DB transaction.
+            </summary>
+        </member>
+        <member name="P:FSBS.Application.Common.Interfaces.ICurrentUser.OrgId">
+            <summary>
+            The organisation the current user belongs to. Populated only for
+            CorporateManager and CorporateStudent tokens that carry an <c>org_id</c>
+            claim. Null for staff users and unauthenticated requests.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Interfaces.IS3Service">
+            <summary>
+            Generates pre-signed URLs for the private documents S3 bucket.
+            The bucket is never served through CloudFront — all access is via
+            time-limited signed URLs only.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Interfaces.IS3Service.GeneratePresignedGetUrlAsync(System.String,System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Returns a pre-signed GET URL for the given object key that expires
+            after <paramref name="expiryMinutes"/> minutes.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Interfaces.IS3Service.GeneratePresignedPutUrlAsync(System.String,System.String,System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Returns a pre-signed PUT URL allowing a client to upload directly to S3
+            without routing the binary through the API.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Interfaces.ISesEmailService">
+            <summary>
+            Sends transactional emails via Amazon SES using pre-registered templates.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Interfaces.ISesEmailService.SendTemplatedEmailAsync(System.String,System.String,System.Object,System.Threading.CancellationToken)">
+            <summary>
+            Sends a templated email to a single recipient.
+            </summary>
+            <param name="toAddress">Recipient email address.</param>
+            <param name="templateName">SES template name registered in the account.</param>
+            <param name="templateData">Object serialised to JSON and merged into the template.</param>
+            <param name="ct">Cancellation token.</param>
+        </member>
+        <member name="M:FSBS.Application.Common.Interfaces.ISesEmailService.SendEmailAsync(System.String,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Sends a plain-text / HTML email without a pre-registered template.
+            Used for ad-hoc operational messages.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Interfaces.ISqsPublisher">
+            <summary>
+            Publishes domain event envelopes to an Amazon SQS queue for async
+            processing by the notification worker.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Interfaces.ISqsPublisher.PublishAsync``1(``0,System.Threading.CancellationToken)">
+            <summary>
+            Serialises <paramref name="message"/> as JSON and sends it to the
+            configured queue. The message type name is included as a message
+            attribute so the worker can dispatch without deserialising the body.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Common.Services.MediatRDomainEventDispatcher">
+            <summary>
+            Dispatches domain events via MediatR by wrapping each event in a
+            DomainEventNotification so that handlers can subscribe per concrete type.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Common.Services.MediatRDomainEventDispatcher.#ctor(MediatR.IPublisher)">
+            <summary>
+            Dispatches domain events via MediatR by wrapping each event in a
+            DomainEventNotification so that handlers can subscribe per concrete type.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Invitations.Commands.ClaimInvitationCommand">
+            <summary>
+            Creates an account for an invited corporate user (CorporateManager or
+            CorporateStudent) and marks the invitation as Claimed in a single atomic
+            operation. The caller's role and organisation are derived from the invitation
+            record — never trusted from the request body.
+            </summary>
+            <remarks>
+            In production this command is superseded by the Cognito Post-Confirmation
+            Lambda, which performs the same DB operations after the user confirms their
+            email via the hosted UI. In the dev environment (DevAuth:Enabled = true)
+            there is no Cognito or Lambda, so this command handles the full registration.
+            </remarks>
+        </member>
+        <member name="M:FSBS.Application.Invitations.Commands.ClaimInvitationCommand.#ctor(System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Creates an account for an invited corporate user (CorporateManager or
+            CorporateStudent) and marks the invitation as Claimed in a single atomic
+            operation. The caller's role and organisation are derived from the invitation
+            record — never trusted from the request body.
+            </summary>
+            <remarks>
+            In production this command is superseded by the Cognito Post-Confirmation
+            Lambda, which performs the same DB operations after the user confirms their
+            email via the hosted UI. In the dev environment (DevAuth:Enabled = true)
+            there is no Cognito or Lambda, so this command handles the full registration.
+            </remarks>
+        </member>
+        <member name="T:FSBS.Application.Invitations.Commands.CreateCorporateManagerInvitationCommand">
+            <summary>
+            Issued by SalesStaff to invite a new CorporateManager to the platform.
+            The handler generates a cryptographically random token, stores only its
+            SHA-256 hash, and creates a Pending invitation record.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Invitations.Commands.CreateCorporateManagerInvitationCommand.#ctor(System.String,System.Guid)">
+            <summary>
+            Issued by SalesStaff to invite a new CorporateManager to the platform.
+            The handler generates a cryptographically random token, stores only its
+            SHA-256 hash, and creates a Pending invitation record.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Invitations.Commands.InviteCorporateStudentCommand">
+            <summary>
+            Issued by a CorporateManager to invite a new CorporateStudent into their
+            own organisation. The handler derives the OrgId from the caller's JWT rather
+            than accepting it from the client, preventing cross-org invitation forgery.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Invitations.Commands.InviteCorporateStudentCommand.#ctor(System.String)">
+            <summary>
+            Issued by a CorporateManager to invite a new CorporateStudent into their
+            own organisation. The handler derives the OrgId from the caller's JWT rather
+            than accepting it from the client, preventing cross-org invitation forgery.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Invitations.Queries.ValidateInvitationTokenQuery">
+            <summary>
+            Validates a raw invitation token before showing the registration form.
+            Returns a safe result (IsValid = false) for any invalid, expired, or
+            already-claimed token — never reveals which specific condition applies.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Invitations.Queries.ValidateInvitationTokenQuery.#ctor(System.String)">
+            <summary>
+            Validates a raw invitation token before showing the registration form.
+            Returns a safe result (IsValid = false) for any invalid, expired, or
+            already-claimed token — never reveals which specific condition applies.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Pricing.Services.AppliedDiscount">
+            <summary>
+            A single discount rule that was evaluated as eligible and contributed to
+            the final price. One AppliedDiscount maps to one BookingDiscount snapshot
+            written at confirmation.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Pricing.Services.AppliedDiscount.#ctor(System.Guid,FSBS.Domain.Enums.DiscountType,System.Decimal,FSBS.Domain.ValueObjects.Money)">
+            <summary>
+            A single discount rule that was evaluated as eligible and contributed to
+            the final price. One AppliedDiscount maps to one BookingDiscount snapshot
+            written at confirmation.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Pricing.Services.IPricingService.CalculateAsync(FSBS.Application.Pricing.Services.PricingRequest,System.Threading.CancellationToken)">
+            <summary>
+            Calculates the gross price, applicable discounts, and net price for a
+            booking at the point of confirmation. The result is locked immediately
+            after this call — never recalculated.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Pricing.Services.PricingRequest">
+            <summary>
+            Input to the pricing engine. Supplied by the booking command handler at
+            the point of slot confirmation.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Pricing.Services.PricingRequest.#ctor(System.Guid,FSBS.Domain.Enums.TrainingType,FSBS.Domain.Enums.CustomerClass,FSBS.Domain.Enums.AppRole,System.Int32,System.Int32,System.DateTimeOffset,System.Nullable{System.Guid},System.Int32)">
+            <summary>
+            Input to the pricing engine. Supplied by the booking command handler at
+            the point of slot confirmation.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Pricing.Services.PricingResult">
+            <summary>
+            The fully calculated price for a booking, ready to be locked at confirmation.
+            GrossPrice − DiscountAmount = NetPrice.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Pricing.Services.PricingResult.#ctor(FSBS.Domain.ValueObjects.Money,FSBS.Domain.ValueObjects.Money,FSBS.Domain.ValueObjects.Money,System.Collections.Generic.IReadOnlyList{FSBS.Application.Pricing.Services.AppliedDiscount})">
+            <summary>
+            The fully calculated price for a booking, ready to be locked at confirmation.
+            GrossPrice − DiscountAmount = NetPrice.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Simulators.Queries.AvailableSlotDto">
+            <summary>
+            Represents a single available booking slot on a simulator bay.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Simulators.Queries.AvailableSlotDto.#ctor(System.Guid,System.DateTimeOffset,System.DateTimeOffset,System.Int32)">
+            <summary>
+            Represents a single available booking slot on a simulator bay.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Simulators.Queries.ReconfigurationWindowDto">
+            <summary>
+            Represents a non-bookable reconfiguration window between two sessions.
+            Rendered as hatched grey on the availability calendar.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Simulators.Queries.ReconfigurationWindowDto.#ctor(System.Guid,System.DateTimeOffset,System.DateTimeOffset,System.String,System.String,System.Int32)">
+            <summary>
+            Represents a non-bookable reconfiguration window between two sessions.
+            Rendered as hatched grey on the availability calendar.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Simulators.Queries.MaintenanceWindowDto">
+            <summary>
+            Represents a maintenance window during which the simulator is unavailable.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Simulators.Queries.MaintenanceWindowDto.#ctor(System.Guid,System.DateTimeOffset,System.DateTimeOffset,System.String)">
+            <summary>
+            Represents a maintenance window during which the simulator is unavailable.
+            </summary>
+        </member>
+        <member name="T:FSBS.Application.Simulators.Queries.AvailabilityGridDto">
+            <summary>
+            Full availability grid returned by <c>GET /simulators/{id}/availability</c>.
+            Cached in Redis for 60 seconds; invalidated on every booking mutation.
+            </summary>
+        </member>
+        <member name="M:FSBS.Application.Simulators.Queries.AvailabilityGridDto.#ctor(System.Guid,System.DateTimeOffset,System.DateTimeOffset,System.Collections.Generic.IReadOnlyList{FSBS.Application.Simulators.Queries.AvailableSlotDto},System.Collections.Generic.IReadOnlyList{FSBS.Application.Simulators.Queries.ReconfigurationWindowDto},System.Collections.Generic.IReadOnlyList{FSBS.Application.Simulators.Queries.MaintenanceWindowDto})">
+            <summary>
+            Full availability grid returned by <c>GET /simulators/{id}/availability</c>.
+            Cached in Redis for 60 seconds; invalidated on every booking mutation.
+            </summary>
+        </member>
+    </members>
+</doc>

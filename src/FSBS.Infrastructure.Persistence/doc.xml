@@ -1,0 +1,342 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FSBS.Infrastructure.Persistence</name>
+    </assembly>
+    <members>
+        <member name="T:FSBS.Infrastructure.Persistence.FsbsDbContext">
+            <summary>
+            The single EF Core <see cref="T:Microsoft.EntityFrameworkCore.DbContext"/> for the FSBS application.
+            All tables live in the <c>fsbs</c> PostgreSQL schema; snake_case column
+            naming is applied globally via <c>UseSnakeCaseNamingConvention()</c>.
+            </summary>
+            <remarks>
+            <para>
+            <b>Construction:</b> registered as a scoped service via
+            <see cref="M:FSBS.Infrastructure.Persistence.PersistenceServiceExtensions.AddPersistence(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)"/>. The primary
+            constructor receives <paramref name="currentUser"/> from DI — this is
+            captured as a field and referenced inside the global query filter lambdas,
+            meaning the tenant/soft-delete predicates are re-evaluated per request,
+            not compiled once at startup.
+            </para>
+            <para>
+            <b>Audit stamping:</b> <see cref="T:FSBS.Infrastructure.Persistence.Interceptors.AuditInterceptor"/> (registered as a
+            singleton and attached via <c>AddInterceptors</c>) stamps
+            <c>CreatedAt</c>, <c>CreatedBy</c>, <c>UpdatedAt</c>, and <c>UpdatedBy</c>
+            on every <see cref="T:FSBS.Domain.Entities.AuditableEntity"/> before <c>SaveChanges</c> completes.
+            </para>
+            <para>
+            <b>Optimistic concurrency:</b> every <see cref="T:FSBS.Domain.Entities.AuditableEntity"/> table
+            exposes the PostgreSQL <c>xmin</c> system column as a concurrency token,
+            configured in each entity's <c>IEntityTypeConfiguration</c>.
+            </para>
+            <para>
+            <b>Migrations:</b> the migration assembly is
+            <c>FSBS.Infrastructure.Persistence.Migrations</c>. Never run
+            <c>dotnet ef database update</c> against production manually — migrations
+            are applied exclusively through the CI/CD pipeline.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:FSBS.Infrastructure.Persistence.FsbsDbContext.#ctor(Microsoft.EntityFrameworkCore.DbContextOptions{FSBS.Infrastructure.Persistence.FsbsDbContext},FSBS.Application.Common.Interfaces.ICurrentUser)">
+            <summary>
+            The single EF Core <see cref="T:Microsoft.EntityFrameworkCore.DbContext"/> for the FSBS application.
+            All tables live in the <c>fsbs</c> PostgreSQL schema; snake_case column
+            naming is applied globally via <c>UseSnakeCaseNamingConvention()</c>.
+            </summary>
+            <remarks>
+            <para>
+            <b>Construction:</b> registered as a scoped service via
+            <see cref="M:FSBS.Infrastructure.Persistence.PersistenceServiceExtensions.AddPersistence(Microsoft.Extensions.DependencyInjection.IServiceCollection,Microsoft.Extensions.Configuration.IConfiguration)"/>. The primary
+            constructor receives <paramref name="currentUser"/> from DI — this is
+            captured as a field and referenced inside the global query filter lambdas,
+            meaning the tenant/soft-delete predicates are re-evaluated per request,
+            not compiled once at startup.
+            </para>
+            <para>
+            <b>Audit stamping:</b> <see cref="T:FSBS.Infrastructure.Persistence.Interceptors.AuditInterceptor"/> (registered as a
+            singleton and attached via <c>AddInterceptors</c>) stamps
+            <c>CreatedAt</c>, <c>CreatedBy</c>, <c>UpdatedAt</c>, and <c>UpdatedBy</c>
+            on every <see cref="T:FSBS.Domain.Entities.AuditableEntity"/> before <c>SaveChanges</c> completes.
+            </para>
+            <para>
+            <b>Optimistic concurrency:</b> every <see cref="T:FSBS.Domain.Entities.AuditableEntity"/> table
+            exposes the PostgreSQL <c>xmin</c> system column as a concurrency token,
+            configured in each entity's <c>IEntityTypeConfiguration</c>.
+            </para>
+            <para>
+            <b>Migrations:</b> the migration assembly is
+            <c>FSBS.Infrastructure.Persistence.Migrations</c>. Never run
+            <c>dotnet ef database update</c> against production manually — migrations
+            are applied exclusively through the CI/CD pipeline.
+            </para>
+            </remarks>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.AppUsers">
+            <summary>
+            All registered users across both Cognito pools (staff and customers).
+            Filtered by <see cref="P:FSBS.Application.Common.Interfaces.ICurrentUser.TenantId"/> and soft-delete at query time.
+            Use <c>IgnoreQueryFilters()</c> when an admin operation must cross tenant boundaries.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.UserProfiles">
+            <summary>
+            Personal details for users. Shares the primary key column (<c>user_id</c>)
+            with <c>app_users</c> — always accessed via <see cref="P:FSBS.Domain.Entities.AppUser.Profile"/>.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.Qualifications">
+            <summary>Flight and cabin-crew qualifications used as reference data for instructor records.</summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.Organisations">
+            <summary>
+            Corporate customer organisations. Filtered by <see cref="P:FSBS.Application.Common.Interfaces.ICurrentUser.TenantId"/>
+            so each organisation's data is invisible to other tenants.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.OrgMemberships">
+            <summary>Links between users and the organisations they belong to, with their intra-org role.</summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.OrgAccounts">
+            <summary>
+            Financial accounts for organisations. <c>CurrentBalanceGbp</c> on these
+            rows is maintained by a PostgreSQL trigger — never written by EF Core directly.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.AccountPayments">
+            <summary>
+            Payments posted against organisation accounts. Only <c>Verified</c> payments
+            affect the running balance; <c>Pending</c> payments are held for Management approval.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.AccountStatements">
+            <summary>Point-in-time JSON snapshots of an organisation's account statement. Immutable once created.</summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.Invitations">
+            <summary>
+            Invitation records for corporate customer registration. The raw token is never
+            stored — only the SHA-256 hash in <c>token_hash</c>.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.SimulatorUnits">
+            <summary>Physical simulator devices, each with a current active configuration and one or more bays.</summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.SimulatorConfigurations">
+            <summary>
+            Aircraft-type and cabin-layout setups for a simulator unit. Drives pricing tier
+            selection and enforces FlightDeck (max 4) and CabinCrew (max 10) capacity hard caps.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.SimulatorBays">
+            <summary>
+            Individual bookable bays within a simulator unit. The unique index on
+            <c>(bay_id, start_at, end_at)</c> filtered to non-cancelled slots prevents double-booking.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.MaintenanceWindows">
+            <summary>Scheduled maintenance periods that block bay availability on the calendar.</summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.ReconfigurationTemplates">
+            <summary>
+            Turnaround durations for switching between configuration pairs. When no template
+            exists for a pair the unit's <c>DefaultReconfigMins</c> is used as fallback.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.ScheduleTemplates">
+            <summary>Reusable scheduling blueprints associated with a specific simulator configuration.</summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.PricingPolicies">
+            <summary>
+            Base hourly rates per (configuration, training type, customer class, effective date).
+            The most recently effective policy matching the booking's key tuple is selected at
+            confirmation time and the price is then locked permanently.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.DiscountRules">
+            <summary>
+            Threshold-based discount rules attached to a pricing policy. Evaluated at booking
+            confirmation and snapshotted as <see cref="P:FSBS.Infrastructure.Persistence.FsbsDbContext.BookingDiscounts"/>. Never applied to
+            InternalStudent bookings.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.Courses">
+            <summary>
+            Structured training programmes. Tenant-scoped; filtered by
+            <see cref="P:FSBS.Application.Common.Interfaces.ICurrentUser.TenantId"/> at query time.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.Modules">
+            <summary>Logical chapters within a course, ordered by <c>sequence_order</c>.</summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.Lessons">
+            <summary>Individual deliverable sessions within a module.</summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.Enrolments">
+            <summary>
+            Student enrolments on a course. A unique constraint on <c>(user_id, course_id)</c>
+            prevents duplicate active enrolments.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.ProgressRecords">
+            <summary>Instructor or CourseDirector sign-offs confirming a student completed a lesson.</summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.Instructors">
+            <summary>
+            Staff members authorised to deliver sessions. Assignment to a booking slot
+            requires the instructor's <c>training_type_ratings</c> array to contain the
+            booking's training type.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.InstructorAvailabilities">
+            <summary>Declared availability and leave windows used to filter eligible instructors during scheduling.</summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.Bookings">
+            <summary>
+            The central aggregate. Owns slots, approval, notes, and discount snapshots.
+            InternalStudent bookings enter <c>PendingApproval</c>; all others enter
+            <c>Provisional</c>. The <c>idempotency_key</c> unique index allows safe
+            client retries on <c>POST /bookings</c>.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.BookingSlots">
+            <summary>
+            Time blocks reserved in a simulator bay. Minimum duration of 240 minutes
+            enforced by CHECK constraint. Filtered unique index prevents double-booking
+            across non-cancelled slots.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.ReconfigurationSlots">
+            <summary>
+            Non-billable turnaround windows inserted automatically at booking confirmation
+            when adjacent bookings require different simulator configurations.
+            Rendered as grey-hatched on the availability calendar; not selectable by users.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.BookingApprovals">
+            <summary>
+            Approval records for InternalStudent bookings. A CHECK constraint at the database
+            level enforces that the reviewer cannot be the same user as the requester.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.BookingNotes">
+            <summary>Internal staff notes on a booking. Not visible to customers.</summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.BookingDiscounts">
+            <summary>
+            Immutable snapshots of discount rules applied at booking confirmation.
+            No <c>updated_at</c> or <c>is_deleted</c> columns exist on this table —
+            EF Core is configured to never update these rows after the initial insert.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.Invoices">
+            <summary>
+            Billing documents raised against organisations. Only <c>Issued</c> and
+            <c>Overdue</c> invoices contribute to <c>OrgAccount.current_balance_gbp</c>
+            (maintained by a PostgreSQL trigger). Row-level security restricts visibility
+            to the owning tenant.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.PaymentAllocations">
+            <summary>
+            Allocations distributing a payment across one or more invoices. The FK to
+            <c>invoices</c> is added via a deferred <c>ALTER TABLE</c> in the DDL;
+            this ordering is preserved in the EF migration.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.Reports">
+            <summary>Named report definitions whose query and format are stored as <c>jsonb</c>.</summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Persistence.FsbsDbContext.ReportRuns">
+            <summary>
+            Asynchronous execution instances of a report. Processed by the reporting worker
+            ECS task; output is written to the <c>fsbs-documents</c> S3 bucket and served
+            only via pre-signed URLs.
+            </summary>
+        </member>
+        <member name="M:FSBS.Infrastructure.Persistence.FsbsDbContext.OnModelCreating(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc/>
+            <remarks>
+            Applies three layers of configuration in order:
+            <list type="number">
+              <item><c>HasDefaultSchema("fsbs")</c> — all tables land in the <c>fsbs</c>
+                schema, never <c>public</c>.</item>
+              <item><c>ApplyConfigurationsFromAssembly</c> — discovers every
+                <c>IEntityTypeConfiguration&lt;T&gt;</c> in the
+                <c>FSBS.Infrastructure.Persistence.Entities</c> assembly. The anchor type
+                <see cref="T:FSBS.Infrastructure.Persistence.Entities.Configurations.BookingConfiguration"/> is used solely to identify that assembly;
+                it has no special significance beyond that.</item>
+              <item><see cref="M:FSBS.Infrastructure.Persistence.FsbsDbContext.ApplyGlobalQueryFilters(Microsoft.EntityFrameworkCore.ModelBuilder)"/> — registers per-request soft-delete
+                and tenant-isolation predicates.</item>
+            </list>
+            </remarks>
+        </member>
+        <member name="M:FSBS.Infrastructure.Persistence.FsbsDbContext.ApplyGlobalQueryFilters(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <summary>
+            Registers EF Core global query filters for soft-delete and multi-tenancy.
+            </summary>
+            <remarks>
+            <para>
+            <b>Tenant filters</b> (<see cref="T:FSBS.Domain.Entities.AppUser"/>, <see cref="T:FSBS.Domain.Entities.Organisation"/>,
+            <see cref="T:FSBS.Domain.Entities.Course"/>): combine the soft-delete predicate with
+            <c>e.TenantId == currentUser.TenantId</c>. The <c>currentUser</c> reference
+            is captured from the constructor parameter — EF evaluates the lambda on
+            each query execution, picking up the tenant ID from the current HTTP request's
+            JWT rather than from a value fixed at context creation time.
+            Staff users always carry the school's root tenant ID, so they see all data
+            across every organisation without additional configuration.
+            </para>
+            <para>
+            <b>Soft-delete only filters</b>: applied to the remaining
+            <see cref="T:FSBS.Domain.Entities.ISoftDeletable"/> entities that are not tenant-scoped. Logically
+            deleted rows are hidden from all standard queries.
+            </para>
+            <para>
+            <b>No filter</b>: entities that are neither soft-deletable nor tenant-scoped
+            (<see cref="T:FSBS.Domain.Entities.OrgAccount"/>, <see cref="T:FSBS.Domain.Entities.AccountStatement"/>,
+            <see cref="T:FSBS.Domain.Entities.ReconfigurationSlot"/>, <see cref="T:FSBS.Domain.Entities.BookingApproval"/>,
+            <see cref="T:FSBS.Domain.Entities.BookingDiscount"/>, <see cref="T:FSBS.Domain.Entities.PaymentAllocation"/>,
+            <see cref="T:FSBS.Domain.Entities.ReportRun"/>, <see cref="T:FSBS.Domain.Entities.ReconfigurationTemplate"/>) are omitted
+            from this method intentionally — access to those rows is already constrained
+            by the FK relationships traversed to reach them.
+            </para>
+            <para>
+            To bypass all filters within a query (e.g. admin purge jobs, the nightly
+            reconciliation Lambda), call <c>.IgnoreQueryFilters()</c> on the
+            <c>IQueryable</c>.
+            </para>
+            </remarks>
+        </member>
+        <member name="T:FSBS.Infrastructure.Persistence.Interceptors.TenantCommandInterceptor">
+            <summary>
+            EF Core <see cref="T:Microsoft.EntityFrameworkCore.Diagnostics.DbConnectionInterceptor"/> that sets the PostgreSQL
+            session-level variable <c>app.current_tenant_id</c> immediately after each
+            connection is opened, so that the row-level security (RLS) policies on
+            tenant-scoped tables (<c>bookings</c>, <c>enrolments</c>, <c>courses</c>,
+            <c>organisations</c>, <c>invitations</c>, <c>invoices</c>) are enforced.
+            </summary>
+            <remarks>
+            Running <c>SET app.current_tenant_id</c> on connection open means the value
+            is in place before any query executes. Staff users always carry the school's
+            root tenant GUID. When <see cref="P:FSBS.Application.Common.Interfaces.ICurrentUser.TenantId"/> is
+            <see cref="F:System.Guid.Empty"/> (unauthenticated requests) the variable is set to a
+            zero UUID which will not match any tenant row — safe-by-default behaviour.
+            </remarks>
+        </member>
+        <member name="M:FSBS.Infrastructure.Persistence.Interceptors.TenantCommandInterceptor.#ctor(FSBS.Application.Common.Interfaces.ICurrentUser)">
+            <summary>
+            EF Core <see cref="T:Microsoft.EntityFrameworkCore.Diagnostics.DbConnectionInterceptor"/> that sets the PostgreSQL
+            session-level variable <c>app.current_tenant_id</c> immediately after each
+            connection is opened, so that the row-level security (RLS) policies on
+            tenant-scoped tables (<c>bookings</c>, <c>enrolments</c>, <c>courses</c>,
+            <c>organisations</c>, <c>invitations</c>, <c>invoices</c>) are enforced.
+            </summary>
+            <remarks>
+            Running <c>SET app.current_tenant_id</c> on connection open means the value
+            is in place before any query executes. Staff users always carry the school's
+            root tenant GUID. When <see cref="P:FSBS.Application.Common.Interfaces.ICurrentUser.TenantId"/> is
+            <see cref="F:System.Guid.Empty"/> (unauthenticated requests) the variable is set to a
+            zero UUID which will not match any tenant row — safe-by-default behaviour.
+            </remarks>
+        </member>
+    </members>
+</doc>

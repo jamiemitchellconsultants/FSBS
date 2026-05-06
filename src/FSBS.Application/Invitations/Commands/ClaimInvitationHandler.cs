@@ -10,6 +10,7 @@ namespace FSBS.Application.Invitations.Commands;
 public sealed class ClaimInvitationHandler(IInvitationRepository invitations)
     : IRequestHandler<ClaimInvitationCommand, ClaimInvitationResult>
 {
+    /// <inheritdoc/>
     public async Task<ClaimInvitationResult> Handle(
         ClaimInvitationCommand command,
         CancellationToken ct)

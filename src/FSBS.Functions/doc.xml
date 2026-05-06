@@ -1,0 +1,120 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FSBS.Functions</name>
+    </assembly>
+    <members>
+        <member name="T:FSBS.Functions.Cognito.PostConfirmationHandler">
+            <summary>
+            Cognito Post Confirmation Lambda trigger for the <c>fsbs-customer-pool</c>.
+            Fires after a user successfully confirms their sign-up (email code verified).
+            Creates the <c>AppUser</c> and <c>UserProfile</c> rows in the FSBS database.
+            </summary>
+            <remarks>
+            <para>
+            <b>Trigger source filter:</b> only <c>PostConfirmation_ConfirmSignUp</c> is
+            handled. The <c>PostConfirmation_ConfirmForgotPassword</c> source is ignored
+            because no new user record is needed for a password reset.
+            </para>
+            <para>
+            <b>Tenant isolation:</b> each private customer receives their own
+            <c>tenant_id</c> (a newly generated GUID). This provides row-level isolation
+            in all tenant-scoped EF global query filters. Staff admin operations that
+            need to see all private customers must call <c>IgnoreQueryFilters()</c>.
+            </para>
+            <para>
+            <b>Database access:</b> uses raw Npgsql rather than EF Core to keep the
+            Lambda package small and avoid the full EF model build at cold-start.
+            The connection string is read from the <c>FSBS_DB_CONNECTION</c> environment
+            variable, which the CDK AppStack injects from Secrets Manager at function
+            creation time.
+            </para>
+            <para>
+            <b>Idempotency:</b> the insert uses <c>ON CONFLICT DO NOTHING</c> on the
+            <c>cognito_sub</c> unique index so that Cognito retries do not create
+            duplicate rows.
+            </para>
+            </remarks>
+        </member>
+        <member name="T:FSBS.Functions.Cognito.PreSignUpHandler">
+            <summary>
+            Cognito Pre Sign-up Lambda trigger for the <c>fsbs-customer-pool</c>.
+            Fires before Cognito creates the user record, giving this function the
+            opportunity to allow or block the registration.
+            </summary>
+            <remarks>
+            <b>Decision logic:</b>
+            <list type="bullet">
+              <item>
+                <c>custom:registration_type == "private"</c> — private customer
+                self-registration. Allowed unconditionally; no invitation token required.
+              </item>
+              <item>
+                Any other value (or attribute absent) — corporate invitation-based flow.
+                Blocked here until the invitation validation logic is implemented in a
+                future feature. Throwing from this handler causes Cognito to reject the
+                sign-up with a 400 error.
+              </item>
+            </list>
+            The CDK AppStack wires this function to the customer pool's
+            <c>PreSignUp</c> trigger. It must never be attached to the staff pool.
+            </remarks>
+        </member>
+        <member name="T:FSBS.Functions.PostConfirmation.Function">
+            <summary>
+            Cognito Post Confirmation Lambda trigger.
+            Fires after a user has successfully confirmed their account.
+            </summary>
+            <remarks>
+            <b>Responsibilities:</b>
+            <list type="bullet">
+              <item>Creates an <c>AppUser</c> record in the database.</item>
+              <item>Assigns <c>org_id</c> and <c>app_role</c> for customer users.</item>
+              <item>Marks invitation as <c>Claimed</c> for invitation-based registrations.</item>
+              <item>Places staff users in the matching Cognito group based on Entra ID groups.</item>
+            </list>
+            The CDK AppStack wires this function to both the staff and customer pool's
+            <c>PostConfirmation</c> trigger.
+            </remarks>
+        </member>
+        <member name="T:FSBS.Functions.PreSignUp.Function">
+            <summary>
+            Cognito Pre Sign-up Lambda trigger for the <c>fsbs-customer-pool</c>.
+            Fires before Cognito creates the user record, giving this function the
+            opportunity to allow or block the registration.
+            </summary>
+            <remarks>
+            <b>Decision logic:</b>
+            <list type="bullet">
+              <item>
+                <c>custom:registration_type == "private"</c> — private customer
+                self-registration. Allowed unconditionally; no invitation token required.
+              </item>
+              <item>
+                Any other value (or attribute absent) — corporate invitation-based flow.
+                Blocked here until the invitation validation logic is implemented in a
+                future feature. Throwing from this handler causes Cognito to reject the
+                sign-up with a 400 error.
+              </item>
+            </list>
+            The CDK AppStack wires this function to the customer pool's
+            <c>PreSignUp</c> trigger. It must never be attached to the staff pool.
+            </remarks>
+        </member>
+        <member name="T:FSBS.Functions.TokenRefresh.Function">
+            <summary>
+            Cognito Pre Token Generation Lambda trigger for the <c>fsbs-staff-pool</c>.
+            Fires before Cognito generates ID and access tokens.
+            </summary>
+            <remarks>
+            <b>Responsibilities:</b>
+            <list type="bullet">
+              <item>Re-syncs Cognito group membership from Entra ID groups.</item>
+              <item>Calls <c>AdminUserGlobalSignOut</c> when Entra account is disabled.</item>
+            </list>
+            The CDK AppStack wires this function to the staff pool's
+            <c>PreTokenGeneration</c> trigger. It must never be attached to the customer pool.
+            </remarks>
+        </member>
+    </members>
+</doc>

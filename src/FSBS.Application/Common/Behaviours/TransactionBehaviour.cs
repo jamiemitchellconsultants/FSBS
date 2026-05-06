@@ -19,6 +19,7 @@ public sealed class TransactionBehaviour<TRequest, TResponse>(
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : ICommand<TResponse>
 {
+    /// <inheritdoc/>
     public async Task<TResponse> Handle(
         TRequest request,
         RequestHandlerDelegate<TResponse> next,

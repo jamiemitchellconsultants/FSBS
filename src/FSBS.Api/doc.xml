@@ -1,0 +1,298 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FSBS.Api</name>
+    </assembly>
+    <members>
+        <member name="T:FSBS.Api.Auth.CurrentUserService">
+            <summary>
+            Reads the current user's identity from the active HTTP request's JWT claims.
+            Registered as a scoped service so each request gets its own instance.
+            </summary>
+            <remarks>
+            <para>
+            The <c>sub</c> claim is the Cognito user sub GUID. In a full implementation
+            <c>FsbsClaimsTransformation</c> would resolve this to the application's own
+            <c>AppUser.Id</c> and add it as a separate claim. Until that transform is in
+            place, <c>UserId</c> returns the Cognito sub parsed as a GUID.
+            </para>
+            <para>
+            Unauthenticated requests (e.g. the public registration endpoints) return
+            <c>Guid.Empty</c> / <c>false</c> without throwing, allowing
+            <c>FsbsDbContext</c> to be resolved from DI even when no user is logged in.
+            The audit interceptor skips stamping <c>CreatedBy</c>/<c>UpdatedBy</c> when
+            <see cref="P:FSBS.Api.Auth.CurrentUserService.UserId"/> is <c>Guid.Empty</c>.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:FSBS.Api.Auth.CurrentUserService.#ctor(Microsoft.AspNetCore.Http.IHttpContextAccessor)">
+            <summary>
+            Reads the current user's identity from the active HTTP request's JWT claims.
+            Registered as a scoped service so each request gets its own instance.
+            </summary>
+            <remarks>
+            <para>
+            The <c>sub</c> claim is the Cognito user sub GUID. In a full implementation
+            <c>FsbsClaimsTransformation</c> would resolve this to the application's own
+            <c>AppUser.Id</c> and add it as a separate claim. Until that transform is in
+            place, <c>UserId</c> returns the Cognito sub parsed as a GUID.
+            </para>
+            <para>
+            Unauthenticated requests (e.g. the public registration endpoints) return
+            <c>Guid.Empty</c> / <c>false</c> without throwing, allowing
+            <c>FsbsDbContext</c> to be resolved from DI even when no user is logged in.
+            The audit interceptor skips stamping <c>CreatedBy</c>/<c>UpdatedBy</c> when
+            <see cref="P:FSBS.Api.Auth.CurrentUserService.UserId"/> is <c>Guid.Empty</c>.
+            </para>
+            </remarks>
+        </member>
+        <member name="P:FSBS.Api.Auth.CurrentUserService.UserId">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Api.Auth.CurrentUserService.TenantId">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Api.Auth.CurrentUserService.OrgId">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Api.Auth.CurrentUserService.Role">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Api.Auth.CurrentUserService.IsAuthenticated">
+            <inheritdoc/>
+        </member>
+        <member name="T:FSBS.Api.Auth.FsbsClaimsTransformation">
+            <summary>
+            Normalises claims from either Cognito pool's JWT into a unified set of
+            application claims that the rest of the API can rely on regardless of
+            which pool (Staff or Customer) issued the token.
+            </summary>
+            <remarks>
+            <para>
+            Both pools emit <c>app_role</c> and <c>tenant_id</c> as custom Cognito
+            attributes. The Staff pool additionally emits <c>custom:entra_groups</c>
+            (used only by the Token Refresh Lambda; not consumed here). The Customer
+            pool emits <c>org_id</c> for CorporateManager and CorporateStudent roles.
+            </para>
+            <para>
+            This transform is idempotent — if the normalised claims are already present
+            (e.g. on a second call within the same request) they are not duplicated.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:FSBS.Api.Auth.FsbsClaimsTransformation.TransformAsync(System.Security.Claims.ClaimsPrincipal)">
+            <inheritdoc/>
+        </member>
+        <member name="M:FSBS.Api.Auth.FsbsClaimsTransformation.NormaliseAppRole(System.Security.Claims.ClaimsPrincipal,System.Security.Claims.ClaimsIdentity)">
+            <summary>
+            Ensures a canonical <c>app_role</c> claim is present and that the value
+            is a valid <see cref="T:FSBS.Domain.Enums.AppRole"/> enum member. Falls back to
+            <see cref="F:FSBS.Domain.Enums.AppRole.PrivateCustomer"/> when the claim is absent or
+            unrecognised (e.g. a Customer pool token with no explicit role set).
+            </summary>
+        </member>
+        <member name="M:FSBS.Api.Auth.FsbsClaimsTransformation.NormaliseTenantId(System.Security.Claims.ClaimsPrincipal,System.Security.Claims.ClaimsIdentity)">
+            <summary>
+            Ensures a canonical <c>tenant_id</c> claim is present.
+            Staff tokens always carry the school's root tenant GUID.
+            Customer tokens carry the customer's own tenant GUID.
+            </summary>
+        </member>
+        <member name="M:FSBS.Api.Auth.FsbsClaimsTransformation.NormaliseOrgId(System.Security.Claims.ClaimsPrincipal,System.Security.Claims.ClaimsIdentity)">
+            <summary>
+            Ensures a canonical <c>org_id</c> claim is present when the token
+            carries one. Only CorporateManager and CorporateStudent tokens include
+            this attribute; it is absent for Staff and PrivateCustomer tokens.
+            </summary>
+        </member>
+        <member name="M:FSBS.Api.Auth.FsbsClaimsTransformation.FindFirstValue(System.Security.Claims.ClaimsPrincipal,System.String[])">
+            <summary>
+            Returns the first non-null value found for any of the supplied claim
+            type names, or <c>null</c> if none are present.
+            </summary>
+        </member>
+        <member name="T:FSBS.Api.Endpoints.RegisterPrivateCustomerRequest">
+            <summary>Request body for <c>POST /v1/auth/register</c>.</summary>
+        </member>
+        <member name="M:FSBS.Api.Endpoints.RegisterPrivateCustomerRequest.#ctor(System.String,System.String,System.String,System.String,System.String)">
+            <summary>Request body for <c>POST /v1/auth/register</c>.</summary>
+        </member>
+        <member name="T:FSBS.Api.Endpoints.ConfirmRegistrationRequest">
+            <summary>Request body for <c>POST /v1/auth/register/confirm</c>.</summary>
+        </member>
+        <member name="M:FSBS.Api.Endpoints.ConfirmRegistrationRequest.#ctor(System.String,System.String)">
+            <summary>Request body for <c>POST /v1/auth/register/confirm</c>.</summary>
+        </member>
+        <member name="T:FSBS.Api.Endpoints.ResendConfirmationCodeRequest">
+            <summary>Request body for <c>POST /v1/auth/register/resend-code</c>.</summary>
+        </member>
+        <member name="M:FSBS.Api.Endpoints.ResendConfirmationCodeRequest.#ctor(System.String)">
+            <summary>Request body for <c>POST /v1/auth/register/resend-code</c>.</summary>
+        </member>
+        <member name="T:FSBS.Api.Endpoints.RegisterInvitedRequest">
+            <summary>Request body for <c>POST /v1/auth/register/invited</c>.</summary>
+        </member>
+        <member name="M:FSBS.Api.Endpoints.RegisterInvitedRequest.#ctor(System.String,System.String,System.String,System.String,System.String)">
+            <summary>Request body for <c>POST /v1/auth/register/invited</c>.</summary>
+        </member>
+        <member name="M:FSBS.Api.Endpoints.BookingEndpoints.PushAvailabilityUpdateAsync(System.Guid,FSBS.Application.Common.Interfaces.IAvailabilityCache,FSBS.Application.Common.Interfaces.IAvailabilityReadService,Microsoft.AspNetCore.SignalR.IHubContext{FSBS.Api.Hubs.AvailabilityHub},System.Threading.CancellationToken)">
+            <summary>
+            Invalidates the Redis availability cache for the simulator and pushes
+            a fresh grid to all SignalR clients subscribed to that simulator.
+            </summary>
+        </member>
+        <member name="T:FSBS.Api.Endpoints.CreateBookingRequest">
+            <summary>Request body for POST /bookings.</summary>
+        </member>
+        <member name="M:FSBS.Api.Endpoints.CreateBookingRequest.#ctor(System.Guid,System.Guid,System.Guid,FSBS.Domain.Enums.TrainingType,System.DateTimeOffset,System.DateTimeOffset,System.Int32,System.Nullable{System.Guid},System.String,System.String)">
+            <summary>Request body for POST /bookings.</summary>
+        </member>
+        <member name="T:FSBS.Api.Endpoints.ApproveBookingRequest">
+            <summary>Request body for PUT /bookings/{id}/approve.</summary>
+        </member>
+        <member name="M:FSBS.Api.Endpoints.ApproveBookingRequest.#ctor(System.Guid)">
+            <summary>Request body for PUT /bookings/{id}/approve.</summary>
+        </member>
+        <member name="T:FSBS.Api.Endpoints.RejectBookingRequest">
+            <summary>Request body for PUT /bookings/{id}/reject.</summary>
+        </member>
+        <member name="M:FSBS.Api.Endpoints.RejectBookingRequest.#ctor(System.Guid,System.String)">
+            <summary>Request body for PUT /bookings/{id}/reject.</summary>
+        </member>
+        <member name="T:FSBS.Api.Endpoints.CancelBookingRequest">
+            <summary>Request body for PUT /bookings/{id}/cancel.</summary>
+        </member>
+        <member name="M:FSBS.Api.Endpoints.CancelBookingRequest.#ctor(System.Guid,System.String)">
+            <summary>Request body for PUT /bookings/{id}/cancel.</summary>
+        </member>
+        <member name="T:FSBS.Api.Endpoints.DevEndpoints">
+            <summary>
+            Development-only endpoints. All return 404 unless the application is running
+            in the Development environment. Never deploy with <c>ASPNETCORE_ENVIRONMENT=Development</c>
+            in production.
+            </summary>
+        </member>
+        <member name="T:FSBS.Api.Hubs.AvailabilityHub">
+            <summary>
+            SignalR hub that pushes real-time availability delta messages to all
+            connected clients whenever a booking is created, modified, or cancelled.
+            </summary>
+            <remarks>
+            <para>
+            Clients subscribe to a simulator's availability stream by calling
+            <c>SubscribeToSimulator(simulatorId)</c> after connecting. They are placed
+            in a SignalR group named <c>simulator:{simulatorId}</c> and receive
+            <c>AvailabilityUpdated</c> messages whenever that simulator's grid changes.
+            </para>
+            <para>
+            The Redis (ElastiCache) backplane is configured in <c>Program.cs</c> so
+            that messages are fanned out across all Fargate task instances.
+            </para>
+            <para>
+            The hub requires an authenticated user — the default authorization policy
+            (Staff or Customer JWT) applies.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:FSBS.Api.Hubs.AvailabilityHub.SubscribeToSimulator(System.Guid)">
+            <summary>
+            Called by the client to start receiving availability updates for a
+            specific simulator. The client is added to the group
+            <c>simulator:{simulatorId}</c>.
+            </summary>
+        </member>
+        <member name="M:FSBS.Api.Hubs.AvailabilityHub.UnsubscribeFromSimulator(System.Guid)">
+            <summary>
+            Called by the client to stop receiving updates for a simulator.
+            </summary>
+        </member>
+        <member name="M:FSBS.Api.Hubs.AvailabilityHub.SendAvailabilityUpdatedAsync(Microsoft.AspNetCore.SignalR.IHubContext{FSBS.Api.Hubs.AvailabilityHub},System.Guid,FSBS.Application.Simulators.Queries.AvailabilityGridDto,System.Threading.CancellationToken)">
+            <summary>
+            Pushes an updated availability grid to all clients subscribed to the
+            given simulator. Called from booking command handlers (via
+            <see cref="!:IAvailabilityHubContext"/>) after every booking mutation.
+            </summary>
+        </member>
+        <member name="T:FSBS.Api.Middleware.GlobalExceptionHandler">
+            <summary>
+            Translates domain and validation exceptions into RFC 7807 Problem Details
+            responses. Registered via <c>app.UseExceptionHandler()</c>.
+            </summary>
+            <remarks>
+            Mapping table:
+            <list type="table">
+              <item><term><see cref="T:FluentValidation.ValidationException"/></term><description>422 Unprocessable Entity — field-level errors</description></item>
+              <item><term><see cref="T:FSBS.Application.Common.Exceptions.RegistrationEmailAlreadyExistsException"/></term><description>409 Conflict</description></item>
+              <item><term><see cref="T:FSBS.Application.Common.Exceptions.InvalidConfirmationCodeException"/></term><description>400 Bad Request</description></item>
+              <item><term><see cref="T:FSBS.Application.Common.Exceptions.ConfirmationCodeExpiredException"/></term><description>400 Bad Request</description></item>
+              <item><term>All others</term><description>500 Internal Server Error (detail suppressed)</description></item>
+            </list>
+            </remarks>
+        </member>
+        <member name="M:FSBS.Api.Middleware.GlobalExceptionHandler.#ctor(Microsoft.Extensions.Logging.ILogger{FSBS.Api.Middleware.GlobalExceptionHandler})">
+            <summary>
+            Translates domain and validation exceptions into RFC 7807 Problem Details
+            responses. Registered via <c>app.UseExceptionHandler()</c>.
+            </summary>
+            <remarks>
+            Mapping table:
+            <list type="table">
+              <item><term><see cref="T:FluentValidation.ValidationException"/></term><description>422 Unprocessable Entity — field-level errors</description></item>
+              <item><term><see cref="T:FSBS.Application.Common.Exceptions.RegistrationEmailAlreadyExistsException"/></term><description>409 Conflict</description></item>
+              <item><term><see cref="T:FSBS.Application.Common.Exceptions.InvalidConfirmationCodeException"/></term><description>400 Bad Request</description></item>
+              <item><term><see cref="T:FSBS.Application.Common.Exceptions.ConfirmationCodeExpiredException"/></term><description>400 Bad Request</description></item>
+              <item><term>All others</term><description>500 Internal Server Error (detail suppressed)</description></item>
+            </list>
+            </remarks>
+        </member>
+        <member name="T:Program">
+            <summary>
+            Auto-generated public partial Program class for top-level statement apps.
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.OpenApi.Generated.DocumentationCommentIdHelper.CreateDocumentationId(System.Type)">
+            <summary>
+            Generates a documentation comment ID for a type.
+            Example: T:Namespace.Outer+Inner`1 becomes T:Namespace.Outer.Inner`1
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.OpenApi.Generated.DocumentationCommentIdHelper.CreateDocumentationId(System.Reflection.PropertyInfo)">
+            <summary>
+            Generates a documentation comment ID for a property.
+            Example: P:Namespace.ContainingType.PropertyName or for an indexer P:Namespace.ContainingType.Item(System.Int32)
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.OpenApi.Generated.DocumentationCommentIdHelper.CreateDocumentationId(System.Type,System.String)">
+            <summary>
+            Generates a documentation comment ID for a property given its container type and property name.
+            Example: P:Namespace.ContainingType.PropertyName
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.OpenApi.Generated.DocumentationCommentIdHelper.CreateDocumentationId(System.Reflection.MethodInfo)">
+            <summary>
+            Generates a documentation comment ID for a method (or constructor).
+            For example:
+              M:Namespace.ContainingType.MethodName(ParamType1,ParamType2)~ReturnType
+              M:Namespace.ContainingType.#ctor(ParamType)
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.OpenApi.Generated.DocumentationCommentIdHelper.GetTypeDocId(System.Type,System.Boolean,System.Boolean)">
+            <summary>
+            Generates a documentation ID string for a type.
+            This method handles nested types (replacing '+' with '.'),
+            generic types, arrays, pointers, by-ref types, and generic parameters.
+            The <paramref name="includeGenericArguments"/> flag controls whether
+            constructed generic type arguments are emitted, while <paramref name="omitGenericArity"/>
+            controls whether the generic arity marker (e.g. "`1") is appended.
+            </summary>
+        </member>
+        <member name="M:Microsoft.AspNetCore.OpenApi.Generated.DocumentationCommentIdHelper.NormalizeDocId(System.String)">
+            <summary>
+            Normalizes a documentation comment ID to match the compiler-style format.
+            Strips the return type suffix for ordinary methods but retains it for conversion operators.
+            </summary>
+            <param name="docId">The documentation comment ID to normalize.</param>
+            <returns>The normalized documentation comment ID.</returns>
+        </member>
+    </members>
+</doc>

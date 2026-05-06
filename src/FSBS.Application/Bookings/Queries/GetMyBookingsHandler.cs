@@ -9,6 +9,7 @@ namespace FSBS.Application.Bookings.Queries;
 public sealed class GetMyBookingsHandler(IBookingRepository bookings, ICurrentUser currentUser)
     : IRequestHandler<GetMyBookingsQuery, PagedResult<BookingSummaryDto>>
 {
+    /// <inheritdoc/>
     public Task<PagedResult<BookingSummaryDto>> Handle(GetMyBookingsQuery request, CancellationToken ct) =>
         bookings.GetMyBookingsPageAsync(currentUser.UserId, request.AfterCursor, request.Limit, ct);
 }

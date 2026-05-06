@@ -52,5 +52,6 @@ public interface IBookingRepository
         Guid? excludeBookingId = null,
         CancellationToken ct = default);
 
+    /// <summary>Adds the booking to the change tracker for insertion on next SaveChanges.</summary>
     Task AddAsync(Booking booking, CancellationToken ct = default);
 }

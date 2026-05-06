@@ -57,15 +57,18 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<IAmazonS3>(_ => new AmazonS3Client(region));
         services.AddScoped<IS3Service, S3Service>();
 
-        // Redis / ElastiCache — singleton multiplexer, scoped cache wrapper
+        // Redis / ElastiCache — singleton multiplexer, scoped cache wrapper.
+        // Registration is skipped when Redis:ConnectionString is absent so that
+        // the notification worker (which does not use the availability cache)
+        // can call AddInfrastructure without a Redis connection string.
         services.Configure<RedisSettings>(configuration.GetSection("Redis"));
-        services.AddSingleton<IConnectionMultiplexer>(_ =>
+        var redisConnStr = configuration["Redis:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(redisConnStr))
         {
-            var connStr = configuration["Redis:ConnectionString"]
-                ?? throw new InvalidOperationException("Redis:ConnectionString is required.");
-            return ConnectionMultiplexer.Connect(connStr);
-        });
-        services.AddScoped<IAvailabilityCache, AvailabilityCache>();
+            services.AddSingleton<IConnectionMultiplexer>(_ =>
+                ConnectionMultiplexer.Connect(redisConnStr));
+            services.AddScoped<IAvailabilityCache, AvailabilityCache>();
+        }
 
         return services;
     }

@@ -9,7 +9,11 @@ public static class PersistenceServiceExtensions
 {
     public static IServiceCollection AddPersistence(this IServiceCollection services, IConfiguration config)
     {
-        services.AddSingleton<AuditInterceptor>();
+        // Scoped (not singleton) so ICurrentUser is resolved from the correct
+        // request scope and the correct authenticated user is stamped on every write.
+        services.AddScoped<AuditInterceptor>();
+        // Scoped so the correct tenant_id claim is read per-request for RLS enforcement.
+        services.AddScoped<TenantCommandInterceptor>();
 
         services.AddDbContext<FsbsDbContext>((sp, options) =>
             options
@@ -22,7 +26,9 @@ public static class PersistenceServiceExtensions
                         npgsql.MigrationsAssembly("FSBS.Infrastructure.Persistence.Migrations");
                     })
                 .UseSnakeCaseNamingConvention()
-                .AddInterceptors(sp.GetRequiredService<AuditInterceptor>()));
+                .AddInterceptors(
+                    sp.GetRequiredService<AuditInterceptor>(),
+                    sp.GetRequiredService<TenantCommandInterceptor>()));
 
         return services;
     }

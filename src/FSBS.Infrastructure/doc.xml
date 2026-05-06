@@ -1,0 +1,136 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FSBS.Infrastructure</name>
+    </assembly>
+    <members>
+        <member name="T:FSBS.Infrastructure.Availability.AvailabilityCache">
+            <summary>
+            Redis-backed implementation of <see cref="T:FSBS.Application.Common.Interfaces.IAvailabilityCache"/>.
+            Cache keys follow the pattern:
+              <c>availability:{simulatorId}:{fromTicks}:{toTicks}</c>
+            A wildcard scan on <c>availability:{simulatorId}:*</c> is used for
+            invalidation so all date-range variants are evicted together.
+            TTL is 60 seconds as required by the spec.
+            </summary>
+        </member>
+        <member name="M:FSBS.Infrastructure.Availability.AvailabilityCache.#ctor(StackExchange.Redis.IConnectionMultiplexer)">
+            <summary>
+            Redis-backed implementation of <see cref="T:FSBS.Application.Common.Interfaces.IAvailabilityCache"/>.
+            Cache keys follow the pattern:
+              <c>availability:{simulatorId}:{fromTicks}:{toTicks}</c>
+            A wildcard scan on <c>availability:{simulatorId}:*</c> is used for
+            invalidation so all date-range variants are evicted together.
+            TTL is 60 seconds as required by the spec.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Availability.RedisSettings.ConnectionString">
+            <summary>ElastiCache Redis connection string (host:port,ssl=true,...).</summary>
+        </member>
+        <member name="T:FSBS.Infrastructure.Cognito.CognitoService">
+            <summary>
+            AWS Cognito implementation of <see cref="T:FSBS.Application.Common.Interfaces.ICognitoService"/>.
+            Catches Cognito-specific exceptions and re-throws domain exceptions so that
+            the Application layer and the API exception handler remain decoupled from
+            the AWS SDK.
+            </summary>
+        </member>
+        <member name="M:FSBS.Infrastructure.Cognito.CognitoService.#ctor(Amazon.CognitoIdentityProvider.IAmazonCognitoIdentityProvider,Microsoft.Extensions.Options.IOptions{FSBS.Infrastructure.Cognito.CognitoSettings})">
+            <summary>
+            AWS Cognito implementation of <see cref="T:FSBS.Application.Common.Interfaces.ICognitoService"/>.
+            Catches Cognito-specific exceptions and re-throws domain exceptions so that
+            the Application layer and the API exception handler remain decoupled from
+            the AWS SDK.
+            </summary>
+        </member>
+        <member name="M:FSBS.Infrastructure.Cognito.CognitoService.SignUpPrivateCustomerAsync(System.String,System.String,System.String,System.String,System.String,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:FSBS.Infrastructure.Cognito.CognitoService.ConfirmSignUpAsync(System.String,System.String,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:FSBS.Infrastructure.Cognito.CognitoService.ResendConfirmationCodeAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:FSBS.Infrastructure.Cognito.CognitoSettings">
+            <summary>
+            Bound from <c>appsettings.json</c> section <c>"Cognito"</c>. In deployed
+            environments the values are injected as environment variables by the CDK
+            AppStack from Secrets Manager / SSM Parameter Store.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Cognito.CognitoSettings.Region">
+            <summary>AWS region the Cognito pools are deployed in (e.g. <c>eu-west-1</c>).</summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Cognito.CognitoSettings.CustomerPoolClientId">
+            <summary>
+            App client ID for the customer pool (<c>fsbs-customer-pool</c>).
+            This is the client used for self-registration and sign-in flows.
+            Must be a public client (no client secret) when called from the API.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Cognito.CognitoSettings.CustomerPoolId">
+            <summary>
+            User Pool ID for the customer pool. Used for admin operations that
+            require the pool ID rather than the client ID.
+            </summary>
+        </member>
+        <member name="T:FSBS.Infrastructure.Cognito.StubCognitoService">
+            <summary>
+            No-op <see cref="T:FSBS.Application.Common.Interfaces.ICognitoService"/> used when <c>DevAuth:Enabled</c> is true.
+            All methods succeed silently so the registration flow can be exercised locally
+            without an AWS Cognito pool. The dev seed endpoint (<c>POST /dev/users/seed</c>)
+            replaces the Post-Confirmation Lambda for creating the database record.
+            </summary>
+        </member>
+        <member name="T:FSBS.Infrastructure.Email.SesEmailService">
+            <summary>
+            Amazon SES implementation of <see cref="T:FSBS.Application.Common.Interfaces.ISesEmailService"/>.
+            </summary>
+        </member>
+        <member name="M:FSBS.Infrastructure.Email.SesEmailService.#ctor(Amazon.SimpleEmail.IAmazonSimpleEmailService,Microsoft.Extensions.Options.IOptions{FSBS.Infrastructure.Email.SesSettings})">
+            <summary>
+            Amazon SES implementation of <see cref="T:FSBS.Application.Common.Interfaces.ISesEmailService"/>.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Email.SesSettings.FromAddress">
+            <summary>Verified SES sender address (e.g. noreply@fsbs.example.com).</summary>
+        </member>
+        <member name="T:FSBS.Infrastructure.Messaging.SqsPublisher">
+            <summary>
+            Amazon SQS implementation of <see cref="T:FSBS.Application.Common.Interfaces.ISqsPublisher"/>.
+            Serialises the message as JSON and includes the CLR type name as a
+            message attribute so the notification worker can dispatch without
+            deserialising the body first.
+            </summary>
+        </member>
+        <member name="M:FSBS.Infrastructure.Messaging.SqsPublisher.#ctor(Amazon.SQS.IAmazonSQS,Microsoft.Extensions.Options.IOptions{FSBS.Infrastructure.Messaging.SqsSettings})">
+            <summary>
+            Amazon SQS implementation of <see cref="T:FSBS.Application.Common.Interfaces.ISqsPublisher"/>.
+            Serialises the message as JSON and includes the CLR type name as a
+            message attribute so the notification worker can dispatch without
+            deserialising the body first.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Messaging.SqsSettings.BookingEventsQueueUrl">
+            <summary>URL of the SQS queue that receives booking domain events.</summary>
+        </member>
+        <member name="T:FSBS.Infrastructure.Storage.S3Service">
+            <summary>
+            Amazon S3 implementation of <see cref="T:FSBS.Application.Common.Interfaces.IS3Service"/>.
+            Only generates pre-signed URLs — the documents bucket is never served
+            through CloudFront directly.
+            </summary>
+        </member>
+        <member name="M:FSBS.Infrastructure.Storage.S3Service.#ctor(Amazon.S3.IAmazonS3,Microsoft.Extensions.Options.IOptions{FSBS.Infrastructure.Storage.S3Settings})">
+            <summary>
+            Amazon S3 implementation of <see cref="T:FSBS.Application.Common.Interfaces.IS3Service"/>.
+            Only generates pre-signed URLs — the documents bucket is never served
+            through CloudFront directly.
+            </summary>
+        </member>
+        <member name="P:FSBS.Infrastructure.Storage.S3Settings.DocumentsBucketName">
+            <summary>Name of the private documents bucket (pre-signed URLs only).</summary>
+        </member>
+    </members>
+</doc>

@@ -15,6 +15,7 @@ public sealed class RejectBookingHandler(
     IReconfigurationService reconfigurationService)
     : IRequestHandler<RejectBookingCommand, RejectBookingResult>
 {
+    /// <inheritdoc/>
     public async Task<RejectBookingResult> Handle(
         RejectBookingCommand command, CancellationToken ct)
     {

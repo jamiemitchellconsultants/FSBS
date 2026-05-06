@@ -118,6 +118,21 @@
         CloseOnEscapeKey = true,
     };
 
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            // Pending invitations list will be populated here when the API
+            // endpoint for listing org invitations is implemented (Phase 5).
+            await Task.CompletedTask;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
     private void OpenDialog()
     {
         _form.Email  = "";

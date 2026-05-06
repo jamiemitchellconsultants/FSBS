@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FSBS.Infrastructure.Persistence.Repositories.Interfaces</name>
+    </assembly>
+    <members>
+        <member name="M:FSBS.Infrastructure.Persistence.Repositories.Interfaces.IInvitationRepository.FindPendingByTokenHashAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Finds a Pending, non-expired invitation by its SHA-256 token hash.
+            Includes the <see cref="T:FSBS.Domain.Entities.Organisation"/> navigation property.
+            Returns null when no matching invitation exists, or when it is expired
+            or in any status other than Pending.
+            </summary>
+        </member>
+        <member name="M:FSBS.Infrastructure.Persistence.Repositories.Interfaces.IInvitationRepository.ClaimWithNewUserAsync(FSBS.Domain.Entities.Invitation,FSBS.Domain.Entities.AppUser,FSBS.Domain.Entities.UserProfile,FSBS.Domain.Entities.OrgMembership,System.Threading.CancellationToken)">
+            <summary>
+            Atomically marks the invitation as Claimed and persists the new
+            <see cref="T:FSBS.Domain.Entities.AppUser"/>, <see cref="T:FSBS.Domain.Entities.UserProfile"/>, and
+            <see cref="T:FSBS.Domain.Entities.OrgMembership"/> in a single <c>SaveChanges</c> call.
+            </summary>
+        </member>
+    </members>
+</doc>

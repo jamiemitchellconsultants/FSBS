@@ -15,6 +15,7 @@ public sealed class ValidationBehaviour<TRequest, TResponse>(
     where TRequest : notnull
 {
     // MediatR 12: RequestHandlerDelegate<T> is Func<Task<T>> — no CancellationToken parameter.
+    /// <inheritdoc/>
     public async Task<TResponse> Handle(
         TRequest request,
         RequestHandlerDelegate<TResponse> next,

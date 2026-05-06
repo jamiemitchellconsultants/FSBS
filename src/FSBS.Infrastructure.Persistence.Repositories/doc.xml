@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FSBS.Infrastructure.Persistence.Repositories</name>
+    </assembly>
+    <members>
+        <member name="T:FSBS.Infrastructure.Persistence.Repositories.AvailabilityReadService">
+            <summary>
+            Dapper-based implementation of <see cref="T:FSBS.Application.Common.Interfaces.IAvailabilityReadService"/>.
+            Executes a single SQL query that returns available slots, reconfiguration
+            windows, and maintenance windows in one round-trip, bypassing EF Core for
+            performance on the hot availability-grid path.
+            </summary>
+        </member>
+        <member name="M:FSBS.Infrastructure.Persistence.Repositories.AvailabilityReadService.#ctor(System.Data.IDbConnection)">
+            <summary>
+            Dapper-based implementation of <see cref="T:FSBS.Application.Common.Interfaces.IAvailabilityReadService"/>.
+            Executes a single SQL query that returns available slots, reconfiguration
+            windows, and maintenance windows in one round-trip, bypassing EF Core for
+            performance on the hot availability-grid path.
+            </summary>
+        </member>
+    </members>
+</doc>

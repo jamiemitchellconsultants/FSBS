@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FSBS.Web</name>
+    </assembly>
+    <members>
+        <member name="T:FSBS.Web.Auth.AnonymousAuthStateProvider">
+            <summary>
+            Stub authentication state provider that returns an anonymous (unauthenticated) principal.
+            Replaced in a later step with the real Cognito OIDC provider.
+            </summary>
+        </member>
+    </members>
+</doc>

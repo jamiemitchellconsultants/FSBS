@@ -2,6 +2,11 @@ using FSBS.Domain.Entities;
 
 namespace FSBS.Domain.Interfaces;
 
+/// <summary>
+/// Read-side repository for reconfiguration duration templates.
+/// Used by <c>ReconfigurationService</c> to determine turnaround time between
+/// two simulator configurations.
+/// </summary>
 public interface IReconfigurationTemplateRepository
 {
     /// <summary>

@@ -13,8 +13,8 @@ namespace FSBS.Domain.Entities;
 /// Because this entity is write-once it does not inherit from
 /// <see cref="AuditableEntity"/> and carries no <c>UpdatedAt</c>,
 /// <c>UpdatedBy</c>, or <c>IsDeleted</c> columns. EF Core is configured with
-/// <c>PropertySaveBehavior.Ignore</c> on <see cref="CreatedAt"/> to prevent
-/// accidental overwrites after the initial insert.
+/// <c>PropertySaveBehavior.Throw</c> on every property to prevent any
+/// accidental modification after the initial insert.
 /// </para>
 /// <para>
 /// The <see cref="DiscountPct"/> and <see cref="DiscountAmountGbp"/> values

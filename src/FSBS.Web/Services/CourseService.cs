@@ -2,6 +2,7 @@ namespace FSBS.Web.Services;
 
 public sealed class CourseService(HttpClient http)
 {
+    private readonly HttpClient _http = http;
     public Task<IReadOnlyList<object>> GetCoursesAsync(CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<object>>([]);
 

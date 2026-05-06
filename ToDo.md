@@ -117,11 +117,11 @@ Each item depends on the previous.
 - [x] `GET /simulators/{id}/availability` — Dapper read query, cached via `AvailabilityCache`, return `availableSlots[]` + `reconfigurationWindows[]` + `maintenanceWindows[]`
 - [x] `GET /pricing/quote` — stateless; call `PricingService` directly, no DB write
 
-### Phase 5 — Notification worker
+### Phase 5 — Notification worker ✅
 
-- [ ] SQS consumer loop — separate ECS service; poll queue, deserialise event envelope, dispatch to handlers
-- [ ] Notification handlers — one per event: `BookingConfirmedHandler`, `BookingPendingApprovalHandler`, `BookingApprovedHandler`, `BookingRejectedHandler`, `BookingReminderHandler`, `InvitationIssuedHandler`, etc.
-- [ ] Email templates — SES template registration for each notification type
+- [x] SQS consumer loop — separate ECS service; poll queue, deserialise event envelope, dispatch to handlers
+- [x] Notification handlers — one per event: `BookingConfirmedHandler`, `BookingPendingApprovalHandler`, `BookingApprovedHandler`, `BookingRejectedHandler`, `BookingCancelledHandler`, `InvitationIssuedHandler`
+- [x] Email templates — SES template registration for each notification type (`SesTemplateSeeder` upserts all templates at worker startup)
 
 ### Phase 6 — CDK completion
 

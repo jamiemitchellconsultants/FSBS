@@ -2,13 +2,19 @@ using FSBS.Domain.Entities;
 
 namespace FSBS.Domain.Interfaces;
 
+/// <summary>
+/// Write-side repository for simulator aggregates. Used by command handlers
+/// for configuration lookups and bay resolution.
+/// </summary>
 public interface ISimulatorRepository
 {
     /// <summary>Returns the unit with its Bays and ActiveConfiguration loaded.</summary>
     Task<SimulatorUnit?> FindByIdAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>Returns the bay with its parent SimulatorUnit (and its ActiveConfiguration) loaded.</summary>
     Task<SimulatorBay?> FindBayAsync(Guid bayId, CancellationToken ct = default);
 
+    /// <summary>Returns a simulator configuration by its primary key, or null if not found.</summary>
     Task<SimulatorConfiguration?> FindConfigurationAsync(Guid configurationId, CancellationToken ct = default);
 
     /// <summary>

@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FSBS.Cdk</name>
+    </assembly>
+    <members>
+        <member name="T:FSBS.Cdk.Lambdas.PostConfirmationFunction">
+            <summary>
+            Creates AppUser record, assigns org_id/app_role, marks invitation Claimed,
+            and places staff users in the correct Cognito group.
+            </summary>
+        </member>
+        <member name="T:FSBS.Cdk.Lambdas.PreSignUpFunction">
+            <summary>
+            Validates the SHA-256 invitation token hash before allowing Customer Pool sign-up.
+            Rejects any registration without a valid Pending invitation.
+            </summary>
+        </member>
+        <member name="T:FSBS.Cdk.Lambdas.TokenRefreshFunction">
+            <summary>
+            Re-syncs Cognito group membership from Entra ID groups (Staff Pool only).
+            Calls AdminUserGlobalSignOut when the Entra account is disabled.
+            </summary>
+        </member>
+    </members>
+</doc>

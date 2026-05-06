@@ -23,6 +23,7 @@ public interface IReconfigurationSlotRepository
         DateTimeOffset end,
         CancellationToken ct = default);
 
+    /// <summary>Adds the reconfiguration slot to the change tracker for insertion on next SaveChanges.</summary>
     Task AddAsync(ReconfigurationSlot slot, CancellationToken ct = default);
 
     /// <summary>

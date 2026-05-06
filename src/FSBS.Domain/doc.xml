@@ -1,0 +1,2047 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FSBS.Domain</name>
+    </assembly>
+    <members>
+        <member name="T:FSBS.Domain.Entities.AccountPayment">
+            <summary>
+            A payment posted against an <see cref="P:FSBS.Domain.Entities.AccountPayment.OrgAccount"/> by SalesStaff on
+            behalf of the organisation. Payments start in <c>Pending</c> status and
+            only affect <see cref="P:FSBS.Domain.Entities.OrgAccount.CurrentBalanceGbp"/> once a
+            Management or SystemAdmin user moves them to <c>Verified</c>.
+            </summary>
+            <remarks>
+            <b>Status lifecycle:</b> <c>Pending → Verified | Voided</c>.
+            Voiding requires a mandatory reason and is restricted to Management
+            and SystemAdmin roles. A <c>PaymentVerified</c> or <c>PaymentVoided</c>
+            notification is dispatched to the CorporateManager on each transition.
+            The PostgreSQL balance trigger fires on <c>Verified</c> and <c>Voided</c>
+            transitions to keep <see cref="P:FSBS.Domain.Entities.OrgAccount.CurrentBalanceGbp"/> consistent.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountPayment.OrgAccountId">
+            <summary>The account this payment is applied to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountPayment.AmountGbp">
+            <summary>The amount received in GBP. Always positive.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountPayment.PaymentMethod">
+            <summary>
+            How the payment was made. Drives the information required at entry
+            (e.g. bank reference for <c>BankTransfer</c>, cheque number for <c>Cheque</c>).
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountPayment.Status">
+            <summary>
+            Approval state of the payment. Only <c>Verified</c> payments reduce the
+            organisation's outstanding balance.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountPayment.Reference">
+            <summary>
+            Payment reference supplied by the organisation (e.g. bank transfer
+            reference, cheque number). Used for reconciliation.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountPayment.Notes">
+            <summary>Free-text notes recorded by SalesStaff at time of entry.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountPayment.VerifiedBy">
+            <summary><see cref="!:AppUser.Id"/> of the user who verified the payment.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountPayment.VerifiedAt">
+            <summary>UTC timestamp at which the payment was verified.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountPayment.VoidReason">
+            <summary>
+            Mandatory explanation when voiding a payment. Must be provided by
+            the Management or SystemAdmin user performing the void action.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountPayment.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountPayment.OrgAccount">
+            <summary>Navigation to the account this payment belongs to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountPayment.Allocations">
+            <summary>Invoice allocations that distribute this payment across invoices.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.AccountStatement">
+            <summary>
+            An immutable point-in-time snapshot of an <see cref="P:FSBS.Domain.Entities.AccountStatement.OrgAccount"/>'s
+            transaction history, generated on demand by Management or SalesStaff.
+            </summary>
+            <remarks>
+            Unlike most entities this does not extend <see cref="T:FSBS.Domain.Entities.AuditableEntity"/>
+            because it carries only generation metadata, not update-tracking columns.
+            The statement content is stored as a JSON document in
+            <see cref="P:FSBS.Domain.Entities.AccountStatement.StatementJson"/> so that the exact figures presented to the
+            customer are preserved regardless of subsequent data changes.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountStatement.OrgAccountId">
+            <summary>The account this statement was generated for.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountStatement.GeneratedAt">
+            <summary>UTC timestamp at which the statement was generated.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountStatement.GeneratedBy">
+            <summary><see cref="!:AppUser.Id"/> of the user who triggered statement generation.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountStatement.StatementJson">
+            <summary>
+            JSON document containing the full statement detail — opening balance,
+            itemised invoices, payments, and closing balance — as it stood at
+            <see cref="P:FSBS.Domain.Entities.AccountStatement.GeneratedAt"/>. Stored as <c>jsonb</c> in PostgreSQL.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AccountStatement.OrgAccount">
+            <summary>Navigation to the account this statement belongs to.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.AggregateRoot">
+            <summary>
+            Base class for aggregate roots. Extends <see cref="T:FSBS.Domain.Entities.AuditableEntity"/> with
+            domain event collection so that handlers can publish side-effects after
+            the transaction commits.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.AppUser">
+            <summary>
+            Core identity record that bridges a Cognito user account with the FSBS
+            domain model. Every authenticated user — staff and customer alike — has
+            exactly one <c>AppUser</c> row.
+            </summary>
+            <remarks>
+            Two distinct Cognito pools feed this table:
+            <list type="bullet">
+              <item><b>Staff pool</b> — users federated from Microsoft Entra ID. The
+                Post-Confirmation Lambda creates the <c>AppUser</c> row and assigns the
+                <c>AppRole</c> by mapping the user's Entra group membership.</item>
+              <item><b>Customer pool</b> — private customers and corporate users registered
+                via invitation. The <c>AppRole</c> is carried in the invitation and written
+                by the same Post-Confirmation Lambda.</item>
+            </list>
+            The record is tenant-scoped so that staff (root tenant) and customers
+            (their organisation's tenant) are logically separated at query time.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AppUser.TenantId">
+            <summary>
+            Identifies the tenant this user belongs to. Staff always carry the
+            school's root tenant ID; customers carry their organisation's tenant ID.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AppUser.CognitoSub">
+            <summary>
+            The <c>sub</c> claim from the user's Cognito JWT. Immutable once set;
+            used to look up the <c>AppUser</c> on every authenticated request.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AppUser.Email">
+            <summary>
+            The user's email address as held in Cognito. For staff this originates
+            from Entra ID; for customers it is the address used during registration.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AppUser.AppRole">
+            <summary>
+            The user's primary application role, which drives all authorization
+            policy decisions. Set at registration and updated by the Token Refresh
+            Lambda when an Entra group change is detected for staff users.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AppUser.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AppUser.Profile">
+            <summary>Personal details for this user.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AppUser.OrgMemberships">
+            <summary>
+            Corporate organisation memberships. A user may belong to at most one
+            active organisation in the current implementation, but the schema
+            allows for future multi-org support.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.AuditableEntity">
+            <summary>
+            Extends <see cref="T:FSBS.Domain.Entities.EntityBase"/> with four audit columns that are stamped
+            automatically by <c>AuditInterceptor</c> on every write.
+            </summary>
+            <remarks>
+            <c>CreatedAt</c> and <c>CreatedBy</c> are set once on insert and never updated.
+            <c>UpdatedAt</c> and <c>UpdatedBy</c> are refreshed on every subsequent save.
+            All four columns are stored as <c>timestamptz</c> / <c>uuid</c> in the database.
+            Entities that should not be mutated after creation (e.g. <see cref="T:FSBS.Domain.Entities.BookingDiscount"/>)
+            extend <see cref="T:FSBS.Domain.Entities.EntityBase"/> directly rather than this type.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AuditableEntity.CreatedAt">
+            <summary>UTC timestamp of the row's initial insert.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AuditableEntity.UpdatedAt">
+            <summary>UTC timestamp of the most recent update to this row.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AuditableEntity.CreatedBy">
+            <summary>
+            <see cref="!:AppUser.Id"/> of the user whose action caused the insert.
+            <c>null</c> for system-generated rows (e.g. seeded reference data).
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.AuditableEntity.UpdatedBy">
+            <summary>
+            <see cref="!:AppUser.Id"/> of the user whose action caused the most recent update.
+            <c>null</c> for system-generated rows.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.Booking">
+            <summary>
+            The central aggregate of the FSBS domain. Represents a customer's or staff
+            member's reservation of simulator time, together with all associated slots,
+            pricing, approvals, and notes.
+            </summary>
+            <remarks>
+            <para>
+            <b>State machine — external customers:</b>
+            <c>Provisional (15-min hold) → Confirmed → InProgress → Completed → Invoiced</c>.
+            A provisional booking expires automatically if not confirmed within the hold window.
+            </para>
+            <para>
+            <b>State machine — InternalStudent:</b>
+            <c>PendingApproval (slot reserved, no expiry) → Confirmed | Rejected</c>.
+            InternalStudent bookings never enter <c>Provisional</c> and are exempt from
+            all discount rules; the staff rate applies exclusively.
+            </para>
+            <para>
+            <b>Price immutability:</b> <see cref="P:FSBS.Domain.Entities.Booking.GrossPriceGbp"/>, <see cref="P:FSBS.Domain.Entities.Booking.DiscountGbp"/>,
+            and <see cref="P:FSBS.Domain.Entities.Booking.NetPriceGbp"/> are set once when the booking transitions to
+            <c>Confirmed</c>. They must not be recalculated or overwritten thereafter.
+            </para>
+            <para>
+            <b>Idempotency:</b> the <see cref="P:FSBS.Domain.Entities.Booking.IdempotencyKey"/> UUID is required on every
+            <c>POST /bookings</c> request via the <c>Idempotency-Key</c> header. A unique
+            index on this column allows safe client retries without creating duplicate bookings.
+            </para>
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.BookedBy">
+            <summary>
+            <see cref="!:AppUser.Id"/> of the user who created the booking.
+            For corporate bookings this may be a CorporateManager booking on
+            behalf of their organisation's students.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.OrgId">
+            <summary>
+            Organisation on whose account this booking will be invoiced.
+            <c>null</c> for private customer or InternalStudent bookings.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.BookerRole">
+            <summary>
+            <see cref="T:FSBS.Domain.Enums.AppRole"/> of the user at the time of booking. Determines
+            which state machine path is followed and which pricing rules apply.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.TrainingType">
+            <summary>
+            Whether this is a Flight Deck or Cabin Crew session. Constrains the
+            eligible simulator configurations, instructor assignments, and student
+            capacity limits.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.ConfigurationId">
+            <summary>
+            The simulator configuration selected for this booking. Determines the
+            applicable <see cref="T:FSBS.Domain.Entities.PricingPolicy"/> and maximum capacity.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.StudentCount">
+            <summary>
+            Number of students attending the session. Must be ≥ 1, ≤ 4 for
+            Flight Deck bookings, and ≤ 10 for Cabin Crew bookings. Enforced by
+            domain validators and PostgreSQL CHECK constraints.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.Status">
+            <summary>Current lifecycle state of the booking.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.GrossPriceGbp">
+            <summary>
+            Pre-discount total price in GBP. Set at confirmation; <c>null</c> before
+            the booking is confirmed. Never recalculated after confirmation.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.DiscountGbp">
+            <summary>
+            Total discount applied in GBP. Set at confirmation; <c>null</c> before
+            confirmation or when no discount applies.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.NetPriceGbp">
+            <summary>
+            Final invoiceable amount in GBP (<c>GrossPriceGbp − DiscountGbp</c>).
+            Set at confirmation; <c>null</c> before confirmation.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.DepartmentName">
+            <summary>
+            The internal cost centre charged for this booking.
+            Mandatory for <c>InternalStudent</c> bookings; <c>null</c> otherwise.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.BudgetCode">
+            <summary>
+            Internal budget code for financial reporting. Mandatory for
+            <c>InternalStudent</c> bookings; <c>null</c> otherwise.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.IdempotencyKey">
+            <summary>
+            Client-supplied UUID that guarantees exactly-once semantics for booking
+            creation. Sourced from the <c>Idempotency-Key</c> HTTP header. A unique
+            database index prevents duplicate rows even under concurrent retries.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.Configuration">
+            <summary>Navigation to the simulator configuration selected for this booking.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.Slots">
+            <summary>The one or more time slots reserved in a simulator bay for this booking.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.Notes">
+            <summary>Internal notes attached to this booking by staff.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.Discounts">
+            <summary>
+            Immutable discount snapshots written at confirmation. One entry per
+            <see cref="T:FSBS.Domain.Entities.DiscountRule"/> that was applied.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Booking.Approval">
+            <summary>
+            Approval record created when the booking enters <c>PendingApproval</c>.
+            Only present for <c>InternalStudent</c> bookings.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.BookingApproval">
+            <summary>
+            Records the SalesStaff or SystemAdmin decision (approve or reject) on an
+            InternalStudent booking that entered <c>PendingApproval</c> state.
+            One approval record exists per booking; it is created when the booking is
+            submitted and updated when the reviewing user acts on it.
+            </summary>
+            <remarks>
+            <para>
+            <b>Self-approval ban:</b> <see cref="P:FSBS.Domain.Entities.BookingApproval.ReviewedBy"/> cannot equal
+            <see cref="P:FSBS.Domain.Entities.BookingApproval.RequestedBy"/>. This is enforced in the command handler and
+            reinforced by the <c>ck_booking_approvals_no_self_approval</c> CHECK
+            constraint in the database.
+            </para>
+            <para>
+            <b>Rejection reason:</b> when <see cref="P:FSBS.Domain.Entities.BookingApproval.Decision"/> is
+            <see cref="F:FSBS.Domain.Enums.ApprovalDecision.Rejected"/>, <see cref="P:FSBS.Domain.Entities.BookingApproval.RejectionReason"/>
+            must be provided and must be at least 10 characters. Enforced by the
+            <c>ck_booking_approvals_rejection</c> CHECK constraint.
+            </para>
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingApproval.BookingId">
+            <summary>The booking this approval record belongs to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingApproval.RequestedBy">
+            <summary>
+            <see cref="!:AppUser.Id"/> of the InternalStudent who submitted the booking.
+            Used to enforce the self-approval ban.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingApproval.ReviewedBy">
+            <summary>
+            <see cref="!:AppUser.Id"/> of the SalesStaff or SystemAdmin user who acted
+            on the approval. <c>null</c> while the decision is still
+            <see cref="F:FSBS.Domain.Enums.ApprovalDecision.Pending"/>.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingApproval.ReviewedAt">
+            <summary>UTC timestamp at which the reviewing user made their decision.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingApproval.Decision">
+            <summary>
+            The outcome of the review. Starts as <c>Pending</c>; transitions to
+            <c>Approved</c> (booking moves to <c>Confirmed</c>) or
+            <c>Rejected</c> (slot released, InternalStudent notified with reason).
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingApproval.RejectionReason">
+            <summary>
+            Mandatory explanation when <see cref="P:FSBS.Domain.Entities.BookingApproval.Decision"/> is
+            <see cref="F:FSBS.Domain.Enums.ApprovalDecision.Rejected"/>. Must be at least 10 characters.
+            Included in the rejection notification email to the InternalStudent.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingApproval.Booking">
+            <summary>Navigation to the booking under review.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.BookingDiscount">
+            <summary>
+            An immutable audit snapshot of a single <see cref="P:FSBS.Domain.Entities.BookingDiscount.DiscountRule"/> applied
+            to a <see cref="P:FSBS.Domain.Entities.BookingDiscount.Booking"/> at the point of confirmation. One row is written
+            for each rule that contributed to the final price; the records are never
+            updated or deleted.
+            </summary>
+            <remarks>
+            <para>
+            Because this entity is write-once it does not inherit from
+            <see cref="T:FSBS.Domain.Entities.AuditableEntity"/> and carries no <c>UpdatedAt</c>,
+            <c>UpdatedBy</c>, or <c>IsDeleted</c> columns. EF Core is configured with
+            <c>PropertySaveBehavior.Throw</c> on every property to prevent any
+            accidental modification after the initial insert.
+            </para>
+            <para>
+            The <see cref="P:FSBS.Domain.Entities.BookingDiscount.DiscountPct"/> and <see cref="P:FSBS.Domain.Entities.BookingDiscount.DiscountAmountGbp"/> values
+            are snapshots taken at confirmation time. Even if the source
+            <see cref="P:FSBS.Domain.Entities.BookingDiscount.DiscountRule"/> is later modified or deleted, these figures remain
+            correct for audit and invoice purposes.
+            </para>
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingDiscount.BookingId">
+            <summary>The booking this discount was applied to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingDiscount.DiscountRuleId">
+            <summary>
+            The discount rule that was applied. Stored as a FK for traceability;
+            the actual percentage and amount are snapshotted on this record.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingDiscount.DiscountType">
+            <summary>
+            Category of the discount at the time of application. Snapshotted so
+            that reports remain accurate if the rule's type is later changed.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingDiscount.DiscountPct">
+            <summary>
+            Percentage reduction that was applied (0–100), snapshotted from the
+            rule at confirmation time.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingDiscount.DiscountAmountGbp">
+            <summary>
+            Actual monetary value of the discount in GBP. Derived from
+            <see cref="P:FSBS.Domain.Entities.BookingDiscount.DiscountPct"/> applied to the booking's gross price at
+            confirmation time.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingDiscount.CreatedAt">
+            <summary>UTC timestamp at which the booking was confirmed and this record was written.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingDiscount.Booking">
+            <summary>Navigation to the parent booking.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingDiscount.DiscountRule">
+            <summary>Navigation to the source discount rule.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.BookingNote">
+            <summary>
+            An internal note attached to a <see cref="P:FSBS.Domain.Entities.BookingNote.Booking"/> by a staff member.
+            Notes are visible only to staff and are used to record context such as
+            special requirements, customer communications, or operational concerns.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingNote.BookingId">
+            <summary>The booking this note belongs to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingNote.AuthorId">
+            <summary><see cref="!:AppUser.Id"/> of the staff member who wrote the note.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingNote.Body">
+            <summary>The note content. Plain text; displayed in the booking detail view.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingNote.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingNote.Booking">
+            <summary>Navigation to the parent booking.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.BookingSlot">
+            <summary>
+            A specific time block reserved in a <see cref="T:FSBS.Domain.Entities.SimulatorBay"/> for a
+            <see cref="P:FSBS.Domain.Entities.BookingSlot.Booking"/>. The bay-time uniqueness constraint prevents
+            double-booking; the duration constraint enforces the minimum 4-hour session rule.
+            </summary>
+            <remarks>
+            <b>Minimum duration:</b> <see cref="P:FSBS.Domain.Entities.BookingSlot.DurationMins"/> must be ≥ 240 (4 hours).
+            Enforced by <c>BookingSlotValidator</c> in the application layer and by the
+            <c>ck_booking_slots_min_duration</c> CHECK constraint at the database level.
+            <br/>
+            <b>Double-booking prevention:</b> a filtered unique index on
+            <c>(bay_id, start_at, end_at)</c> where <c>slot_status != 'Cancelled'</c>
+            allows the same time window to be reused after cancellation without a
+            physical delete.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingSlot.BookingId">
+            <summary>The booking this slot belongs to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingSlot.BayId">
+            <summary>The simulator bay where the session will take place.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingSlot.InstructorId">
+            <summary>
+            Instructor assigned to deliver this session. <c>null</c> until an
+            instructor is scheduled. Assignment requires the instructor's
+            <see cref="P:FSBS.Domain.Entities.Instructor.TrainingTypeRatings"/> to include the parent
+            booking's <see cref="P:FSBS.Domain.Entities.Booking.TrainingType"/>.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingSlot.StartAt">
+            <summary>UTC start time of the session.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingSlot.EndAt">
+            <summary>UTC end time of the session.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingSlot.DurationMins">
+            <summary>
+            Duration in minutes. Must be ≥ 240. Stored explicitly rather than
+            derived from <see cref="P:FSBS.Domain.Entities.BookingSlot.StartAt"/>/<see cref="P:FSBS.Domain.Entities.BookingSlot.EndAt"/> to simplify
+            constraint enforcement and reporting queries.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingSlot.SlotStatus">
+            <summary>Current status of the slot within the session lifecycle.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingSlot.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingSlot.Booking">
+            <summary>Navigation to the parent booking.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingSlot.Bay">
+            <summary>Navigation to the reserved simulator bay.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.BookingSlot.Instructor">
+            <summary>Navigation to the assigned instructor, if any.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.Course">
+            <summary>
+            A structured training programme comprising an ordered set of
+            <see cref="T:FSBS.Domain.Entities.Module"/>s and <see cref="T:FSBS.Domain.Entities.Lesson"/>s. Students are linked to a
+            course via <see cref="T:FSBS.Domain.Entities.Enrolment"/> and progress through it lesson by lesson.
+            </summary>
+            <remarks>
+            Courses are tenant-scoped — a corporate organisation's courses are invisible
+            to other tenants. The <see cref="P:FSBS.Domain.Entities.Course.TrainingType"/> determines whether the course
+            is for Flight Deck or Cabin Crew training, which in turn constrains which
+            simulator configurations are eligible for its sessions.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Course.TenantId">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Course.Name">
+            <summary>Display name of the course shown to students and instructors.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Course.Description">
+            <summary>Optional overview or objectives for the course.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Course.TrainingType">
+            <summary>
+            Whether this is a Flight Deck or Cabin Crew training programme. Restricts
+            the simulator configurations that can host sessions for this course.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Course.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Course.Modules">
+            <summary>The ordered set of modules that make up this course.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Course.Enrolments">
+            <summary>All student enrolments on this course.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.DiscountRule">
+            <summary>
+            A threshold-based discount rule attached to a <see cref="P:FSBS.Domain.Entities.DiscountRule.PricingPolicy"/>.
+            Rules are evaluated at booking confirmation and the resulting deduction is
+            snapshotted as an immutable <see cref="T:FSBS.Domain.Entities.BookingDiscount"/>.
+            </summary>
+            <remarks>
+            <b>Evaluation algorithm:</b>
+            <list type="number">
+              <item>Collect all rules whose thresholds are satisfied by the booking.</item>
+              <item>Sort by <see cref="P:FSBS.Domain.Entities.DiscountRule.Priority"/> descending.</item>
+              <item>Apply the highest-priority rule. If it is <see cref="P:FSBS.Domain.Entities.DiscountRule.IsCombinable"/>,
+                also sum all other combinable rules below it.</item>
+              <item>Cap the total discount at the maximum discount ceiling configured on
+                the policy.</item>
+            </list>
+            Staff (InternalStudent) bookings are exempt — no discount rules apply.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.DiscountRule.PricingPolicyId">
+            <summary>The pricing policy this rule belongs to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.DiscountRule.DiscountType">
+            <summary>
+            Category of discount (e.g. volume-based, advance-booking, corporate
+            negotiated). Determines which threshold fields in <see cref="P:FSBS.Domain.Entities.DiscountRule.ThresholdJson"/>
+            are evaluated.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.DiscountRule.Priority">
+            <summary>
+            Evaluation order when multiple rules match. Higher number wins.
+            Among rules at equal priority, combinable rules are summed.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.DiscountRule.DiscountPct">
+            <summary>Percentage reduction applied to the base price (0–100).</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.DiscountRule.IsCombinable">
+            <summary>
+            When <c>true</c> this rule can be stacked with other combinable rules.
+            When <c>false</c> it is applied exclusively — no other rule is combined
+            with it even if other combinable rules are present.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.DiscountRule.ThresholdJson">
+            <summary>
+            JSON document containing the rule's eligibility criteria
+            (e.g. <c>{"minSessions": 5}</c> for a volume rule, or
+            <c>{"minDaysAhead": 30}</c> for an advance-booking rule).
+            Stored as <c>jsonb</c>; interpreted by the pricing service at confirm time.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.DiscountRule.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.DiscountRule.PricingPolicy">
+            <summary>Navigation to the pricing policy this rule belongs to.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.Enrolment">
+            <summary>
+            Links a student <see cref="T:FSBS.Domain.Entities.AppUser"/> to a <see cref="P:FSBS.Domain.Entities.Enrolment.Course"/> and tracks
+            their overall progress through it. A unique constraint on
+            <c>(user_id, course_id)</c> ensures a student can only be enrolled once
+            per course at a time.
+            </summary>
+            <remarks>
+            <b>Status lifecycle:</b> <c>Active → Completed | Withdrawn | Suspended</c>.
+            <c>Completed</c> is set by a CourseDirector once all lessons have a
+            <see cref="T:FSBS.Domain.Entities.ProgressRecord"/>. <c>Withdrawn</c> or <c>Suspended</c>
+            can be applied administratively without affecting the lesson history.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Enrolment.UserId">
+            <summary>The student enrolled on the course.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Enrolment.CourseId">
+            <summary>The course the student is enrolled on.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Enrolment.Status">
+            <summary>Current progress state of the enrolment.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Enrolment.CompletedOn">
+            <summary>
+            The calendar date on which the enrolment was marked <c>Completed</c>.
+            <c>null</c> while the enrolment is still active.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Enrolment.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Enrolment.User">
+            <summary>Navigation to the enrolled student.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Enrolment.Course">
+            <summary>Navigation to the enrolled course.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Enrolment.ProgressRecords">
+            <summary>Sign-off records for each lesson the student has completed.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.EntityBase">
+            <summary>
+            Root base type for all domain entities. Provides a surrogate primary key
+            that maps to a PostgreSQL <c>uuid</c> column with a <c>uuid_generate_v4()</c> default.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.EntityBase.Id">
+            <summary>
+            Surrogate primary key. Generated by the database on insert; never reassigned.
+            The concrete column name (e.g. <c>booking_id</c>) is set per entity in its
+            Fluent API configuration.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.Instructor">
+            <summary>
+            A staff member authorised to conduct simulator sessions. An instructor's
+            eligibility for a booking depends on their <see cref="P:FSBS.Domain.Entities.Instructor.TrainingTypeRatings"/>
+            intersecting the booking's training type.
+            </summary>
+            <remarks>
+            Before assigning an instructor to a <see cref="T:FSBS.Domain.Entities.BookingSlot"/>, the handler
+            must verify that the instructor's <see cref="P:FSBS.Domain.Entities.Instructor.TrainingTypeRatings"/> list
+            contains the booking's <see cref="P:FSBS.Domain.Entities.Booking.TrainingType"/>. This check is also
+            enforced in the <c>GET /instructors?trainingType=</c> query so the UI only
+            presents eligible instructors to the scheduler.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Instructor.UserId">
+            <summary>
+            The <see cref="T:FSBS.Domain.Entities.AppUser"/> account of this instructor. Must hold the
+            <c>AppRole.Instructor</c> role.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Instructor.TrainingTypeRatings">
+            <summary>
+            Training types this instructor is rated to deliver. Stored as a native
+            PostgreSQL <c>training_type[]</c> array. An instructor may hold ratings
+            for Flight Deck, Cabin Crew, or both. Assigning an instructor to a
+            session whose type is absent from this list is a domain error.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Instructor.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Instructor.User">
+            <summary>Navigation to the user account.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Instructor.Availabilities">
+            <summary>
+            Declared availability and leave windows used by the scheduler to
+            identify eligible instructors for a given slot.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Instructor.BookingSlots">
+            <summary>Booking slots to which this instructor has been assigned.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.InstructorAvailability">
+            <summary>
+            A declared time window indicating whether an <see cref="P:FSBS.Domain.Entities.InstructorAvailability.Instructor"/> is
+            available to deliver sessions, is on leave, or has another commitment.
+            Used by the scheduling service to filter eligible instructors when a
+            <see cref="T:FSBS.Domain.Entities.BookingSlot"/> is being assigned.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.InstructorAvailability.InstructorId">
+            <summary>The instructor this window applies to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.InstructorAvailability.StartAt">
+            <summary>UTC start of the availability window.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.InstructorAvailability.EndAt">
+            <summary>UTC end of the availability window.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.InstructorAvailability.AvailabilityType">
+            <summary>
+            Indicates whether this window represents available time
+            (<see cref="F:FSBS.Domain.Enums.AvailabilityType.Available"/>), approved leave
+            (<see cref="F:FSBS.Domain.Enums.AvailabilityType.Leave"/>), or another commitment
+            (<see cref="F:FSBS.Domain.Enums.AvailabilityType.Other"/>). Only <c>Available</c> windows
+            make the instructor eligible for session assignment.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.InstructorAvailability.Notes">
+            <summary>
+            Optional free-text note (e.g. leave type, external commitment description).
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.InstructorAvailability.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.InstructorAvailability.Instructor">
+            <summary>Navigation to the instructor this window belongs to.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.Invitation">
+            <summary>
+            An invitation to register on the FSBS platform as a corporate customer.
+            Issued by SalesStaff (for <see cref="F:FSBS.Domain.Enums.InviteeRole.CorporateManager"/>) or
+            by a CorporateManager (for <see cref="F:FSBS.Domain.Enums.InviteeRole.CorporateStudent"/>) within
+            their own organisation.
+            </summary>
+            <remarks>
+            <para>
+            <b>Token security:</b> the raw invitation token is a cryptographically random
+            value emailed to the invitee. Only the SHA-256 hex digest is stored in
+            <see cref="P:FSBS.Domain.Entities.Invitation.TokenHash"/>; the raw token is never persisted. The Pre Sign-up
+            Lambda re-hashes the presented token and compares against this column.
+            </para>
+            <para>
+            <b>Uniqueness:</b> a partial unique index on <c>(invitee_email, org_id)</c>
+            where <c>status = 'Pending'</c> ensures only one active invitation exists per
+            address per organisation, while still permitting re-invitation after expiry or
+            revocation.
+            </para>
+            <para>
+            <b>Expiry:</b> invitations expire after 7 days by default. A nightly Lambda
+            sweeps for expired rows and sets their status to <c>Expired</c>.
+            </para>
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invitation.OrgId">
+            <summary>The organisation the invitee will join on registration.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invitation.InviteeEmail">
+            <summary>Email address of the person being invited.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invitation.InviteeRole">
+            <summary>
+            The role the invitee will receive within the organisation on registration.
+            A CorporateManager may only issue <see cref="F:FSBS.Domain.Enums.InviteeRole.CorporateStudent"/>
+            invitations and only for their own org.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invitation.TokenHash">
+            <summary>
+            SHA-256 hex digest of the raw invitation token. Fixed-length 64-character
+            string stored in a <c>char(64)</c> column with a unique constraint.
+            The raw token is delivered solely via email and never stored.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invitation.Status">
+            <summary>
+            Current state of the invitation: <c>Pending</c> (awaiting registration),
+            <c>Claimed</c> (registration complete), <c>Expired</c> (7-day window
+            elapsed), or <c>Revoked</c> (cancelled by an authorised user).
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invitation.ExpiresAt">
+            <summary>UTC timestamp after which this invitation can no longer be used.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invitation.ClaimedBy">
+            <summary>
+            <see cref="!:AppUser.Id"/> of the newly registered user who claimed this
+            invitation. Populated only when <see cref="P:FSBS.Domain.Entities.Invitation.Status"/> is <c>Claimed</c>.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invitation.ClaimedAt">
+            <summary>UTC timestamp at which the invitation was claimed.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invitation.RevokedBy">
+            <summary>
+            <see cref="!:AppUser.Id"/> of the user who revoked this invitation.
+            Populated only when <see cref="P:FSBS.Domain.Entities.Invitation.Status"/> is <c>Revoked</c>.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invitation.RevokedAt">
+            <summary>UTC timestamp at which the invitation was revoked.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invitation.Organisation">
+            <summary>Navigation to the target organisation.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.Invoice">
+            <summary>
+            A billing document raised against an <see cref="P:FSBS.Domain.Entities.Invoice.Organisation"/> for a
+            completed or invoiced <see cref="P:FSBS.Domain.Entities.Invoice.Booking"/>. Issued by SalesStaff once
+            a session reaches the <c>Invoiced</c> booking status.
+            </summary>
+            <remarks>
+            <para>
+            <b>Balance calculation:</b> <see cref="P:FSBS.Domain.Entities.Invoice.NetGbp"/> contributes to
+            <see cref="P:FSBS.Domain.Entities.OrgAccount.CurrentBalanceGbp"/> when the invoice status is
+            <c>Issued</c> or <c>Overdue</c>. The PostgreSQL balance trigger
+            (<c>update_org_balance</c>) fires on every insert/update/delete to keep
+            the running total current.
+            </para>
+            <para>
+            <b>Net constraint:</b> <c>net_gbp = gross_gbp − discount_gbp</c> is
+            enforced by the <c>ck_invoices_net</c> CHECK constraint at the database level.
+            </para>
+            <para>
+            Row-level security in PostgreSQL restricts invoice visibility to the
+            owning organisation's tenant.
+            </para>
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invoice.BookingId">
+            <summary>The booking this invoice was raised for.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invoice.OrgId">
+            <summary>The organisation billed by this invoice.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invoice.InvoiceNumber">
+            <summary>
+            Human-readable invoice reference displayed on the document and in
+            the customer portal (e.g. "INV-2024-00142").
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invoice.Status">
+            <summary>
+            Current status in the invoice lifecycle:
+            <c>Draft → Issued → Paid | Overdue | Voided</c>.
+            Only <c>Issued</c> and <c>Overdue</c> invoices contribute to the
+            organisation's outstanding balance.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invoice.GrossGbp">
+            <summary>Total pre-discount amount in GBP.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invoice.DiscountGbp">
+            <summary>Total discount applied in GBP.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invoice.NetGbp">
+            <summary>
+            Final invoiceable amount in GBP (<c>GrossGbp − DiscountGbp</c>).
+            Enforced by <c>ck_invoices_net</c> CHECK constraint.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invoice.IssuedOn">
+            <summary>The calendar date on which the invoice was issued to the organisation.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invoice.DueOn">
+            <summary>Payment due date. Invoices past this date are marked <c>Overdue</c>.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invoice.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invoice.Booking">
+            <summary>Navigation to the booked session.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invoice.Organisation">
+            <summary>Navigation to the billed organisation.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Invoice.Allocations">
+            <summary>Payment allocations that partially or fully settle this invoice.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.ISoftDeletable">
+            <summary>
+            Marks an entity as soft-deletable. Records are never physically removed;
+            instead <see cref="P:FSBS.Domain.Entities.ISoftDeletable.IsDeleted"/> is set to <c>true</c> and a global EF Core
+            query filter hides them from all ordinary queries.
+            </summary>
+            <remarks>
+            Retaining deleted rows satisfies the seven-year data-retention requirement
+            and preserves referential integrity for audit trails and invoices.
+            To query deleted records intentionally, call <c>IgnoreQueryFilters()</c> on
+            the <c>IQueryable</c>.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ISoftDeletable.IsDeleted">
+            <summary>
+            <c>true</c> when the record has been logically deleted. Rows where this
+            flag is set are excluded from all standard queries via a global filter.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.ITenantScoped">
+            <summary>
+            Marks an entity as belonging to a specific tenant. Applied to
+            <see cref="T:FSBS.Domain.Entities.AppUser"/>, <see cref="T:FSBS.Domain.Entities.Organisation"/>, and <see cref="T:FSBS.Domain.Entities.Course"/>.
+            </summary>
+            <remarks>
+            A global EF Core query filter restricts every query to rows whose
+            <see cref="P:FSBS.Domain.Entities.ITenantScoped.TenantId"/> matches the value from the current request's JWT
+            (<c>ICurrentUser.TenantId</c>). Staff users always operate under the
+            school's root tenant ID so they can see all customer data.
+            PostgreSQL row-level security enforces the same isolation at the storage
+            layer via <c>SET LOCAL app.current_tenant_id</c>.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ITenantScoped.TenantId">
+            <summary>
+            Identifier of the tenant that owns this record. Derived from the
+            <c>tenant_id</c> claim in the authenticated user's JWT and injected
+            into <c>DbContext</c> by middleware before any handler executes.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.Lesson">
+            <summary>
+            A single deliverable training session within a <see cref="P:FSBS.Domain.Entities.Lesson.Module"/>.
+            When a student completes a lesson an instructor or CourseDirector creates
+            a <see cref="T:FSBS.Domain.Entities.ProgressRecord"/> to sign it off.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Lesson.ModuleId">
+            <summary>The module this lesson belongs to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Lesson.Name">
+            <summary>
+            Display name of the lesson (e.g. "Emergency Descent Procedure").
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Lesson.SequenceOrder">
+            <summary>
+            1-based position within the parent module. Lessons are presented in
+            ascending <c>SequenceOrder</c>.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Lesson.DurationMins">
+            <summary>
+            Standard duration of this lesson in minutes. Used when building a
+            booking slot for the session; the actual <see cref="P:FSBS.Domain.Entities.BookingSlot.DurationMins"/>
+            must be at least 240 minutes regardless of the lesson's own duration.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Lesson.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Lesson.Module">
+            <summary>Navigation to the parent module.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.MaintenanceWindow">
+            <summary>
+            A scheduled maintenance or downtime period for a <see cref="P:FSBS.Domain.Entities.MaintenanceWindow.SimulatorUnit"/>.
+            During this window the unit's bays are blocked and the calendar renders
+            them as dark grey (non-selectable).
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.MaintenanceWindow.SimulatorUnitId">
+            <summary>The simulator unit that is unavailable during this window.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.MaintenanceWindow.StartAt">
+            <summary>UTC start of the maintenance period.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.MaintenanceWindow.EndAt">
+            <summary>UTC end of the maintenance period.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.MaintenanceWindow.Reason">
+            <summary>
+            Optional description of the work being performed (e.g. "Scheduled
+            annual software update", "Motion platform bearing replacement").
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.MaintenanceWindow.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.MaintenanceWindow.SimulatorUnit">
+            <summary>Navigation to the simulator unit being maintained.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.Module">
+            <summary>
+            A chapter or unit within a <see cref="P:FSBS.Domain.Entities.Module.Course"/>, grouping related
+            <see cref="T:FSBS.Domain.Entities.Lesson"/>s into a logical progression block.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Module.CourseId">
+            <summary>The course this module belongs to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Module.Name">
+            <summary>
+            Display name of the module (e.g. "Phase 1 — Normal Procedures").
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Module.SequenceOrder">
+            <summary>
+            1-based position within the course. Modules are presented to students
+            in ascending <c>SequenceOrder</c>; earlier modules must typically be
+            completed before later ones are unlocked.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Module.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Module.Course">
+            <summary>Navigation to the parent course.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Module.Lessons">
+            <summary>The lessons contained within this module, ordered by <see cref="P:FSBS.Domain.Entities.Lesson.SequenceOrder"/>.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.OrgAccount">
+            <summary>
+            Financial account held for an <see cref="P:FSBS.Domain.Entities.OrgAccount.Organisation"/>. Tracks the credit
+            limit, live balance, and account status used to gate new bookings.
+            </summary>
+            <remarks>
+            <para>
+            <b>Balance maintenance:</b> <see cref="P:FSBS.Domain.Entities.OrgAccount.CurrentBalanceGbp"/> is maintained
+            exclusively by a PostgreSQL trigger (<c>update_org_balance()</c>) that fires
+            after any insert, update, or delete on <c>invoices</c> or
+            <c>account_payments</c>. Application code must never write to this column
+            directly. EF Core is configured with <c>ValueGeneratedOnAddOrUpdate</c> and
+            <c>PropertySaveBehavior.Ignore</c> to prevent accidental overwrites.
+            </para>
+            <para>
+            <b>Balance formula:</b>
+            <c>SUM(net_gbp WHERE invoice status IN ('Issued','Overdue'))
+             − SUM(amount_gbp WHERE payment status = 'Verified')</c>
+            </para>
+            <para>
+            A nightly Lambda reconciliation job cross-checks the trigger value against
+            a full SUM query and raises a CloudWatch alarm on any discrepancy.
+            </para>
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.OrgAccount.OrgId">
+            <summary>The organisation that owns this account.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.OrgAccount.CreditLimitGbp">
+            <summary>
+            Maximum outstanding balance (GBP) the school will extend to this
+            organisation before blocking new bookings. Configured by SalesStaff.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.OrgAccount.CurrentBalanceGbp">
+            <summary>
+            Current outstanding balance in GBP. Positive means the organisation
+            owes money; negative means they are in credit.
+            <b>Read-only from the application layer</b> — maintained by a
+            PostgreSQL trigger. A <c>AccountBalanceWarning</c> event is dispatched
+            when this exceeds 80 % of <see cref="P:FSBS.Domain.Entities.OrgAccount.CreditLimitGbp"/>.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.OrgAccount.Status">
+            <summary>
+            Lifecycle status of the account. A <c>Suspended</c> or <c>Closed</c>
+            account blocks new bookings for the organisation.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.OrgAccount.Organisation">
+            <summary>Navigation to the owning organisation.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.OrgAccount.Payments">
+            <summary>All payment records posted against this account.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.OrgAccount.Statements">
+            <summary>Point-in-time statement snapshots generated for this account.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.Organisation">
+            <summary>
+            A corporate customer entity — typically an airline, charter operator, or
+            training institution — that books simulator sessions on behalf of its staff.
+            </summary>
+            <remarks>
+            Every <c>Organisation</c> has exactly one <see cref="T:FSBS.Domain.Entities.OrgAccount"/> (1-to-1)
+            that tracks the financial relationship with the school. Members are linked
+            via <see cref="T:FSBS.Domain.Entities.OrgMembership"/> rows and carry either the
+            <see cref="F:FSBS.Domain.Enums.OrgRole.Manager"/> or <see cref="F:FSBS.Domain.Enums.OrgRole.Student"/> role within
+            the org. The <see cref="P:FSBS.Domain.Entities.Organisation.CustomerClass"/> determines which
+            <see cref="T:FSBS.Domain.Entities.PricingPolicy"/> tier applies to bookings made under this org.
+            Row-level security in PostgreSQL enforces that each org's data is visible
+            only to its own tenant.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Organisation.TenantId">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Organisation.Name">
+            <summary>
+            Display name of the organisation as it appears on invoices and the
+            management dashboard (e.g. "Sunrise Airlines Ltd").
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Organisation.CustomerClass">
+            <summary>
+            Pricing classification that selects the applicable
+            <see cref="T:FSBS.Domain.Entities.PricingPolicy"/> for this organisation's bookings.
+            Corporate organisations typically receive negotiated rates configured
+            on the relevant <see cref="T:FSBS.Domain.Entities.DiscountRule"/> rows.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Organisation.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Organisation.Account">
+            <summary>The financial account held for this organisation.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Organisation.Memberships">
+            <summary>All staff members linked to this organisation.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Organisation.Invitations">
+            <summary>
+            Pending, claimed, and historical invitation records issued to — or
+            revoked for — users joining this organisation.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.OrgMembership">
+            <summary>
+            Links an <see cref="T:FSBS.Domain.Entities.AppUser"/> to an <see cref="P:FSBS.Domain.Entities.OrgMembership.Organisation"/> and captures
+            their role within that organisation (<see cref="F:FSBS.Domain.Enums.OrgRole.Manager"/> or
+            <see cref="F:FSBS.Domain.Enums.OrgRole.Student"/>).
+            </summary>
+            <remarks>
+            A unique constraint on <c>(user_id, org_id)</c> prevents a user from being
+            a member of the same organisation twice. The <c>OrgRole</c> here is distinct
+            from the user's <see cref="T:FSBS.Domain.Enums.AppRole"/> — <c>AppRole</c> is the system-wide
+            authorization role, while <c>OrgRole</c> governs what the user can do
+            <em>within their corporate org</em> (e.g. a <c>CorporateManager</c> has
+            <see cref="F:FSBS.Domain.Enums.OrgRole.Manager"/> and may issue student invitations for their org).
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.OrgMembership.UserId">
+            <summary>The member user.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.OrgMembership.OrgId">
+            <summary>The organisation this membership belongs to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.OrgMembership.OrgRole">
+            <summary>
+            The user's functional role within the organisation. <c>Manager</c>
+            permits booking on behalf of the org and issuing student invitations;
+            <c>Student</c> permits booking for themselves at the org's negotiated rate.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.OrgMembership.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.OrgMembership.User">
+            <summary>Navigation property to the member user.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.OrgMembership.Organisation">
+            <summary>Navigation property to the owning organisation.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.PaymentAllocation">
+            <summary>
+            Distributes a portion of an <see cref="T:FSBS.Domain.Entities.AccountPayment"/> against a specific
+            <see cref="P:FSBS.Domain.Entities.PaymentAllocation.Invoice"/>, enabling a single payment to partially or fully settle
+            multiple invoices.
+            </summary>
+            <remarks>
+            The FK from <c>payment_allocations.invoice_id</c> to <c>invoices</c> is added
+            via a deferred <c>ALTER TABLE</c> in the DDL because <c>invoices</c> is defined
+            later in the schema script. This ordering is preserved in the EF migration.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PaymentAllocation.PaymentId">
+            <summary>The payment being allocated.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PaymentAllocation.InvoiceId">
+            <summary>The invoice being (partially) settled.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PaymentAllocation.AmountGbp">
+            <summary>
+            The portion of the payment applied to this invoice in GBP. The sum
+            of all allocations for a payment cannot exceed the payment's
+            <see cref="P:FSBS.Domain.Entities.AccountPayment.AmountGbp"/>.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PaymentAllocation.Payment">
+            <summary>Navigation to the source payment.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PaymentAllocation.Invoice">
+            <summary>Navigation to the invoice being settled.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.PricingPolicy">
+            <summary>
+            Defines the base hourly rate for a specific combination of simulator
+            configuration, training type, and customer class, effective for a given
+            date range. This is the starting point for all price calculations.
+            </summary>
+            <remarks>
+            Price is calculated at booking confirmation time by selecting the most
+            recently effective policy for the booking's
+            (<see cref="P:FSBS.Domain.Entities.PricingPolicy.ConfigurationId"/>, <see cref="P:FSBS.Domain.Entities.PricingPolicy.TrainingType"/>,
+            <see cref="P:FSBS.Domain.Entities.PricingPolicy.CustomerClass"/>) combination, then applying any applicable
+            <see cref="T:FSBS.Domain.Entities.DiscountRule"/>s. Once a <see cref="T:FSBS.Domain.Entities.Booking"/> is confirmed
+            the price is locked — no recalculation occurs even if the policy changes.
+            Staff (InternalStudent) bookings always use the staff rate and are
+            ineligible for any discount rules.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PricingPolicy.ConfigurationId">
+            <summary>
+            The simulator configuration this rate applies to. Different aircraft
+            types and cabin layouts carry different cost structures.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PricingPolicy.TrainingType">
+            <summary>
+            Whether this rate is for Flight Deck or Cabin Crew training. The two
+            training types have distinct pricing even on the same configuration.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PricingPolicy.CustomerClass">
+            <summary>
+            Customer segment this rate applies to. Standard, Staff, and Corporate
+            customers each have their own rate ladder.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PricingPolicy.HourlyRateGbp">
+            <summary>Base rate in GBP per hour before any discounts are applied.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PricingPolicy.EffectiveFrom">
+            <summary>
+            The date from which this policy is active (inclusive). When multiple
+            policies match the same key tuple the one with the latest
+            <c>EffectiveFrom</c> is selected.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PricingPolicy.EffectiveTo">
+            <summary>
+            The last date on which this policy is active (inclusive). <c>null</c>
+            means the policy has no planned expiry.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PricingPolicy.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PricingPolicy.Configuration">
+            <summary>Navigation to the simulator configuration this policy covers.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.PricingPolicy.DiscountRules">
+            <summary>Discount rules that can reduce the base rate for eligible bookings.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.ProgressRecord">
+            <summary>
+            An instructor or CourseDirector's sign-off confirming that a student has
+            satisfactorily completed a specific <see cref="P:FSBS.Domain.Entities.ProgressRecord.Lesson"/> within their
+            <see cref="P:FSBS.Domain.Entities.ProgressRecord.Enrolment"/>. Once created, progress records are treated as
+            immutable audit evidence.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ProgressRecord.EnrolmentId">
+            <summary>The enrolment (student + course) this record belongs to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ProgressRecord.LessonId">
+            <summary>The lesson that was completed.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ProgressRecord.CompletedAt">
+            <summary>UTC timestamp at which the lesson was completed in the simulator.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ProgressRecord.SignedOffBy">
+            <summary>
+            <see cref="!:AppUser.Id"/> of the instructor or CourseDirector who
+            signed off the student's performance. Must hold a qualifying role.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ProgressRecord.Notes">
+            <summary>
+            Optional debrief notes or performance observations recorded by the
+            signing instructor.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ProgressRecord.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ProgressRecord.Enrolment">
+            <summary>Navigation to the parent enrolment.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ProgressRecord.Lesson">
+            <summary>Navigation to the lesson that was completed.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.Qualification">
+            <summary>
+            A named flight or cabin-crew qualification (e.g. ATPL, Type Rating, SEP).
+            Used as reference data when recording instructor competencies and flagging
+            upcoming expiries for regulatory compliance.
+            </summary>
+            <remarks>
+            The <c>QualificationExpiring</c> notification event is dispatched 30 and 7 days
+            before a linked qualification's expiry date so that the relevant instructor
+            or course director can arrange renewal.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Qualification.Name">
+            <summary>
+            Short, human-readable qualification name displayed in the UI and
+            on instructor profiles (e.g. "ATPL(A)", "B737 Type Rating").
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Qualification.Description">
+            <summary>
+            Optional longer description of the qualification's scope, issuing
+            authority, or renewal requirements.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Qualification.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="T:FSBS.Domain.Entities.ReconfigurationSlot">
+            <summary>
+            A non-billable buffer period reserved in a <see cref="T:FSBS.Domain.Entities.SimulatorBay"/>
+            to allow technicians to reconfigure the simulator between two bookings
+            that require different <see cref="T:FSBS.Domain.Entities.SimulatorConfiguration"/>s.
+            </summary>
+            <remarks>
+            <para>
+            Reconfiguration slots are created automatically when a booking is confirmed,
+            if the next booking on the same bay requires a different configuration.
+            A slot is also inserted even when there is no subsequent booking, to protect
+            operational readiness for the next session.
+            </para>
+            <para>
+            Users cannot select or book these windows. The availability calendar renders
+            them as grey-hatched blocks. A <c>ReconfigurationAlert</c> notification is
+            dispatched when a reconfig window is less than 60 minutes before the next session.
+            </para>
+            <para>
+            <see cref="P:FSBS.Domain.Entities.ReconfigurationSlot.DurationMins"/> is sourced from a matching
+            <see cref="T:FSBS.Domain.Entities.ReconfigurationTemplate"/>; when no template exists the fallback
+            is <see cref="P:FSBS.Domain.Entities.SimulatorUnit.DefaultReconfigMins"/>.
+            </para>
+            <para>
+            This entity does not implement <see cref="T:FSBS.Domain.Entities.ISoftDeletable"/> — reconfig slots
+            are hard-deleted when their associated booking is cancelled or rejected and
+            no longer required.
+            </para>
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationSlot.BayId">
+            <summary>The bay in which the reconfiguration will take place.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationSlot.PrecedingBookingId">
+            <summary>
+            The <see cref="T:FSBS.Domain.Entities.Booking"/> whose confirmation triggered the creation
+            of this slot. <c>null</c> when the slot was inserted proactively
+            with no preceding booking.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationSlot.FromConfigId">
+            <summary>The configuration the simulator is transitioning <em>from</em>.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationSlot.ToConfigId">
+            <summary>The configuration the simulator is transitioning <em>to</em>.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationSlot.StartAt">
+            <summary>UTC start of the reconfiguration window.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationSlot.EndAt">
+            <summary>UTC end of the reconfiguration window.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationSlot.DurationMins">
+            <summary>
+            Duration of the reconfiguration in minutes. Sourced from
+            <see cref="P:FSBS.Domain.Entities.ReconfigurationTemplate.DurationMins"/> or, if no template
+            exists, from <see cref="P:FSBS.Domain.Entities.SimulatorUnit.DefaultReconfigMins"/>.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationSlot.Bay">
+            <summary>Navigation to the simulator bay.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationSlot.PrecedingBooking">
+            <summary>Navigation to the booking that preceded this reconfiguration.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationSlot.FromConfiguration">
+            <summary>The configuration being transitioned from.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationSlot.ToConfiguration">
+            <summary>The configuration being transitioned to.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.ReconfigurationTemplate">
+            <summary>
+            Defines the turnaround duration required to switch a <see cref="P:FSBS.Domain.Entities.ReconfigurationTemplate.SimulatorUnit"/>
+            from one <see cref="T:FSBS.Domain.Entities.SimulatorConfiguration"/> to another. One template exists
+            per ordered config pair; the reverse direction requires its own template.
+            </summary>
+            <remarks>
+            A unique constraint on <c>(from_config_id, to_config_id)</c> and a CHECK
+            constraint ensuring <c>from_config_id != to_config_id</c> enforce integrity
+            at the database level. When no matching template exists for a transition the
+            system falls back to <see cref="P:FSBS.Domain.Entities.SimulatorUnit.DefaultReconfigMins"/>.
+            The resulting time block is written as a <see cref="T:FSBS.Domain.Entities.ReconfigurationSlot"/>
+            when a booking is confirmed.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationTemplate.SimulatorUnitId">
+            <summary>The simulator unit this template applies to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationTemplate.FromConfigId">
+            <summary>The configuration the unit is switching <em>away from</em>.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationTemplate.ToConfigId">
+            <summary>The configuration the unit is switching <em>to</em>.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationTemplate.DurationMins">
+            <summary>
+            How many minutes the reconfiguration takes. This is the duration of
+            the non-billable <see cref="T:FSBS.Domain.Entities.ReconfigurationSlot"/> inserted between
+            the two adjacent bookings.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationTemplate.SimulatorUnit">
+            <summary>Navigation to the owning simulator unit.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationTemplate.FromConfiguration">
+            <summary>The configuration being transitioned from.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReconfigurationTemplate.ToConfiguration">
+            <summary>The configuration being transitioned to.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.Report">
+            <summary>
+            A named management report definition. The report's query, filters, and
+            output format are described in <see cref="P:FSBS.Domain.Entities.Report.DefinitionJson"/> and executed
+            on demand by creating a <see cref="T:FSBS.Domain.Entities.ReportRun"/>.
+            </summary>
+            <remarks>
+            Reports are typically created and maintained by SystemAdmin or Management
+            users via the reporting configuration UI. Each execution produces a
+            <see cref="T:FSBS.Domain.Entities.ReportRun"/> that is processed asynchronously by the reporting
+            worker and stored as a file in S3 (<c>fsbs-documents</c> bucket), accessible
+            via a pre-signed URL.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Report.Name">
+            <summary>Human-readable report name displayed in the management dashboard.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Report.Description">
+            <summary>Optional description of the report's purpose and intended audience.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Report.DefinitionJson">
+            <summary>
+            JSON document describing the report's data source, filters, columns,
+            groupings, and output format. Stored as a <c>jsonb</c> column.
+            Interpreted by the reporting service when a run is triggered.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Report.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.Report.Runs">
+            <summary>All execution runs for this report.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.ReportRun">
+            <summary>
+            A single execution instance of a <see cref="P:FSBS.Domain.Entities.ReportRun.Report"/> definition.
+            Processing is asynchronous: the run is created in <c>Queued</c> state,
+            picked up by the reporting worker ECS task, and transitions through
+            <c>Running → Completed | Failed</c>.
+            </summary>
+            <remarks>
+            This entity does not extend <see cref="T:FSBS.Domain.Entities.AuditableEntity"/> because it has
+            no standard <c>CreatedBy</c>/<c>UpdatedBy</c> audit columns — only
+            <see cref="P:FSBS.Domain.Entities.ReportRun.TriggeredBy"/>, <see cref="P:FSBS.Domain.Entities.ReportRun.CreatedAt"/>, and <see cref="P:FSBS.Domain.Entities.ReportRun.UpdatedAt"/>
+            are stored. The EF configuration maps these explicitly.
+            On completion the output file is written to the <c>fsbs-documents</c> S3
+            bucket; the key is stored in <see cref="P:FSBS.Domain.Entities.ReportRun.OutputS3Key"/> and served to
+            authorised users exclusively via pre-signed URLs (never via CloudFront).
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReportRun.ReportId">
+            <summary>The report definition that was executed.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReportRun.TriggeredBy">
+            <summary><see cref="!:AppUser.Id"/> of the user who triggered the run.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReportRun.Status">
+            <summary>
+            Current processing state: <c>Queued → Running → Completed | Failed</c>.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReportRun.CreatedAt">
+            <summary>UTC timestamp at which the run record was created.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReportRun.UpdatedAt">
+            <summary>UTC timestamp of the most recent status transition.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReportRun.OutputS3Key">
+            <summary>
+            S3 object key within the <c>fsbs-documents</c> bucket for the generated
+            report file. Populated only when <see cref="P:FSBS.Domain.Entities.ReportRun.Status"/> is <c>Completed</c>.
+            Access is granted via a pre-signed URL — the bucket is never served
+            through CloudFront.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReportRun.ErrorMessage">
+            <summary>
+            Human-readable error message captured when <see cref="P:FSBS.Domain.Entities.ReportRun.Status"/> is
+            <c>Failed</c>. Displayed to the user who triggered the run.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ReportRun.Report">
+            <summary>Navigation to the report definition that was executed.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.ScheduleTemplate">
+            <summary>
+            A reusable scheduling blueprint associated with a specific
+            <see cref="T:FSBS.Domain.Entities.SimulatorConfiguration"/>. Templates define the standard
+            session patterns (e.g. recurring weekly blocks) that ScheduleAdmin can
+            apply to the calendar without building each booking from scratch.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ScheduleTemplate.ConfigurationId">
+            <summary>
+            The simulator configuration this template is designed for. Only bays
+            of the owning <see cref="T:FSBS.Domain.Entities.SimulatorUnit"/> running this configuration
+            are eligible when the template is applied.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ScheduleTemplate.Name">
+            <summary>Human-readable name displayed in the template picker (e.g. "Standard B737 Week").</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ScheduleTemplate.Description">
+            <summary>Optional description of intended usage or session pattern.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ScheduleTemplate.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.ScheduleTemplate.Configuration">
+            <summary>Navigation to the simulator configuration this template targets.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.SimulatorBay">
+            <summary>
+            A physical bay within a <see cref="P:FSBS.Domain.Entities.SimulatorBay.SimulatorUnit"/> where training sessions
+            take place. Each <see cref="T:FSBS.Domain.Entities.BookingSlot"/> and <see cref="T:FSBS.Domain.Entities.ReconfigurationSlot"/>
+            targets a specific bay, and the unique index on <c>(bay_id, start_at, end_at)</c>
+            prevents double-booking.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorBay.SimulatorUnitId">
+            <summary>The simulator unit this bay belongs to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorBay.Name">
+            <summary>
+            Short display name for the bay as shown on the scheduling calendar
+            (e.g. "Bay 1", "West Wing Bay").
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorBay.Status">
+            <summary>
+            Operational state of the bay. <c>Operational</c> bays are bookable;
+            <c>Maintenance</c> and <c>Decommissioned</c> bays are blocked from
+            new bookings and displayed as dark grey on the availability calendar.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorBay.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorBay.SimulatorUnit">
+            <summary>Navigation to the owning simulator unit.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorBay.BookingSlots">
+            <summary>All booking slots reserved in this bay.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorBay.ReconfigurationSlots">
+            <summary>
+            Non-billable reconfiguration buffer slots in this bay. Rendered as
+            grey-hatched on the availability calendar and cannot be selected by users.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.SimulatorConfiguration">
+            <summary>
+            Describes a specific hardware/software setup of a <see cref="P:FSBS.Domain.Entities.SimulatorConfiguration.SimulatorUnit"/>
+            for a particular aircraft type and cabin arrangement. Configurations drive
+            pricing, capacity limits, and reconfiguration scheduling.
+            </summary>
+            <remarks>
+            <para>
+            <b>Capacity hard caps</b> (enforced by both domain validators and PostgreSQL
+            CHECK constraints):
+            <list type="bullet">
+              <item>Flight Deck sessions: max 4 students</item>
+              <item>Cabin Crew sessions: max 10 students</item>
+            </list>
+            </para>
+            <para>
+            <b>Training types:</b> <see cref="P:FSBS.Domain.Entities.SimulatorConfiguration.SupportedTrainingTypes"/> is a PostgreSQL
+            <c>training_type[]</c> array column. A configuration may support one or both
+            training types; bookings are only valid for types present in this list.
+            </para>
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorConfiguration.SimulatorUnitId">
+            <summary>The simulator unit this configuration belongs to.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorConfiguration.AircraftType">
+            <summary>
+            ICAO or common designation of the aircraft type this configuration
+            simulates (e.g. "B737-800", "A320").
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorConfiguration.ConfigMode">
+            <summary>
+            Physical layout of the simulated cabin. <c>CockpitOnly</c> means the
+            simulator reproduces only the flight deck; <c>CockpitAndCabin</c> adds
+            a full cabin mock-up for combined flight-deck and cabin-crew training.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorConfiguration.SupportedTrainingTypes">
+            <summary>
+            Training types this configuration can host. Stored as a native PostgreSQL
+            <c>training_type[]</c> array. An instructor's
+            <see cref="P:FSBS.Domain.Entities.Instructor.TrainingTypeRatings"/> must intersect this list
+            before the instructor can be assigned to a booking on this configuration.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorConfiguration.MaxCapacityFlightDeck">
+            <summary>
+            Maximum number of Flight Deck students per booking. Hard cap: 4.
+            Enforced by <c>ck_simulator_config_fd_capacity</c> CHECK constraint.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorConfiguration.MaxCapacityCabinCrew">
+            <summary>
+            Maximum number of Cabin Crew students per booking. Hard cap: 10.
+            Enforced by <c>ck_simulator_config_cc_capacity</c> CHECK constraint.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorConfiguration.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorConfiguration.SimulatorUnit">
+            <summary>Navigation to the owning simulator unit.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorConfiguration.ScheduleTemplates">
+            <summary>Schedule templates that use this configuration.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorConfiguration.PricingPolicies">
+            <summary>Pricing policies that apply to bookings on this configuration.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.SimulatorUnit">
+            <summary>
+            The physical flight simulator device (e.g. a Full-Flight Simulator or
+            Flight Training Device). A unit contains one or more <see cref="T:FSBS.Domain.Entities.SimulatorBay"/>s
+            and can operate under different <see cref="T:FSBS.Domain.Entities.SimulatorConfiguration"/>s.
+            </summary>
+            <remarks>
+            Reconfiguring a unit from one configuration to another requires a turnaround
+            window. The duration is sourced first from a matching
+            <see cref="T:FSBS.Domain.Entities.ReconfigurationTemplate"/>; when no template exists the fallback
+            is <see cref="P:FSBS.Domain.Entities.SimulatorUnit.DefaultReconfigMins"/>.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorUnit.Name">
+            <summary>Human-readable name displayed in the scheduling calendar (e.g. "FFS-1").</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorUnit.Location">
+            <summary>Optional physical location description (e.g. "Bay A, Building 3").</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorUnit.ActiveConfigurationId">
+            <summary>
+            The <see cref="T:FSBS.Domain.Entities.SimulatorConfiguration"/> the unit is currently set up for.
+            Determines which training types and pricing tiers apply to new bookings.
+            Changes when a <see cref="T:FSBS.Domain.Entities.ReconfigurationSlot"/> completes.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorUnit.DefaultReconfigMins">
+            <summary>
+            Fallback reconfiguration turnaround time in minutes used when no
+            <see cref="T:FSBS.Domain.Entities.ReconfigurationTemplate"/> exists for a specific config-to-config pair.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorUnit.IsDeleted">
+            <inheritdoc/>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorUnit.ActiveConfiguration">
+            <summary>Navigation to the currently active configuration.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorUnit.Configurations">
+            <summary>All configurations (past and present) that have been defined for this unit.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorUnit.Bays">
+            <summary>The physical bays that make up this simulator unit.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.SimulatorUnit.MaintenanceWindows">
+            <summary>Scheduled maintenance periods during which this unit is unavailable.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Entities.UserProfile">
+            <summary>
+            Mutable personal details for an <see cref="T:FSBS.Domain.Entities.AppUser"/>. Stored in a
+            separate table that shares the same primary key column (<c>user_id</c>)
+            as <c>app_users</c>, making this a strict 1-to-1 optional extension row.
+            </summary>
+            <remarks>
+            The shared PK means no separate FK column exists — the join is always
+            <c>user_profiles.user_id = app_users.user_id</c>. EF Core models this
+            via <c>HasForeignKey&lt;UserProfile&gt;(p =&gt; p.Id)</c> in
+            <c>AppUserConfiguration</c>.
+            </remarks>
+        </member>
+        <member name="P:FSBS.Domain.Entities.UserProfile.FirstName">
+            <summary>Legal first name.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.UserProfile.LastName">
+            <summary>Legal last name / surname.</summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.UserProfile.PhoneNumber">
+            <summary>
+            Optional contact phone number. Used for booking reminder SMS
+            notifications when the user has opted in.
+            </summary>
+        </member>
+        <member name="P:FSBS.Domain.Entities.UserProfile.User">
+            <summary>The <see cref="T:FSBS.Domain.Entities.AppUser"/> this profile belongs to.</summary>
+        </member>
+        <member name="T:FSBS.Domain.Events.BookingApprovedEvent">
+            <summary>
+            Raised when a SalesStaff or SystemAdmin approves a PendingApproval booking.
+            Triggers the approval email to the InternalStudent.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Events.BookingApprovedEvent.#ctor(System.Guid,System.Guid,System.Guid)">
+            <summary>
+            Raised when a SalesStaff or SystemAdmin approves a PendingApproval booking.
+            Triggers the approval email to the InternalStudent.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Events.BookingCancelledEvent">
+            <summary>
+            Raised when a booking is cancelled, either by the customer or by an admin.
+            Triggers slot release, orphaned reconfiguration slot cleanup, and cancellation
+            notification.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Events.BookingCancelledEvent.#ctor(System.Guid,System.Guid,System.Guid,System.Boolean,System.String)">
+            <summary>
+            Raised when a booking is cancelled, either by the customer or by an admin.
+            Triggers slot release, orphaned reconfiguration slot cleanup, and cancellation
+            notification.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Events.BookingConfirmedEvent">
+            <summary>
+            Raised when a booking transitions to Confirmed and the price is locked.
+            Triggers the confirmation email and, for corporate bookings, an account
+            balance check.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Events.BookingConfirmedEvent.#ctor(System.Guid,System.Guid,System.Nullable{System.Guid},System.Decimal,System.Decimal,System.Decimal)">
+            <summary>
+            Raised when a booking transitions to Confirmed and the price is locked.
+            Triggers the confirmation email and, for corporate bookings, an account
+            balance check.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Events.BookingRejectedEvent">
+            <summary>
+            Raised when a SalesStaff or SystemAdmin rejects a PendingApproval booking.
+            Triggers the rejection email (including reason) and slot release.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Events.BookingRejectedEvent.#ctor(System.Guid,System.Guid,System.Guid,System.String)">
+            <summary>
+            Raised when a SalesStaff or SystemAdmin rejects a PendingApproval booking.
+            Triggers the rejection email (including reason) and slot release.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Events.InvitationClaimedEvent">
+            <summary>
+            Raised when a corporate invitation is claimed during registration.
+            Triggers the Post Confirmation Lambda flow to assign the user's Cognito group.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Events.InvitationClaimedEvent.#ctor(System.Guid,System.Guid,System.Guid,FSBS.Domain.Enums.InviteeRole)">
+            <summary>
+            Raised when a corporate invitation is claimed during registration.
+            Triggers the Post Confirmation Lambda flow to assign the user's Cognito group.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Events.SlotBookedEvent">
+            <summary>
+            Raised when a booking is created and a slot is reserved (either Provisional
+            or PendingApproval). Triggers availability cache invalidation and real-time
+            calendar delta push via SignalR.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Events.SlotBookedEvent.#ctor(System.Guid,System.Guid,FSBS.Domain.Enums.AppRole,FSBS.Domain.Enums.TrainingType,System.Guid,System.Int32,System.Nullable{System.Guid},System.DateTimeOffset,System.DateTimeOffset)">
+            <summary>
+            Raised when a booking is created and a slot is reserved (either Provisional
+            or PendingApproval). Triggers availability cache invalidation and real-time
+            calendar delta push via SignalR.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Exceptions.BookingCapacityExceededException">
+            <summary>
+            Thrown when the requested student count exceeds the hard capacity cap for
+            the booking's training type (4 for FlightDeck, 10 for CabinCrew).
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Exceptions.BookingCapacityExceededException.#ctor(FSBS.Domain.Enums.TrainingType,System.Int32,System.Int32)">
+            <summary>
+            Thrown when the requested student count exceeds the hard capacity cap for
+            the booking's training type (4 for FlightDeck, 10 for CabinCrew).
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Exceptions.BookingConflictException">
+            <summary>
+            Thrown when a requested slot overlaps an existing booking or reconfiguration
+            window on the same bay.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Exceptions.BookingConflictException.#ctor(System.Guid,System.DateTimeOffset,System.DateTimeOffset)">
+            <summary>
+            Thrown when a requested slot overlaps an existing booking or reconfiguration
+            window on the same bay.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Exceptions.InstructorRatingMismatchException">
+            <summary>
+            Thrown when an instructor is assigned to a booking whose TrainingType is not
+            in the instructor's TrainingTypeRatings list.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Exceptions.InstructorRatingMismatchException.#ctor(System.Guid,FSBS.Domain.Enums.TrainingType)">
+            <summary>
+            Thrown when an instructor is assigned to a booking whose TrainingType is not
+            in the instructor's TrainingTypeRatings list.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Exceptions.InvalidBookingStateTransitionException">
+            <summary>
+            Thrown when a command attempts a booking state transition that is not
+            permitted by the state machine (e.g. approving a Confirmed booking).
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Exceptions.InvalidBookingStateTransitionException.#ctor(System.Guid,FSBS.Domain.Enums.BookingStatus,FSBS.Domain.Enums.BookingStatus)">
+            <summary>
+            Thrown when a command attempts a booking state transition that is not
+            permitted by the state machine (e.g. approving a Confirmed booking).
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Interfaces.IBookingRepository">
+            <summary>
+            Write-side repository for the Booking aggregate. Used by command handlers.
+            Query-side operations (DTOs, pagination) live in the Infrastructure read model.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IBookingRepository.FindByIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns the booking with its Slots collection loaded.</summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IBookingRepository.FindByIdempotencyKeyAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Finds a booking by its idempotency key. Returns null if no booking has
+            been created with that key, allowing the handler to safely create one.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IBookingRepository.FindConflictingSlotsAsync(System.Guid,System.DateTimeOffset,System.DateTimeOffset,System.Threading.CancellationToken)">
+            <summary>
+            Returns all non-cancelled booking slots that overlap the given range on
+            the specified bay. Used by the booking handler to detect conflicts before
+            creating a new slot.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IBookingRepository.FindNextSlotOnBayAsync(System.Guid,System.DateTimeOffset,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>
+            Returns the earliest non-cancelled booking slot on the bay that starts at
+            or after <paramref name="afterTime"/>, with its parent Booking loaded.
+            <paramref name="excludeBookingId"/> is omitted from results so that a
+            booking being cancelled within the same transaction is not returned.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IBookingRepository.FindPrecedingSlotOnBayAsync(System.Guid,System.DateTimeOffset,System.Nullable{System.Guid},System.Threading.CancellationToken)">
+            <summary>
+            Returns the latest non-cancelled booking slot on the bay whose EndAt is
+            at or before <paramref name="beforeTime"/>, with its parent Booking loaded.
+            <paramref name="excludeBookingId"/> is omitted from results for the same
+            reason as <see cref="M:FSBS.Domain.Interfaces.IBookingRepository.FindNextSlotOnBayAsync(System.Guid,System.DateTimeOffset,System.Nullable{System.Guid},System.Threading.CancellationToken)"/>.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Interfaces.IDomainEventDispatcher">
+            <summary>
+            Dispatches domain events collected on aggregate roots after the database
+            transaction commits. Implemented in the Application layer using MediatR.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IInstructorRepository.ListRatedForAsync(FSBS.Domain.Enums.TrainingType,System.Threading.CancellationToken)">
+            <summary>
+            Returns instructors whose <c>TrainingTypeRatings</c> include the given
+            training type, for use in the booking wizard instructor selection step.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Interfaces.IInvitationRepository">
+            <summary>
+            Write-side repository for the Invitation aggregate. Used by command handlers.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IInvitationRepository.FindPendingByTokenHashAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Finds a Pending, non-expired invitation by its SHA-256 token hash.
+            Returns null if no matching invitation exists or if it has expired/been claimed.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IOrganisationRepository.FindWithAccountAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Returns the organisation together with its account. Used when
+            evaluating corporate discount eligibility and credit limits.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IPricingPolicyRepository.FindApplicableAsync(System.Guid,FSBS.Domain.Enums.TrainingType,FSBS.Domain.Enums.CustomerClass,System.DateTimeOffset,System.Threading.CancellationToken)">
+            <summary>
+            Returns the pricing policy effective on the given date for the
+            combination of configuration, training type, and customer class.
+            Returns null if no policy is defined (configuration error).
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IPricingPolicyRepository.GetDiscountRulesAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Returns all active discount rules attached to the given policy,
+            ordered by priority descending (highest priority first).
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IReconfigurationSlotRepository.FindByPrecedingBookingAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Returns the reconfiguration slot whose <c>PrecedingBookingId</c> matches
+            the given booking. Returns null if the booking had no reconfig slot attached.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IReconfigurationSlotRepository.HasOverlapAsync(System.Guid,System.DateTimeOffset,System.DateTimeOffset,System.Threading.CancellationToken)">
+            <summary>
+            Returns true if any reconfiguration slot on the bay overlaps the given
+            half-open interval [start, end). Used to prevent bookings from being placed
+            inside an existing reconfiguration window.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IReconfigurationSlotRepository.Remove(FSBS.Domain.Entities.ReconfigurationSlot)">
+            <summary>
+            Marks the slot for hard deletion. Reconfig slots are never soft-deleted;
+            the change is flushed when IUnitOfWork.SaveChangesAsync is called.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IReconfigurationTemplateRepository.FindAsync(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Returns the reconfiguration template for the given configuration pair,
+            or null if no explicit template exists (caller falls back to
+            <see cref="P:FSBS.Domain.Entities.SimulatorUnit.DefaultReconfigMins"/>).
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.ISimulatorRepository.FindByIdAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>Returns the unit with its Bays and ActiveConfiguration loaded.</summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.ISimulatorRepository.ListConfigurationsForTrainingTypeAsync(FSBS.Domain.Enums.TrainingType,System.Threading.CancellationToken)">
+            <summary>
+            Returns all simulator configurations that support the given training type,
+            ordered by aircraft type. Used to populate the booking wizard step.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.Interfaces.IUnitOfWork">
+            <summary>
+            Abstracts the database commit operation so that the TransactionBehaviour
+            can flush all pending changes without depending on EF Core directly.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.Interfaces.IUnitOfWork.CollectAndClearDomainEvents">
+            <summary>
+            Collects all pending domain events from tracked aggregate roots and
+            clears them so they cannot be dispatched twice. Call before
+            <see cref="M:FSBS.Domain.Interfaces.IUnitOfWork.SaveChangesAsync(System.Threading.CancellationToken)"/> so events are captured even if the save throws.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.ValueObjects.DateTimeRange">
+            <summary>
+            A half-open interval [Start, End) representing a contiguous block of time.
+            Used for booking slots, reconfiguration windows, and maintenance windows.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.ValueObjects.DateTimeRange.Overlaps(FSBS.Domain.ValueObjects.DateTimeRange)">
+            <summary>Returns true if this range shares any time with <paramref name="other"/>.</summary>
+        </member>
+        <member name="M:FSBS.Domain.ValueObjects.DateTimeRange.Contains(System.DateTimeOffset)">
+            <summary>Returns true if <paramref name="point"/> falls within this range.</summary>
+        </member>
+        <member name="M:FSBS.Domain.ValueObjects.DateTimeRange.Contains(FSBS.Domain.ValueObjects.DateTimeRange)">
+            <summary>Returns true if <paramref name="other"/> falls entirely within this range.</summary>
+        </member>
+        <member name="T:FSBS.Domain.ValueObjects.IdempotencyKey">
+            <summary>
+            A client-supplied key that guarantees exactly-once booking creation.
+            Sourced from the <c>Idempotency-Key</c> HTTP header and stored as a unique
+            index on <c>bookings.idempotency_key</c>.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.ValueObjects.IdempotencyKey.#ctor(System.Guid)">
+            <summary>
+            A client-supplied key that guarantees exactly-once booking creation.
+            Sourced from the <c>Idempotency-Key</c> HTTP header and stored as a unique
+            index on <c>bookings.idempotency_key</c>.
+            </summary>
+        </member>
+        <member name="T:FSBS.Domain.ValueObjects.Money">
+            <summary>
+            An amount of money in a specific currency. Immutable.
+            All monetary values in FSBS are GBP; the currency field exists to make
+            that assumption explicit and catchable if it ever changes.
+            </summary>
+        </member>
+        <member name="M:FSBS.Domain.ValueObjects.Money.#ctor(System.Decimal,System.String)">
+            <summary>
+            An amount of money in a specific currency. Immutable.
+            All monetary values in FSBS are GBP; the currency field exists to make
+            that assumption explicit and catchable if it ever changes.
+            </summary>
+        </member>
+    </members>
+</doc>

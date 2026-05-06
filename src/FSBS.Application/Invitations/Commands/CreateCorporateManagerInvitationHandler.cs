@@ -14,6 +14,7 @@ public sealed class CreateCorporateManagerInvitationHandler(
 {
     private const int ExpiryDays = 7;
 
+    /// <inheritdoc/>
     public async Task<CreateCorporateManagerInvitationResult> Handle(
         CreateCorporateManagerInvitationCommand command,
         CancellationToken ct)

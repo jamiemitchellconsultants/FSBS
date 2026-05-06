@@ -27,6 +27,7 @@ public sealed class CancelBookingHandler(
             BookingStatus.Expired,
         };
 
+    /// <inheritdoc/>
     public async Task<CancelBookingResult> Handle(
         CancelBookingCommand command, CancellationToken ct)
     {

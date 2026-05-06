@@ -16,6 +16,7 @@ public sealed class InviteCorporateStudentHandler(
 {
     private const int ExpiryDays = 7;
 
+    /// <inheritdoc/>
     public async Task<CreateCorporateManagerInvitationResult> Handle(
         InviteCorporateStudentCommand command,
         CancellationToken ct)
@@ -32,6 +33,7 @@ public sealed class InviteCorporateStudentHandler(
             throw new DuplicateInvitationException(command.InviteeEmail, orgId);
 
         var rawTokenBytes = RandomNumberGenerator.GetBytes(32);
+        var rawToken      = Convert.ToHexString(rawTokenBytes).ToLowerInvariant();
         var tokenHash     = Convert.ToHexString(SHA256.HashData(rawTokenBytes)).ToLowerInvariant();
 
         var invitation = new Invitation

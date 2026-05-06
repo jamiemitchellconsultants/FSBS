@@ -3,8 +3,17 @@ using FSBS.Domain.Enums;
 
 namespace FSBS.Domain.Interfaces;
 
+/// <summary>
+/// Read/write repository for instructor records. Used by booking command
+/// handlers to validate instructor rating eligibility.
+/// </summary>
 public interface IInstructorRepository
 {
+    /// <summary>
+    /// Returns the instructor record for the given application user ID with the
+    /// <c>User</c> navigation property loaded, or null if the user is not registered
+    /// as an instructor.
+    /// </summary>
     Task<Instructor?> FindByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>

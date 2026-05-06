@@ -8,6 +8,10 @@ namespace FSBS.Domain.Interfaces;
 /// </summary>
 public interface IUnitOfWork
 {
+    /// <summary>
+    /// Flushes all pending EF Core change-tracker mutations to the database in a
+    /// single round-trip. Returns the number of rows affected.
+    /// </summary>
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 
     /// <summary>

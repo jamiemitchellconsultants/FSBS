@@ -9,6 +9,7 @@ namespace FSBS.Application.Bookings.Queries;
 public sealed class GetBookingDetailHandler(IBookingRepository bookings, ICurrentUser currentUser)
     : IRequestHandler<GetBookingDetailQuery, BookingDetailDto>
 {
+    /// <inheritdoc/>
     public async Task<BookingDetailDto> Handle(GetBookingDetailQuery request, CancellationToken ct)
     {
         var dto = await bookings.GetMyBookingDetailAsync(request.BookingId, currentUser.UserId, ct);

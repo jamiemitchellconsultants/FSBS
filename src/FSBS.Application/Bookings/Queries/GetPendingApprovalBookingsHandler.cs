@@ -7,6 +7,7 @@ namespace FSBS.Application.Bookings.Queries;
 public sealed class GetPendingApprovalBookingsHandler(IBookingRepository bookings)
     : IRequestHandler<GetPendingApprovalBookingsQuery, IReadOnlyList<BookingSummaryDto>>
 {
+    /// <inheritdoc/>
     public Task<IReadOnlyList<BookingSummaryDto>> Handle(
         GetPendingApprovalBookingsQuery request, CancellationToken ct) =>
         bookings.GetPendingApprovalAsync(ct);

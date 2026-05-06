@@ -19,6 +19,7 @@ public sealed class ApproveBookingHandler(
     IPricingService pricingService)
     : IRequestHandler<ApproveBookingCommand, ApproveBookingResult>
 {
+    /// <inheritdoc/>
     public async Task<ApproveBookingResult> Handle(
         ApproveBookingCommand command, CancellationToken ct)
     {

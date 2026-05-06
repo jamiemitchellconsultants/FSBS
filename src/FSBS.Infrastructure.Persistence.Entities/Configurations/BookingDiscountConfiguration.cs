@@ -17,8 +17,16 @@ public class BookingDiscountConfiguration : IEntityTypeConfiguration<BookingDisc
         builder.Property(e => e.DiscountAmountGbp).HasPrecision(12, 2).IsRequired();
         builder.Property(e => e.CreatedAt).IsRequired();
 
+        // booking_discounts is an immutable audit snapshot written once at
+        // confirmation time. All properties are locked after the initial insert.
+        builder.Property(e => e.DiscountType)
+            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
+        builder.Property(e => e.DiscountPct)
+            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
+        builder.Property(e => e.DiscountAmountGbp)
+            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         builder.Property(e => e.CreatedAt)
-            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
+            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
 
         builder.HasOne(e => e.DiscountRule)
             .WithMany()

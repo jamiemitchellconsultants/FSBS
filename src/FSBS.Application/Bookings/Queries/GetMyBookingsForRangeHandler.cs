@@ -8,6 +8,7 @@ namespace FSBS.Application.Bookings.Queries;
 public sealed class GetMyBookingsForRangeHandler(IBookingRepository bookings, ICurrentUser currentUser)
     : IRequestHandler<GetMyBookingsForRangeQuery, IReadOnlyList<BookingSummaryDto>>
 {
+    /// <inheritdoc/>
     public Task<IReadOnlyList<BookingSummaryDto>> Handle(GetMyBookingsForRangeQuery request, CancellationToken ct) =>
         bookings.GetMyBookingsForRangeAsync(currentUser.UserId, request.From, request.To, ct);
 }

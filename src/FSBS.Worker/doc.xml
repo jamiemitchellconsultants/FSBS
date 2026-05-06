@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FSBS.Worker</name>
+    </assembly>
+    <members>
+        <member name="T:FSBS.Worker.Email.SesTemplateSeeder">
+            <summary>
+            Ensures all required SES email templates exist in the AWS account.
+            Called once at worker startup via <see cref="T:Microsoft.Extensions.Hosting.IHostedService"/>.
+            If a template already exists it is updated (upsert behaviour).
+            </summary>
+        </member>
+        <member name="M:FSBS.Worker.Email.SesTemplateSeeder.#ctor(Amazon.SimpleEmail.IAmazonSimpleEmailService,Microsoft.Extensions.Logging.ILogger{FSBS.Worker.Email.SesTemplateSeeder})">
+            <summary>
+            Ensures all required SES email templates exist in the AWS account.
+            Called once at worker startup via <see cref="T:Microsoft.Extensions.Hosting.IHostedService"/>.
+            If a template already exists it is updated (upsert behaviour).
+            </summary>
+        </member>
+        <member name="T:FSBS.Worker.Messaging.SqsConsumerService">
+            <summary>
+            Long-running hosted service that polls the SQS booking events queue,
+            deserialises each message envelope, and dispatches to the appropriate
+            <see cref="T:FSBS.Worker.Notifications.INotificationHandler`1"/> based on the <c>MessageType</c>
+            message attribute written by <c>SqsPublisher</c>.
+            </summary>
+        </member>
+        <member name="M:FSBS.Worker.Messaging.SqsConsumerService.#ctor(Amazon.SQS.IAmazonSQS,Microsoft.Extensions.Options.IOptions{FSBS.Worker.WorkerSettings},Microsoft.Extensions.DependencyInjection.IServiceScopeFactory,Microsoft.Extensions.Logging.ILogger{FSBS.Worker.Messaging.SqsConsumerService})">
+            <summary>
+            Long-running hosted service that polls the SQS booking events queue,
+            deserialises each message envelope, and dispatches to the appropriate
+            <see cref="T:FSBS.Worker.Notifications.INotificationHandler`1"/> based on the <c>MessageType</c>
+            message attribute written by <c>SqsPublisher</c>.
+            </summary>
+        </member>
+        <member name="T:FSBS.Worker.Notifications.Handlers.BookingApprovedHandler">
+            <summary>
+            Emails the InternalStudent when their booking has been approved by SalesStaff.
+            </summary>
+        </member>
+        <member name="M:FSBS.Worker.Notifications.Handlers.BookingApprovedHandler.#ctor(FSBS.Application.Common.Interfaces.ISesEmailService,FSBS.Worker.Notifications.IUserLookupService,Microsoft.Extensions.Logging.ILogger{FSBS.Worker.Notifications.Handlers.BookingApprovedHandler})">
+            <summary>
+            Emails the InternalStudent when their booking has been approved by SalesStaff.
+            </summary>
+        </member>
+        <member name="T:FSBS.Worker.Notifications.Handlers.BookingCancelledHandler">
+            <summary>
+            Emails the booker (and optionally the admin) when a booking is cancelled.
+            </summary>
+        </member>
+        <member name="M:FSBS.Worker.Notifications.Handlers.BookingCancelledHandler.#ctor(FSBS.Application.Common.Interfaces.ISesEmailService,FSBS.Worker.Notifications.IUserLookupService,Microsoft.Extensions.Logging.ILogger{FSBS.Worker.Notifications.Handlers.BookingCancelledHandler})">
+            <summary>
+            Emails the booker (and optionally the admin) when a booking is cancelled.
+            </summary>
+        </member>
+        <member name="T:FSBS.Worker.Notifications.Handlers.BookingConfirmedHandler">
+            <summary>
+            Sends a booking confirmation email to the booker when a booking transitions
+            to Confirmed and the price is locked.
+            </summary>
+        </member>
+        <member name="M:FSBS.Worker.Notifications.Handlers.BookingConfirmedHandler.#ctor(FSBS.Application.Common.Interfaces.ISesEmailService,FSBS.Worker.Notifications.IUserLookupService,Microsoft.Extensions.Logging.ILogger{FSBS.Worker.Notifications.Handlers.BookingConfirmedHandler})">
+            <summary>
+            Sends a booking confirmation email to the booker when a booking transitions
+            to Confirmed and the price is locked.
+            </summary>
+        </member>
+        <member name="T:FSBS.Worker.Notifications.Handlers.BookingPendingApprovalHandler">
+            <summary>
+            Notifies SalesStaff / SystemAdmin that an InternalStudent booking is
+            awaiting approval. Triggered by <see cref="T:FSBS.Domain.Events.SlotBookedEvent"/> when the
+            booker role is InternalStudent (booking enters PendingApproval state).
+            </summary>
+        </member>
+        <member name="M:FSBS.Worker.Notifications.Handlers.BookingPendingApprovalHandler.#ctor(FSBS.Application.Common.Interfaces.ISesEmailService,FSBS.Worker.Notifications.IUserLookupService,Microsoft.Extensions.Options.IOptions{FSBS.Worker.WorkerSettings},Microsoft.Extensions.Logging.ILogger{FSBS.Worker.Notifications.Handlers.BookingPendingApprovalHandler})">
+            <summary>
+            Notifies SalesStaff / SystemAdmin that an InternalStudent booking is
+            awaiting approval. Triggered by <see cref="T:FSBS.Domain.Events.SlotBookedEvent"/> when the
+            booker role is InternalStudent (booking enters PendingApproval state).
+            </summary>
+        </member>
+        <member name="T:FSBS.Worker.Notifications.Handlers.BookingRejectedHandler">
+            <summary>
+            Emails the InternalStudent when their booking has been rejected, including
+            the mandatory rejection reason.
+            </summary>
+        </member>
+        <member name="M:FSBS.Worker.Notifications.Handlers.BookingRejectedHandler.#ctor(FSBS.Application.Common.Interfaces.ISesEmailService,FSBS.Worker.Notifications.IUserLookupService,Microsoft.Extensions.Logging.ILogger{FSBS.Worker.Notifications.Handlers.BookingRejectedHandler})">
+            <summary>
+            Emails the InternalStudent when their booking has been rejected, including
+            the mandatory rejection reason.
+            </summary>
+        </member>
+        <member name="T:FSBS.Worker.Notifications.Handlers.InvitationIssuedHandler">
+            <summary>
+            Emails the invitee when a corporate invitation has been issued.
+            The raw token is NOT available here (never stored); the email body
+            is generated by the API at invitation creation time and the token
+            is passed directly to SES via the <c>InvitationIssued</c> template.
+            This handler fires on <see cref="T:FSBS.Domain.Events.InvitationClaimedEvent"/> to send
+            a welcome / confirmation email after the invitee completes registration.
+            </summary>
+        </member>
+        <member name="M:FSBS.Worker.Notifications.Handlers.InvitationIssuedHandler.#ctor(FSBS.Application.Common.Interfaces.ISesEmailService,FSBS.Worker.Notifications.IUserLookupService,Microsoft.Extensions.Logging.ILogger{FSBS.Worker.Notifications.Handlers.InvitationIssuedHandler})">
+            <summary>
+            Emails the invitee when a corporate invitation has been issued.
+            The raw token is NOT available here (never stored); the email body
+            is generated by the API at invitation creation time and the token
+            is passed directly to SES via the <c>InvitationIssued</c> template.
+            This handler fires on <see cref="T:FSBS.Domain.Events.InvitationClaimedEvent"/> to send
+            a welcome / confirmation email after the invitee completes registration.
+            </summary>
+        </member>
+        <member name="T:FSBS.Worker.Notifications.IMessageDispatcher">
+            <summary>
+            Resolves the correct <see cref="T:FSBS.Worker.Notifications.INotificationHandler`1"/> for a given
+            SQS <c>MessageType</c> attribute value and invokes it.
+            </summary>
+        </member>
+        <member name="T:FSBS.Worker.Notifications.INotificationHandler`1">
+            <summary>
+            Handles a specific notification event type deserialized from an SQS message.
+            </summary>
+        </member>
+        <member name="T:FSBS.Worker.Notifications.IUserLookupService">
+            <summary>
+            Lightweight read-only service used by notification handlers to resolve
+            user contact details (email, display name) from a user ID.
+            </summary>
+        </member>
+        <member name="M:FSBS.Worker.Notifications.IUserLookupService.GetContactAsync(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Returns the email address and display name for the given user, or
+            <c>null</c> if the user does not exist.
+            </summary>
+        </member>
+        <member name="T:FSBS.Worker.Notifications.UserContact">
+            <summary>Email address and display name for a user.</summary>
+        </member>
+        <member name="M:FSBS.Worker.Notifications.UserContact.#ctor(System.String,System.String)">
+            <summary>Email address and display name for a user.</summary>
+        </member>
+        <member name="T:FSBS.Worker.Notifications.MessageDispatcher">
+            <summary>
+            Routes an SQS message to the correct typed <see cref="T:FSBS.Worker.Notifications.INotificationHandler`1"/>
+            based on the <c>MessageType</c> attribute set by <c>SqsPublisher</c>.
+            </summary>
+        </member>
+        <member name="M:FSBS.Worker.Notifications.MessageDispatcher.#ctor(System.IServiceProvider,Microsoft.Extensions.Logging.ILogger{FSBS.Worker.Notifications.MessageDispatcher})">
+            <summary>
+            Routes an SQS message to the correct typed <see cref="T:FSBS.Worker.Notifications.INotificationHandler`1"/>
+            based on the <c>MessageType</c> attribute set by <c>SqsPublisher</c>.
+            </summary>
+        </member>
+        <member name="T:FSBS.Worker.Notifications.UserLookupService">
+            <summary>
+            Dapper-based implementation of <see cref="T:FSBS.Worker.Notifications.IUserLookupService"/>.
+            Executes a single lightweight query against <c>fsbs.app_users</c> +
+            <c>fsbs.user_profiles</c> to resolve contact details for notification dispatch.
+            </summary>
+        </member>
+        <member name="M:FSBS.Worker.Notifications.UserLookupService.#ctor(System.Data.IDbConnection)">
+            <summary>
+            Dapper-based implementation of <see cref="T:FSBS.Worker.Notifications.IUserLookupService"/>.
+            Executes a single lightweight query against <c>fsbs.app_users</c> +
+            <c>fsbs.user_profiles</c> to resolve contact details for notification dispatch.
+            </summary>
+        </member>
+        <member name="T:FSBS.Worker.WorkerSettings">
+            <summary>
+            Configuration settings for the FSBS notification worker.
+            Bound from the "Worker" section of appsettings.json / environment variables.
+            </summary>
+        </member>
+        <member name="P:FSBS.Worker.WorkerSettings.BookingEventsQueueUrl">
+            <summary>URL of the SQS queue that receives booking domain events.</summary>
+        </member>
+        <member name="P:FSBS.Worker.WorkerSettings.SalesStaffEmail">
+            <summary>
+            SalesStaff distribution email address used for PendingApproval alerts.
+            Defaults to a placeholder; override via environment variable in ECS.
+            </summary>
+        </member>
+    </members>
+</doc>

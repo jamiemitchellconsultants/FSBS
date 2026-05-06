@@ -11,6 +11,7 @@ namespace FSBS.Application.Common.Services;
 /// </summary>
 public sealed class MediatRDomainEventDispatcher(IPublisher publisher) : IDomainEventDispatcher
 {
+    /// <inheritdoc/>
     public async Task DispatchAsync(IEnumerable<IDomainEvent> events, CancellationToken ct = default)
     {
         foreach (var @event in events)

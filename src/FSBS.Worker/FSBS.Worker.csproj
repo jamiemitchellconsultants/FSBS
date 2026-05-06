@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-FSBS.Worker-880c72ba-1f8c-4962-b20e-47707db191a3</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="Npgsql" Version="9.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FSBS.Application\FSBS.Application.csproj" />
+    <ProjectReference Include="..\FSBS.Infrastructure\FSBS.Infrastructure.csproj" />
+    <ProjectReference Include="..\FSBS.Domain\FSBS.Domain.csproj" />
+  </ItemGroup>
+</Project>

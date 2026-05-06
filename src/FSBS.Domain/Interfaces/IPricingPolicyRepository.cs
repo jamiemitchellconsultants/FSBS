@@ -3,6 +3,10 @@ using FSBS.Domain.Enums;
 
 namespace FSBS.Domain.Interfaces;
 
+/// <summary>
+/// Read-side repository for pricing policies and discount rules.
+/// Used exclusively by <c>PricingService</c> at booking-confirmation time.
+/// </summary>
 public interface IPricingPolicyRepository
 {
     /// <summary>

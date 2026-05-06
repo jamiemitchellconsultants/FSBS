@@ -6,6 +6,7 @@ namespace FSBS.Application.Organisations.Queries;
 public sealed class ListOrganisationsHandler(IOrganisationRepository organisations)
     : IRequestHandler<ListOrganisationsQuery, IReadOnlyList<OrganisationSummary>>
 {
+    /// <inheritdoc/>
     public Task<IReadOnlyList<OrganisationSummary>> Handle(
         ListOrganisationsQuery request,
         CancellationToken ct) =>

@@ -9,6 +9,7 @@ public sealed class ValidateInvitationTokenHandler(IInvitationRepository invitat
 {
     private static readonly ValidateInvitationTokenResult Invalid = new(false, null, null, null);
 
+    /// <inheritdoc/>
     public async Task<ValidateInvitationTokenResult> Handle(
         ValidateInvitationTokenQuery request,
         CancellationToken ct)
@@ -27,6 +28,12 @@ public sealed class ValidateInvitationTokenHandler(IInvitationRepository invitat
             invitation.InviteeRole.ToString());
     }
 
+    /// <summary>
+    /// Attempts to decode <paramref name="rawToken"/> as a 64-character hex string
+    /// and compute its SHA-256 hash. Returns <c>false</c> and leaves
+    /// <paramref name="tokenHash"/> empty when the input is not a valid 32-byte
+    /// hex-encoded token.
+    /// </summary>
     internal static bool TryHashToken(string rawToken, out string tokenHash)
     {
         tokenHash = string.Empty;
