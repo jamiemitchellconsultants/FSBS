@@ -15,7 +15,7 @@ public class PreSignUpFunction : Function
     {
         Runtime = Runtime.DOTNET_8,
         Handler = "FSBS.Functions::FSBS.Functions.PreSignUp.Function::FunctionHandler",
-        Code = Code.FromAsset("src/FSBS.Functions/PreSignUp/publish"),
+        Code = FunctionsAsset.Code,
         Timeout = Duration.Seconds(10),
         Description = "Cognito Pre Sign-up: validates invitation token hash"
     })

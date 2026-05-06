@@ -1,0 +1,7 @@
+{
+  "app": "dotnet run --project FSBS.Cdk.csproj",
+  "context": {
+    "@aws-cdk/aws-cloudfront-origins:updateImportedBucketPolicyOac": true
+  }
+}
+

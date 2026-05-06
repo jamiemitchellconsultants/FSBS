@@ -40,3 +40,7 @@ bld/
 *.nupkg
 *.snupkg
 
+# CDK generated assets
+infrastructure/FSBS.Cdk/.artifacts/
+infrastructure/FSBS.Cdk/cdk.out/
+

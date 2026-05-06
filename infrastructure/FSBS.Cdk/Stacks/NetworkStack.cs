@@ -4,7 +4,10 @@ using Constructs;
 
 namespace FSBS.Cdk.Stacks;
 
-public class NetworkStackProps : StackProps { }
+public class NetworkStackProps : StackProps
+{
+    public string? CloudFrontPrefixListId { get; init; }
+}
 
 public class NetworkStack : Stack
 {
@@ -18,6 +21,8 @@ public class NetworkStack : Stack
 
     public NetworkStack(Construct scope, string id, NetworkStackProps props) : base(scope, id, props)
     {
+        var cloudFrontPrefixListId = props.CloudFrontPrefixListId ?? ResolveCloudFrontPrefixListId();
+
         Vpc = new Vpc(this, "Vpc", new VpcProps
         {
             MaxAzs = 3,
@@ -35,14 +40,13 @@ public class NetworkStack : Stack
         {
             Vpc = Vpc,
             Description = "ALB: inbound HTTPS from CloudFront prefix list",
-            AllowAllOutbound = false
+            AllowAllOutbound = true
         });
         AlbSg.AddIngressRule(
-            Peer.PrefixList("pl-93a247fa"), // CloudFront managed prefix list (eu-west-1)
+            Peer.PrefixList(cloudFrontPrefixListId),
             Port.Tcp(443),
             "HTTPS from CloudFront"
         );
-        AlbSg.AddEgressRule(Peer.AnyIpv4(), Port.AllTraffic(), "Allow all outbound");
 
         // API Fargate tasks — inbound from ALB only
         ApiSg = new SecurityGroup(this, "ApiSg", new SecurityGroupProps
@@ -70,5 +74,17 @@ public class NetworkStack : Stack
             AllowAllOutbound = false
         });
         RedisSg.AddIngressRule(ApiSg, Port.Tcp(6379), "From API tasks");
+    }
+
+    private string ResolveCloudFrontPrefixListId()
+    {
+        // Known value for eu-west-1. Other regions should pass an explicit
+        // value via CDK context to avoid accidental region mismatches.
+        if (Region == "eu-west-1")
+            return "pl-93a247fa";
+
+        throw new InvalidOperationException(
+            $"CloudFront managed prefix list id is not configured for region '{Region}'. " +
+            "Set context key 'cloudFrontPrefixListId' when running CDK.");
     }
 }

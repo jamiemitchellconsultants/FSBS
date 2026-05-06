@@ -14,7 +14,7 @@ public class PostConfirmationFunction : Function
     {
         Runtime = Runtime.DOTNET_8,
         Handler = "FSBS.Functions::FSBS.Functions.PostConfirmation.Function::FunctionHandler",
-        Code = Code.FromAsset("src/FSBS.Functions/PostConfirmation/publish"),
+        Code = FunctionsAsset.Code,
         Timeout = Duration.Seconds(15),
         Description = "Cognito Post Confirmation: creates AppUser, assigns role, marks invitation Claimed"
     })

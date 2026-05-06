@@ -9,6 +9,7 @@ using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.ECS;
 using Amazon.CDK.AWS.IAM;
 using Amazon.CDK.AWS.Logs;
+using Amazon.CDK.AWS.S3;
 using Amazon.CDK.AWS.SNS;
 using Amazon.CDK.AWS.SQS;
 using Amazon.CDK.AWS.WAFv2;
@@ -21,9 +22,7 @@ using AlbTargetGroupProps = Amazon.CDK.AWS.ElasticLoadBalancingV2.ApplicationTar
 using AlbProtocol = Amazon.CDK.AWS.ElasticLoadBalancingV2.ApplicationProtocol;
 using AlbHealthCheck = Amazon.CDK.AWS.ElasticLoadBalancingV2.HealthCheck;
 using AlbListenerProps = Amazon.CDK.AWS.ElasticLoadBalancingV2.BaseApplicationListenerProps;
-using AlbListenerAction = Amazon.CDK.AWS.ElasticLoadBalancingV2.ListenerAction;
 using AlbListenerCert = Amazon.CDK.AWS.ElasticLoadBalancingV2.ListenerCertificate;
-using AlbRedirectOptions = Amazon.CDK.AWS.ElasticLoadBalancingV2.RedirectOptions;
 using CfDistribution = Amazon.CDK.AWS.CloudFront.Distribution;
 using CfDistributionProps = Amazon.CDK.AWS.CloudFront.DistributionProps;
 
@@ -34,6 +33,8 @@ public class AppStackProps : StackProps
     public required NetworkStack Network { get; init; }
     public required DataStack Data { get; init; }
     public required string DeployEnv { get; init; }
+    public required string ApiImageUri { get; init; }
+    public required string WorkerImageUri { get; init; }
 }
 
 public class AppStack : Stack
@@ -44,6 +45,11 @@ public class AppStack : Stack
         var data = props.Data;
         var isProd = props.DeployEnv == "production";
 
+        // Import buckets by deterministic names to avoid cross-stack bucket
+        // policy mutations that can create dependency cycles with CloudFront.
+        var staticBucket = Bucket.FromBucketName(this, "StaticBucketImported", $"fsbs-static-{Account}");
+        var documentsBucket = Bucket.FromBucketName(this, "DocumentsBucketImported", $"fsbs-documents-{Account}");
+
         // ── ACM wildcard certificate ──────────────────────────────────────────
         var cert = new Certificate(this, "WildcardCert", new CertificateProps
         {
@@ -52,29 +58,29 @@ public class AppStack : Stack
         });
 
         // ── SQS queues ────────────────────────────────────────────────────────
-        var dlq = new Queue(this, "NotificationsDlq", new QueueProps
+        var bookingEventsDlq = new Queue(this, "BookingEventsDlq", new QueueProps
         {
-            QueueName = "fsbs-notifications-dlq",
+            QueueName = "fsbs-booking-events-dlq",
             RetentionPeriod = Duration.Days(14),
             Encryption = QueueEncryption.SQS_MANAGED
         });
 
-        var notificationsQueue = new Queue(this, "NotificationsQueue", new QueueProps
+        var bookingEventsQueue = new Queue(this, "BookingEventsQueue", new QueueProps
         {
-            QueueName = "fsbs-notifications",
+            QueueName = "fsbs-booking-events",
             VisibilityTimeout = Duration.Seconds(60),
             Encryption = QueueEncryption.SQS_MANAGED,
-            DeadLetterQueue = new DeadLetterQueue { Queue = dlq, MaxReceiveCount = 3 }
+            DeadLetterQueue = new DeadLetterQueue { Queue = bookingEventsDlq, MaxReceiveCount = 3 }
         });
 
         // ── SNS topic ─────────────────────────────────────────────────────────
-        var notificationsTopic = new Topic(this, "NotificationsTopic", new TopicProps
+        var bookingEventsTopic = new Topic(this, "BookingEventsTopic", new TopicProps
         {
-            TopicName = "fsbs-notifications",
-            DisplayName = "FSBS Notifications"
+            TopicName = "fsbs-booking-events",
+            DisplayName = "FSBS Booking Events"
         });
-        notificationsTopic.AddSubscription(
-            new Amazon.CDK.AWS.SNS.Subscriptions.SqsSubscription(notificationsQueue));
+        bookingEventsTopic.AddSubscription(
+            new Amazon.CDK.AWS.SNS.Subscriptions.SqsSubscription(bookingEventsQueue));
 
         // ── Cognito Lambda triggers ───────────────────────────────────────────
         var preSignUp = new PreSignUpFunction(this, "PreSignUpFn");
@@ -221,10 +227,11 @@ public class AppStack : Stack
             Description = "FSBS API Fargate task role"
         });
         data.DbSecret.GrantRead(taskRole);
-        data.StaticBucket.GrantReadWrite(taskRole);
-        data.DocumentsBucket.GrantReadWrite(taskRole);
-        notificationsQueue.GrantSendMessages(taskRole);
-        notificationsTopic.GrantPublish(taskRole);
+        data.ApiKeysSecret.GrantRead(taskRole);
+        staticBucket.GrantReadWrite(taskRole);
+        documentsBucket.GrantReadWrite(taskRole);
+        bookingEventsQueue.GrantSendMessages(taskRole);
+        bookingEventsTopic.GrantPublish(taskRole);
         taskRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AWSXRayDaemonWriteAccess"));
 
         // ── ALB ───────────────────────────────────────────────────────────────
@@ -254,7 +261,7 @@ public class AppStack : Stack
 
         apiTaskDef.AddContainer("Api", new ContainerDefinitionOptions
         {
-            Image = ContainerImage.FromRegistry("amazon/amazon-ecs-sample"),
+            Image = ContainerImage.FromRegistry(props.ApiImageUri),
             PortMappings = [new PortMapping { ContainerPort = 8080 }],
             Logging = LogDriver.AwsLogs(new AwsLogDriverProps
             {
@@ -264,11 +271,14 @@ public class AppStack : Stack
             Environment = new Dictionary<string, string>
             {
                 ["ASPNETCORE_ENVIRONMENT"] = isProd ? "Production" : "Staging",
-                ["AWS_REGION"] = Region
+                ["AWS_REGION"] = Region,
+                ["Sqs__BookingEventsQueueUrl"] = bookingEventsQueue.QueueUrl
             },
             Secrets = new Dictionary<string, Amazon.CDK.AWS.ECS.Secret>
             {
-                ["ConnectionStrings__Default"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.DbSecret)
+                ["ConnectionStrings__Default"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.DbSecret),
+                ["Secrets__DbCredentials"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.DbSecret),
+                ["Secrets__ApiKeys"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.ApiKeysSecret)
             }
         });
 
@@ -318,18 +328,6 @@ public class AppStack : Stack
             DefaultTargetGroups = [targetGroup]
         });
 
-        alb.AddListener("HttpRedirect", new AlbListenerProps
-        {
-            Port = 80,
-            Protocol = AlbProtocol.HTTP,
-            DefaultAction = AlbListenerAction.Redirect(new AlbRedirectOptions
-            {
-                Protocol = "HTTPS",
-                Port = "443",
-                Permanent = true
-            })
-        });
-
         // ── Worker Fargate service (SQS consumer) ─────────────────────────────
         var workerTaskDef = new FargateTaskDefinition(this, "WorkerTaskDef", new FargateTaskDefinitionProps
         {
@@ -340,7 +338,7 @@ public class AppStack : Stack
 
         workerTaskDef.AddContainer("Worker", new ContainerDefinitionOptions
         {
-            Image = ContainerImage.FromRegistry("amazon/amazon-ecs-sample"),
+            Image = ContainerImage.FromRegistry(props.WorkerImageUri),
             Logging = LogDriver.AwsLogs(new AwsLogDriverProps
             {
                 LogGroup = new LogGroup(this, "WorkerLogGroup", new LogGroupProps
@@ -353,8 +351,14 @@ public class AppStack : Stack
             }),
             Environment = new Dictionary<string, string>
             {
-                ["SQS_QUEUE_URL"] = notificationsQueue.QueueUrl,
+                ["Worker__BookingEventsQueueUrl"] = bookingEventsQueue.QueueUrl,
                 ["AWS_REGION"] = Region
+            },
+            Secrets = new Dictionary<string, Amazon.CDK.AWS.ECS.Secret>
+            {
+                ["Database__ConnectionString"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.DbSecret),
+                ["Secrets__DbCredentials"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.DbSecret),
+                ["Secrets__ApiKeys"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.ApiKeysSecret)
             }
         });
 
@@ -410,7 +414,7 @@ public class AppStack : Stack
                 {
                     Name = "AWSManagedRulesCommonRuleSet",
                     Priority = 2,
-                    OverrideAction = new CfnWebACL.OverrideActionProperty { None = new object() },
+                    OverrideAction = new CfnWebACL.OverrideActionProperty { None = new Dictionary<string, object>() },
                     VisibilityConfig = new CfnWebACL.VisibilityConfigProperty
                     {
                         SampledRequestsEnabled = true,
@@ -431,7 +435,7 @@ public class AppStack : Stack
                 {
                     Name = "AWSManagedRulesSQLiRuleSet",
                     Priority = 3,
-                    OverrideAction = new CfnWebACL.OverrideActionProperty { None = new object() },
+                    OverrideAction = new CfnWebACL.OverrideActionProperty { None = new Dictionary<string, object>() },
                     VisibilityConfig = new CfnWebACL.VisibilityConfigProperty
                     {
                         SampledRequestsEnabled = true,
@@ -456,7 +460,7 @@ public class AppStack : Stack
             Description = "FSBS static assets OAC"
         });
 
-        var staticOrigin = S3BucketOrigin.WithOriginAccessControl(data.StaticBucket, new S3BucketOriginWithOACProps
+        var staticOrigin = S3BucketOrigin.WithOriginAccessControl(staticBucket, new S3BucketOriginWithOACProps
         {
             OriginAccessControl = oac
         });
@@ -531,9 +535,9 @@ public class AppStack : Stack
 
         _ = new Alarm(this, "DlqDepthAlarm", new AlarmProps
         {
-            AlarmName = "fsbs-notifications-dlq-depth",
-            AlarmDescription = "Notifications DLQ has messages — worker failures",
-            Metric = dlq.MetricApproximateNumberOfMessagesVisible(),
+            AlarmName = "fsbs-booking-events-dlq-depth",
+            AlarmDescription = "Booking events DLQ has messages — worker failures",
+            Metric = bookingEventsDlq.MetricApproximateNumberOfMessagesVisible(),
             Threshold = 1,
             EvaluationPeriods = 1,
             ComparisonOperator = ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
@@ -558,8 +562,8 @@ public class AppStack : Stack
         });
         _ = new CfnOutput(this, "NotificationsQueueUrl", new CfnOutputProps
         {
-            Value = notificationsQueue.QueueUrl,
-            Description = "SQS notifications queue URL"
+            Value = bookingEventsQueue.QueueUrl,
+            Description = "SQS booking events queue URL"
         });
     }
 }

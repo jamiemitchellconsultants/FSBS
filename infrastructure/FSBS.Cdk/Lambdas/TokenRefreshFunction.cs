@@ -14,7 +14,7 @@ public class TokenRefreshFunction : Function
     {
         Runtime = Runtime.DOTNET_8,
         Handler = "FSBS.Functions::FSBS.Functions.TokenRefresh.Function::FunctionHandler",
-        Code = Code.FromAsset("src/FSBS.Functions/TokenRefresh/publish"),
+        Code = FunctionsAsset.Code,
         Timeout = Duration.Seconds(15),
         Description = "Cognito Token Refresh: re-syncs Entra groups, signs out disabled accounts"
     })

@@ -128,7 +128,7 @@ Each item depends on the previous.
 - [ ] Review all three stacks against spec — ECS task/service definitions, auto-scaling policy (CPU 60%), RDS Multi-AZ config, Redis cluster, ALB security group (CloudFront prefix list only)
 - [ ] SQS queues + SNS topics — booking events queue, notification worker subscription, dead-letter queue with alarm
 - [ ] Lambda trigger wiring — confirm Pre Sign-up, Post Confirmation, Token Refresh are attached to the correct Cognito pools in `AppStack`
-- [ ] Secrets Manager rotation — 30-day rotation enabled, injected as ECS env vars
+- [x] Secrets Manager rotation — 30-day rotation enabled, injected as ECS env vars
 - [ ] CDK post-deployment custom resource — runs the DB grants script (`fsbs_app` / `fsbs_readonly` roles)
 
 ### Phase 7 — Tests

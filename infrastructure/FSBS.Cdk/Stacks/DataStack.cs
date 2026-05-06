@@ -1,6 +1,7 @@
 using Amazon.CDK;
 using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.ElastiCache;
+using Amazon.CDK.AWS.IAM;
 using Amazon.CDK.AWS.RDS;
 using Amazon.CDK.AWS.S3;
 using Amazon.CDK.AWS.SecretsManager;
@@ -18,6 +19,7 @@ public class DataStackProps : StackProps
 public class DataStack : Stack
 {
     public Secret DbSecret { get; }
+    public Secret ApiKeysSecret { get; }
     public CfnReplicationGroup RedisCluster { get; }
     public Bucket StaticBucket { get; }
     public Bucket DocumentsBucket { get; }
@@ -104,12 +106,12 @@ public class DataStack : Stack
             ReplicationGroupDescription = "FSBS SignalR backplane + availability cache",
             CacheNodeType = "cache.t4g.small",
             Engine = "redis",
-            NumCacheClusters = 1,
+            NumCacheClusters = isProd ? 2 : 1,
             AtRestEncryptionEnabled = true,
             TransitEncryptionEnabled = true,
             SecurityGroupIds = [net.RedisSg.SecurityGroupId],
             CacheSubnetGroupName = redisSubnetGroup.Ref,
-            AutomaticFailoverEnabled = false
+            AutomaticFailoverEnabled = isProd
         });
 
         // ── S3 buckets ────────────────────────────────────────────────────────
@@ -123,6 +125,29 @@ public class DataStack : Stack
             AutoDeleteObjects = false
         });
 
+        // CloudFront OAC access policy for static assets.
+        // Kept in DataStack so AppStack can import the bucket without mutating
+        // bucket policy (which would otherwise create cross-stack coupling).
+        StaticBucket.AddToResourcePolicy(new PolicyStatement(new PolicyStatementProps
+        {
+            Sid = "AllowCloudFrontOacRead",
+            Effect = Effect.ALLOW,
+            Principals = [new ServicePrincipal("cloudfront.amazonaws.com")],
+            Actions = ["s3:GetObject"],
+            Resources = [StaticBucket.ArnForObjects("*")],
+            Conditions = new Dictionary<string, object>
+            {
+                ["StringEquals"] = new Dictionary<string, string>
+                {
+                    ["AWS:SourceAccount"] = Account
+                },
+                ["StringLike"] = new Dictionary<string, string>
+                {
+                    ["AWS:SourceArn"] = $"arn:aws:cloudfront::{Account}:distribution/*"
+                }
+            }
+        }));
+
         DocumentsBucket = new Bucket(this, "DocumentsBucket", new BucketProps
         {
             BucketName = $"fsbs-documents-{Account}",
@@ -134,9 +159,14 @@ public class DataStack : Stack
         });
 
         // ── Additional Secrets Manager entries ────────────────────────────────
-        _ = new Secret(this, "ApiKeysSecret", new SecretProps
+        ApiKeysSecret = new Secret(this, "ApiKeysSecret", new SecretProps
         {
             SecretName = "fsbs/api/keys",
+            GenerateSecretString = new SecretStringGenerator
+            {
+                SecretStringTemplate = "{}",
+                GenerateStringKey = "default_key"
+            },
             Description = "FSBS API keys (SES, SNS, etc.)"
         });
     }
