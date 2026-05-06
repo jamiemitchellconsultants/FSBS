@@ -109,13 +109,13 @@ Each item depends on the previous.
 
 ### Phase 4 — API completion
 
-- [ ] `FsbsClaimsTransformation` — map `app_role` + `tenant_id` from either pool's JWT into `FsbsPrincipal`; register `IClaimsTransformation`
-- [ ] Dual-pool JWT validation — add both `AddJwtBearer("Staff", ...)` and `AddJwtBearer("Customer", ...)` in `Program.cs`; configure policy to accept either
-- [ ] Named authorization policies — one policy per `AppRole` enum value
-- [ ] `AvailabilityHub` — SignalR hub; push availability delta (including `reconfigurationWindows[]`) on every booking mutation; wire Redis as backplane
-- [ ] Wire write endpoints — `POST /bookings`, `PUT /bookings/{id}/approve`, `PUT /bookings/{id}/reject`, `POST /organisations/{id}/account/payments`, etc.; return Problem Details on failure
-- [ ] `GET /simulators/{id}/availability` — Dapper read query, cached via `AvailabilityCache`, return `availableSlots[]` + `reconfigurationWindows[]` + `maintenanceWindows[]`
-- [ ] `GET /pricing/quote` — stateless; call `PricingService` directly, no DB write
+- [x] `FsbsClaimsTransformation` — map `app_role` + `tenant_id` from either pool's JWT into `FsbsPrincipal`; register `IClaimsTransformation`
+- [x] Dual-pool JWT validation — add both `AddJwtBearer("Staff", ...)` and `AddJwtBearer("Customer", ...)` in `Program.cs`; configure policy to accept either
+- [x] Named authorization policies — one policy per `AppRole` enum value
+- [x] `AvailabilityHub` — SignalR hub; push availability delta (including `reconfigurationWindows[]`) on every booking mutation; wire Redis as backplane
+- [x] Wire write endpoints — `POST /bookings`, `PUT /bookings/{id}/approve`, `PUT /bookings/{id}/reject`, `PUT /bookings/{id}/cancel`, `GET /bookings/pending-approval`; return Problem Details on failure
+- [x] `GET /simulators/{id}/availability` — Dapper read query, cached via `AvailabilityCache`, return `availableSlots[]` + `reconfigurationWindows[]` + `maintenanceWindows[]`
+- [x] `GET /pricing/quote` — stateless; call `PricingService` directly, no DB write
 
 ### Phase 5 — Notification worker
 

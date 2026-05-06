@@ -13,4 +13,7 @@ public interface IBookingRepository
 
     Task<BookingDetailDto?> GetMyBookingDetailAsync(
         Guid bookingId, Guid userId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<BookingSummaryDto>> GetPendingApprovalAsync(
+        CancellationToken ct = default);
 }

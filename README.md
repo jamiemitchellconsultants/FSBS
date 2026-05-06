@@ -1,5 +1,70 @@
 # Flight Simulator Booking System (FSBS)
 
+**_A Digital Platform for Flight Training Management_**
+
+**1\. Overview**
+
+The **Flight Simulator Booking System (FSBS)** is a modern, cloud-based platform designed to streamline and enhance the management of flight simulator training operations. It acts as a central hub for scheduling, booking, and administering simulator sessions for both internal staff and external customers.
+
+At its core, FSBS replaces manual processes with a robust, secure, and highly available online system, ensuring that simulator operations run with maximum efficiency.
+
+**2\. User Profiles & Access**
+
+The system caters to two primary user groups, utilizing specialized authentication methods for enhanced security.
+
+**Staff Users (Internal Team)**
+
+_Administrators, Instructors, Course Directors, Management, and Sales Staff._
+
+- **Primary Actions:** Manage availability, schedule instructors, track student progress, and handle corporate accounts.
+- **Reporting:** Access to management dashboards and financial reports.
+- **Security:** Integrated via **Microsoft Entra ID** (formerly Azure AD) for seamless corporate IT integration.
+
+**Customer Users (External Clients)**
+
+_Private Individuals, Corporate Managers, and Corporate Students._
+
+- **Primary Actions:** Browse availability, book sessions, and manage personal/team account details.
+- **Corporate Management:** Managers can book for their teams and issue invitations to new students.
+- **Security:** Secured via **Amazon Cognito** with invitation-only registration for corporate clients.
+
+**3\. Key Capabilities & Features**
+
+- **Intuitive Booking:** Users can select aircraft types and cockpit/cabin modes. The system automatically accounts for **reconfiguration times** between different setups.
+- **Flexible Pricing Engine:** Applies base rates and volume discounts. Prices are locked at the time of confirmation for total transparency.
+- **Role-Based Access Control (RBAC):** Permissions are granular; users only interact with data relevant to their specific role (e.g., Instructor vs. Sales).
+- **Multi-Tenant Support:** Allows corporate clients to manage their own sub-users and bookings securely and independently.
+- **Workflow Automation:** Handles booking approvals, automated notifications (reminders/alerts), and invitation management.
+- **Real-time Availability:** A dynamic calendar provides up-to-the-minute data on booked slots and maintenance windows.
+
+**4\. Business Benefits**
+
+| **Benefit**               | **Description**                                                         |
+| ------------------------- | ----------------------------------------------------------------------- |
+| **Increased Efficiency**  | Automates manual tasks, allowing staff to focus on high-value training. |
+| **Improved Accuracy**     | Eliminates human error in scheduling, pricing, and user data.           |
+| **24/7 Accessibility**    | Provides a seamless, self-service booking experience for customers.     |
+| **Resource Optimization** | Maximizes simulator "uptime" by managing transitions and maintenance.   |
+| **Scalability**           | Built on AWS to grow effortlessly with your user base.                  |
+
+**5\. Technical Architecture**
+
+FSBS leverages a cloud-native stack on **Amazon Web Services (AWS)** to ensure reliability:
+
+- **Frontend & Logic:** Built with **Blazor WebAssembly** and **ASP.NET Core API** running on **ECS Fargate**.
+- **Data Tier:** Uses **PostgreSQL (RDS)** for robust data management and **S3** for secure document storage.
+- **Performance:** **Redis (ElastiCache)** powers real-time calendar updates and high-speed caching.
+- **Infrastructure:** Managed via **AWS CDK** (Infrastructure as Code) to ensure consistency across development and production environments.
+
+**Summary:** FSBS is a reliable, secure, and user-friendly platform that empowers flight training schools to manage resources and customer interactions with total control.
+
+**Pro-Tips for Word Formatting:**
+
+- **Headings:** Highlight the section titles (e.g., "1. Overview") and apply the **"Heading 1"** or **"Heading 2"** style from the Word Home tab.
+- **Table:** The "Business Benefits" section looks best as a 2-column table with a shaded header row.
+- **Fonts:** Use **Segoe UI** or **Calibri** for a modern look, or **Arial** for a standard corporate feel.
+- **Spacing:** Set your Paragraph Spacing to "6pt" or "12pt" after each paragraph to give the text room to breathe.
+
 A multi-tenant, role-based flight simulator booking platform for a flight training school. Two user populations: **Staff** (Microsoft Entra ID auth) and **Customers** (Amazon Cognito auth). Supports simulator configuration management, booking with reconfiguration windows, instructor scheduling, student progress tracking, corporate account management, invitation-only customer registration, and management reporting.
 
 ---

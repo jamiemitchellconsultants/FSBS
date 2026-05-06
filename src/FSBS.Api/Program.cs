@@ -1,12 +1,14 @@
 using System.Text;
 using FSBS.Api.Auth;
 using FSBS.Api.Endpoints;
+using FSBS.Api.Hubs;
 using FSBS.Api.Middleware;
 using FSBS.Application;
 using FSBS.Application.Common.Interfaces;
 using FSBS.Infrastructure;
 using FSBS.Infrastructure.Persistence;
 using FSBS.Infrastructure.Persistence.Repositories;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -19,12 +21,28 @@ builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddRepositories();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUserService>();
+builder.Services.AddSingleton<IClaimsTransformation, FsbsClaimsTransformation>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// ── SignalR + Redis backplane ─────────────────────────────────────────────────
+var redisConn = builder.Configuration["Redis:ConnectionString"];
+if (!string.IsNullOrWhiteSpace(redisConn))
+{
+    builder.Services.AddSignalR().AddStackExchangeRedis(redisConn);
+}
+else
+{
+    // Development: in-memory backplane (single instance only).
+    builder.Services.AddSignalR();
+}
+
 // ── Authentication ────────────────────────────────────────────────────────────
-// Dev scheme: local HMAC-signed JWTs issued by POST /dev/auth/token.
-// Real Cognito "Staff" + "Customer" schemes are added in the auth feature step.
+// Development: local HMAC-signed JWTs issued by POST /dev/auth/token.
+// Production:  dual Cognito pools — "Staff" (Entra-federated) + "Customer".
+//              Both schemes are accepted; FsbsClaimsTransformation normalises
+//              app_role + tenant_id into a unified FsbsPrincipal regardless of
+//              which pool issued the token.
 if (builder.Environment.IsDevelopment())
 {
     var devSecret = builder.Configuration["DevAuth:Secret"]
@@ -47,8 +65,75 @@ if (builder.Environment.IsDevelopment())
             };
         });
 }
+else
+{
+    var awsRegion      = builder.Configuration["Cognito:AwsRegion"]
+        ?? throw new InvalidOperationException("Cognito:AwsRegion must be configured.");
+    var staffPoolId    = builder.Configuration["Cognito:StaffPoolId"]
+        ?? throw new InvalidOperationException("Cognito:StaffPoolId must be configured.");
+    var staffClientId  = builder.Configuration["Cognito:StaffClientId"]
+        ?? throw new InvalidOperationException("Cognito:StaffClientId must be configured.");
+    var customerPoolId   = builder.Configuration["Cognito:CustomerPoolId"]
+        ?? throw new InvalidOperationException("Cognito:CustomerPoolId must be configured.");
+    var customerClientId = builder.Configuration["Cognito:CustomerClientId"]
+        ?? throw new InvalidOperationException("Cognito:CustomerClientId must be configured.");
 
-builder.Services.AddAuthorization();
+    var staffAuthority    = $"https://cognito-idp.{awsRegion}.amazonaws.com/{staffPoolId}";
+    var customerAuthority = $"https://cognito-idp.{awsRegion}.amazonaws.com/{customerPoolId}";
+
+    builder.Services
+        .AddAuthentication()
+        .AddJwtBearer("Staff", options =>
+        {
+            options.Authority = staffAuthority;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer           = true,
+                ValidIssuer              = staffAuthority,
+                ValidateAudience         = true,
+                ValidAudience            = staffClientId,
+                ValidateLifetime         = true,
+                ValidateIssuerSigningKey = true,
+                // JWKS fetched automatically from {Authority}/.well-known/jwks.json
+            };
+        })
+        .AddJwtBearer("Customer", options =>
+        {
+            options.Authority = customerAuthority;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer           = true,
+                ValidIssuer              = customerAuthority,
+                ValidateAudience         = true,
+                ValidAudience            = customerClientId,
+                ValidateLifetime         = true,
+                ValidateIssuerSigningKey = true,
+            };
+        });
+}
+
+// Accept a token from either Cognito pool on every protected endpoint.
+builder.Services.AddAuthorizationBuilder()
+    .SetDefaultPolicy(new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder(
+            builder.Environment.IsDevelopment() ? ["Dev"] : ["Staff", "Customer"])
+        .RequireAuthenticatedUser()
+        .Build())
+    .AddPolicy("RequireSystemAdmin",    p => p.RequireClaim("app_role", "SystemAdmin"))
+    .AddPolicy("RequireScheduleAdmin",  p => p.RequireClaim("app_role", "ScheduleAdmin"))
+    .AddPolicy("RequireCourseDirector", p => p.RequireClaim("app_role", "CourseDirector"))
+    .AddPolicy("RequireInstructor",     p => p.RequireClaim("app_role", "Instructor"))
+    .AddPolicy("RequireManagement",     p => p.RequireClaim("app_role", "Management"))
+    .AddPolicy("RequireSalesStaff",     p => p.RequireClaim("app_role", "SalesStaff"))
+    .AddPolicy("RequireInternalStudent",   p => p.RequireClaim("app_role", "InternalStudent"))
+    .AddPolicy("RequirePrivateCustomer",   p => p.RequireClaim("app_role", "PrivateCustomer"))
+    .AddPolicy("RequireCorporateManager",  p => p.RequireClaim("app_role", "CorporateManager"))
+    .AddPolicy("RequireCorporateStudent",  p => p.RequireClaim("app_role", "CorporateStudent"))
+    // Convenience multi-role policies used by shared endpoints.
+    .AddPolicy("RequireStaff", p => p.RequireClaim("app_role",
+        "SystemAdmin", "ScheduleAdmin", "CourseDirector",
+        "Instructor", "Management", "SalesStaff", "InternalStudent"))
+    .AddPolicy("RequireApprover", p => p.RequireClaim("app_role",
+        "SystemAdmin", "SalesStaff"));
 
 // ── Build ─────────────────────────────────────────────────────────────────────
 var app = builder.Build();
@@ -67,5 +152,8 @@ app.MapAuthEndpoints();
 app.MapInvitationEndpoints();
 app.MapOrganisationEndpoints();
 app.MapBookingEndpoints();
+app.MapSimulatorEndpoints();
+app.MapPricingEndpoints();
+app.MapHub<AvailabilityHub>("/hubs/availability");
 
 app.Run();

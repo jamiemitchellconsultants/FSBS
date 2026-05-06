@@ -200,6 +200,58 @@ internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
         );
     }
 
+    public async Task<IReadOnlyList<BookingSummaryDto>> GetPendingApprovalAsync(CancellationToken ct)
+    {
+        var rows = await db.Bookings
+            .Where(b => b.Status == FSBS.Domain.Enums.BookingStatus.PendingApproval)
+            .Select(b => new
+            {
+                b.Id,
+                b.Status,
+                b.TrainingType,
+                b.BookerRole,
+                b.StudentCount,
+                b.NetPriceGbp,
+                AircraftType = b.Configuration.AircraftType,
+                SimulatorUnitName = b.Configuration.SimulatorUnit.Name,
+                FirstSlotStartAt = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.StartAt).FirstOrDefault(),
+                FirstSlotEndAt   = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.EndAt).FirstOrDefault(),
+                FirstSlotDurationMins = b.Slots.OrderBy(s => s.StartAt).Select(s => (int?)s.DurationMins).FirstOrDefault(),
+                FirstSlotBayName = b.Slots.OrderBy(s => s.StartAt).Select(s => s.Bay.Name).FirstOrDefault(),
+                FirstSlotUnitName = b.Slots.OrderBy(s => s.StartAt).Select(s => s.Bay.SimulatorUnit.Name).FirstOrDefault(),
+                InstructorFirstName = b.Slots
+                    .OrderBy(s => s.StartAt)
+                    .Where(s => s.Instructor != null)
+                    .Select(s => s.Instructor!.User.Profile!.FirstName)
+                    .FirstOrDefault(),
+                InstructorLastName = b.Slots
+                    .OrderBy(s => s.StartAt)
+                    .Where(s => s.Instructor != null)
+                    .Select(s => s.Instructor!.User.Profile!.LastName)
+                    .FirstOrDefault(),
+            })
+            .OrderBy(x => x.FirstSlotStartAt)
+            .ToListAsync(ct);
+
+        return rows.Select(x => new BookingSummaryDto(
+            x.Id,
+            x.Status.ToString(),
+            x.TrainingType.ToString(),
+            x.AircraftType,
+            x.FirstSlotUnitName ?? x.SimulatorUnitName,
+            x.FirstSlotBayName ?? string.Empty,
+            x.FirstSlotStartAt ?? default,
+            x.FirstSlotEndAt ?? default,
+            x.FirstSlotDurationMins ?? 0,
+            x.StudentCount,
+            x.InstructorFirstName is not null && x.InstructorLastName is not null
+                ? $"{x.InstructorFirstName} {x.InstructorLastName}"
+                : null,
+            x.NetPriceGbp,
+            x.BookerRole.ToString()
+        )).ToList();
+    }
+
     private static string EncodeCursor(DateTimeOffset startAt, Guid bookingId)
     {
         var raw = $"{startAt.UtcTicks}_{bookingId}";
