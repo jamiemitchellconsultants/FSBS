@@ -20,7 +20,9 @@ builder.Services.AddFluxor(options => options.ScanAssemblies(typeof(Program).Ass
 builder.Services.AddBlazoredLocalStorage();
 
 builder.Services.AddAuthorizationCore();
-builder.Services.AddScoped<AuthenticationStateProvider, AnonymousAuthStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider, CognitoAuthStateProvider>();
+builder.Services.AddScoped<CognitoAuthStateProvider>(sp =>
+    (CognitoAuthStateProvider)sp.GetRequiredService<AuthenticationStateProvider>());
 
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AvailabilityService>();

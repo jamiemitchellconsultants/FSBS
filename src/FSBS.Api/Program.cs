@@ -20,6 +20,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddRepositories();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<ICurrentUser, CurrentUserService>();
 builder.Services.AddSingleton<IClaimsTransformation, FsbsClaimsTransformation>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -33,16 +34,10 @@ if (!string.IsNullOrWhiteSpace(redisConn))
 }
 else
 {
-    // Development: in-memory backplane (single instance only).
     builder.Services.AddSignalR();
 }
 
 // ── Authentication ────────────────────────────────────────────────────────────
-// Development: local HMAC-signed JWTs issued by POST /dev/auth/token.
-// Production:  dual Cognito pools — "Staff" (Entra-federated) + "Customer".
-//              Both schemes are accepted; FsbsClaimsTransformation normalises
-//              app_role + tenant_id into a unified FsbsPrincipal regardless of
-//              which pool issued the token.
 if (builder.Environment.IsDevelopment())
 {
     var devSecret = builder.Configuration["DevAuth:Secret"]
@@ -94,7 +89,6 @@ else
                 ValidAudience            = staffClientId,
                 ValidateLifetime         = true,
                 ValidateIssuerSigningKey = true,
-                // JWKS fetched automatically from {Authority}/.well-known/jwks.json
             };
         })
         .AddJwtBearer("Customer", options =>
@@ -112,7 +106,6 @@ else
         });
 }
 
-// Accept a token from either Cognito pool on every protected endpoint.
 builder.Services.AddAuthorizationBuilder()
     .SetDefaultPolicy(new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder(
             builder.Environment.IsDevelopment() ? ["Dev"] : ["Staff", "Customer"])
@@ -128,7 +121,6 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("RequirePrivateCustomer",   p => p.RequireClaim("app_role", "PrivateCustomer"))
     .AddPolicy("RequireCorporateManager",  p => p.RequireClaim("app_role", "CorporateManager"))
     .AddPolicy("RequireCorporateStudent",  p => p.RequireClaim("app_role", "CorporateStudent"))
-    // Convenience multi-role policies used by shared endpoints.
     .AddPolicy("RequireStaff", p => p.RequireClaim("app_role",
         "SystemAdmin", "ScheduleAdmin", "CourseDirector",
         "Instructor", "Management", "SalesStaff", "InternalStudent"))

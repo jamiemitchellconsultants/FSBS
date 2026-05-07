@@ -1,0 +1,64 @@
+@page "/auth/callback"
+@layout PublicLayout
+@inject AuthService AuthSvc
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Signing in… — FSBS</PageTitle>
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+    <MudText Align="Align.Center">
+        <MudLink Href="/login">Return to sign in</MudLink>
+    </MudText>
+}
+else
+{
+    <MudStack AlignItems="AlignItems.Center" Spacing="3" Class="mt-8">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+        <MudText Color="Color.Secondary">Completing sign in…</MudText>
+    </MudStack>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "auth_error")]
+    public string? AuthError { get; set; }
+
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(AuthError))
+        {
+            _error = AuthError switch
+            {
+                "missing_code"           => "Sign in was cancelled or the link was invalid.",
+                "token_exchange_failed"  => "Could not complete sign in. Please try again.",
+                "misconfigured"          => "Authentication is not configured. Please contact support.",
+                "no_id_token"            => "No identity token was returned. Please try again.",
+                _                        => $"Sign in failed: {AuthError}"
+            };
+            return;
+        }
+
+        // In production the API callback has already set the HttpOnly cookie
+        // before redirecting here — just notify the provider to re-evaluate.
+        // In development there is no cookie; the dev login page handles token
+        // storage directly before navigating here.
+        if (AuthStateProvider is CognitoAuthStateProvider provider)
+            provider.NotifyAuthChanged();
+
+        // Give the state change a moment to propagate before navigating.
+        await Task.Delay(200);
+
+        var me = await AuthSvc.GetMeAsync();
+        if (me is null)
+        {
+            _error = "Sign in could not be verified. Please try again.";
+            return;
+        }
+
+        Nav.NavigateTo("/availability", replace: true);
+    }
+}

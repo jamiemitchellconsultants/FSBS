@@ -1,6 +1,7 @@
 @page "/login"
 @layout PublicLayout
 @inject IConfiguration Config
+@inject NavigationManager Nav
 
 <PageTitle>Sign In — FSBS</PageTitle>
 
@@ -9,13 +10,35 @@
     Sign in with your FSBS customer account.
 </MudText>
 
+@if (_confirmed)
+{
+    <MudAlert Severity="Severity.Success" Dense="true" Class="mb-4">
+        Account confirmed! You can now sign in.
+    </MudAlert>
+}
+
 <MudPaper Elevation="3" Class="pa-8">
+    @if (_isDev)
+    {
+        <MudButton FullWidth="true"
+                   Variant="Variant.Filled"
+                   Color="Color.Warning"
+                   Size="Size.Large"
+                   StartIcon="@Icons.Material.Filled.DeveloperMode"
+                   Href="/dev/login"
+                   Class="mb-4">
+            Dev Sign In (pick any role)
+        </MudButton>
+        <MudDivider Class="mb-4" />
+    }
+
     <MudButton FullWidth="true"
                Variant="Variant.Filled"
                Color="Color.Primary"
                Size="Size.Large"
                StartIcon="@Icons.Material.Filled.Login"
-               Href="@_loginUrl">
+               Href="@_loginUrl"
+               Disabled="@string.IsNullOrWhiteSpace(_loginUrl)">
         Continue to Sign In
     </MudButton>
 
@@ -35,10 +58,18 @@
 </MudPaper>
 
 @code {
+    [SupplyParameterFromQuery(Name = "confirmed")]
+    public bool? Confirmed { get; set; }
+
     private string _loginUrl = "#";
+    private bool _isDev;
+    private bool _confirmed;
 
     protected override void OnInitialized()
     {
-        _loginUrl = Config["Cognito:CustomerPoolLoginUrl"] ?? "#";
+        _loginUrl  = Config["Cognito:CustomerPoolLoginUrl"] ?? string.Empty;
+        _confirmed = Confirmed == true;
+        _isDev     = Nav.BaseUri.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
+                     Nav.BaseUri.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -1,0 +1,24 @@
+@page "/logout"
+@layout PublicLayout
+@inject AuthService AuthSvc
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Signing out… — FSBS</PageTitle>
+
+<MudStack AlignItems="AlignItems.Center" Spacing="3" Class="mt-8">
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+    <MudText Color="Color.Secondary">Signing out…</MudText>
+</MudStack>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthSvc.SignOutAsync();
+
+        if (AuthStateProvider is CognitoAuthStateProvider provider)
+            provider.NotifyAuthChanged();
+
+        Nav.NavigateTo("/login", replace: true);
+    }
+}

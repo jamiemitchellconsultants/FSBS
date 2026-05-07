@@ -1,0 +1,93 @@
+@page "/dev/login"
+@layout PublicLayout
+@inject AuthService AuthSvc
+@inject NavigationManager Nav
+@inject IConfiguration Config
+
+<PageTitle>Dev Sign In — FSBS</PageTitle>
+
+<MudText Typo="Typo.h5" Align="Align.Center" Class="mb-1">Dev Sign In</MudText>
+<MudText Align="Align.Center" Color="Color.Warning" Class="mb-6">
+    Development environment only. Not available in production.
+</MudText>
+
+<MudPaper Elevation="3" Class="pa-6">
+    <MudSelect T="string" Label="Role" @bind-Value="_role" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3">
+        <MudSelectItem Value="@("PrivateCustomer")">PrivateCustomer</MudSelectItem>
+        <MudSelectItem Value="@("CorporateManager")">CorporateManager</MudSelectItem>
+        <MudSelectItem Value="@("CorporateStudent")">CorporateStudent</MudSelectItem>
+        <MudSelectItem Value="@("InternalStudent")">InternalStudent</MudSelectItem>
+        <MudSelectItem Value="@("Instructor")">Instructor</MudSelectItem>
+        <MudSelectItem Value="@("SalesStaff")">SalesStaff</MudSelectItem>
+        <MudSelectItem Value="@("ScheduleAdmin")">ScheduleAdmin</MudSelectItem>
+        <MudSelectItem Value="@("CourseDirector")">CourseDirector</MudSelectItem>
+        <MudSelectItem Value="@("Management")">Management</MudSelectItem>
+        <MudSelectItem Value="@("SystemAdmin")">SystemAdmin</MudSelectItem>
+    </MudSelect>
+
+    <MudTextField @bind-Value="_email"
+                  Label="Email"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Class="mb-3" />
+
+    <MudTextField @bind-Value="_orgId"
+                  Label="Org ID (optional, for corporate roles)"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Class="mb-4" />
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_error</MudAlert>
+    }
+
+    <MudButton FullWidth="true"
+               Variant="Variant.Filled"
+               Color="Color.Warning"
+               Disabled="_loading"
+               OnClick="SignInAsync">
+        @(_loading ? "Signing in…" : "Sign In as Selected Role")
+    </MudButton>
+</MudPaper>
+
+@code {
+    private string _role  = "PrivateCustomer";
+    private string _email = "dev@fsbs.local";
+    private string? _orgId;
+    private bool _loading;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        // Redirect away in production — this page should never be reachable,
+        // but belt-and-braces in case routing is misconfigured.
+        var apiBase = Config["ApiBaseUrl"] ?? string.Empty;
+        if (!Nav.BaseUri.Contains("localhost", StringComparison.OrdinalIgnoreCase) &&
+            !Nav.BaseUri.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+        {
+            Nav.NavigateTo("/login", replace: true);
+        }
+    }
+
+    private async Task SignInAsync()
+    {
+        _loading = true;
+        _error   = null;
+
+        try
+        {
+            var orgId = string.IsNullOrWhiteSpace(_orgId) ? null : _orgId.Trim();
+            await AuthSvc.GetDevTokenAsync(_role, _email, orgId);
+            Nav.NavigateTo("/auth/callback", replace: true);
+        }
+        catch
+        {
+            _error = "Could not obtain a dev token. Is the API running?";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
