@@ -1,3 +1,4 @@
+using FSBS.Domain.Interfaces;
 using FSBS.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -29,6 +30,9 @@ public static class PersistenceServiceExtensions
                 .AddInterceptors(
                     sp.GetRequiredService<AuditInterceptor>(),
                     sp.GetRequiredService<TenantCommandInterceptor>()));
+
+        // Scoped so the unit of work shares the request-scoped FsbsDbContext.
+        services.AddScoped<IUnitOfWork, FsbsUnitOfWork>();
 
         return services;
     }

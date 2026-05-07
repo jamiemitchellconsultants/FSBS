@@ -10,6 +10,7 @@ using Amazon.CDK.AWS.ECS;
 using Amazon.CDK.AWS.IAM;
 using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.S3;
+using Amazon.CDK.AWS.SecretsManager;
 using Amazon.CDK.AWS.SNS;
 using Amazon.CDK.AWS.SQS;
 using Amazon.CDK.AWS.WAFv2;
@@ -37,6 +38,8 @@ public class AppStackProps : StackProps
     public required string DeployEnv { get; init; }
     public required string ApiImageUri { get; init; }
     public required string WorkerImageUri { get; init; }
+    public required string EntraClientId { get; init; }
+    public required string EntraTenantId { get; init; }
 
     /// <summary>
     /// School-wide root tenant_id used for staff and private customer
@@ -161,13 +164,15 @@ public class AppStack : Stack
         });
 
         // Entra ID OIDC identity provider
+        var entraClientSecret = Secret.FromSecretNameV2(this, "EntraClientSecret", "fsbs/entra/client-secret");
+
         var entraIdp = new UserPoolIdentityProviderOidc(this, "EntraIdp", new UserPoolIdentityProviderOidcProps
         {
             UserPool = staffPool,
             Name = "EntraID",
-            ClientId = "ENTRA_CLIENT_ID_PLACEHOLDER",
-            ClientSecret = "ENTRA_CLIENT_SECRET_PLACEHOLDER",
-            IssuerUrl = "https://login.microsoftonline.com/TENANT_ID/v2.0",
+            ClientId = props.EntraClientId,
+            ClientSecret = entraClientSecret.SecretValue.UnsafeUnwrap(),
+            IssuerUrl = $"https://login.microsoftonline.com/{props.EntraTenantId}/v2.0",
             Scopes = ["openid", "email", "profile"],
             AttributeMapping = new AttributeMapping
             {

@@ -15,6 +15,7 @@ Overall estimate: **~92% complete.** All six implementation phases finish below 
 | Application services — `PricingService`, `ReconfigurationService` | Complete |
 | MediatR pipeline — Logging, Validation, Transaction behaviours | Complete |
 | EF Core configurations (34 entity configs) + `FsbsDbContext` + audit/tenant interceptors | Complete |
+| `IUnitOfWork` (`FsbsUnitOfWork`) — collects events from tracked `AggregateRoot`s, delegates commit to `FsbsDbContext` | Complete |
 | Repositories — Booking, Invitation, Organisation, Simulator, ReconfigTemplate, ReconfigSlot, PricingPolicy, Instructor | Complete |
 | Dapper read layer — `AvailabilityReadService` | Complete |
 | Infrastructure services — `AvailabilityCache` (Redis), `SqsPublisher`, `SesEmailService`, `S3Service` | Complete |
@@ -42,7 +43,6 @@ All three test projects contain only a `UnitTest1` stub.
 
 ### Known follow-ups outside Phase 6 scope
 
-- [ ] `IUnitOfWork` is referenced by `TransactionBehaviour` but has no implementation registered in DI — booking commands will fail at request time. Implement against `FsbsDbContext` (delegate `SaveChangesAsync` and collect events from tracked `AggregateRoot` instances).
 - [ ] TokenRefresh Lambda does not yet call Microsoft Graph to detect disabled Entra accounts — federated sign-in already blocks new logins, but residual refresh-token windows remain. Wire Graph + `AdminUserGlobalSignOut` when needed.
 - [ ] Nightly invitation-expiry sweep Lambda (mark `Pending` → `Expired` after 7 days).
 
@@ -68,4 +68,4 @@ All three test projects contain only a `UnitTest1` stub.
 | Phase 6c — Invitation event emission | ✅ Complete (`InvitationIssuedEvent` → SQS → SES) |
 | Phase 7 — Tests | 🔴 0% coverage across all three test projects |
 
-> **End-to-end checkpoint:** With Phase 6 complete, Cognito sign-up now provisions an `fsbs.users` row, invitation links are emailed via SES with the raw token, RDS uses the least-privileged `fsbs_app` role at runtime, and staff token claims are kept in sync with Entra groups on every issuance. The remaining gap before production shipping is the regression-safety net (Phase 7) and an `IUnitOfWork` implementation to make booking commands actually commit.
+> **End-to-end checkpoint:** With Phase 6 complete and the unit of work wired up, booking commands now commit through MediatR's transactional pipeline, Cognito sign-up provisions an `fsbs.users` row, invitation links are emailed via SES with the raw token, RDS uses the least-privileged `fsbs_app` role at runtime, and staff token claims are kept in sync with Entra groups on every issuance. The remaining gap before production shipping is the regression-safety net (Phase 7).
