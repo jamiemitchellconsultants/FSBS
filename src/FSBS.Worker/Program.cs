@@ -36,7 +36,7 @@ builder.Services.AddScoped<INotificationHandler<SlotBookedEvent>,        Booking
 builder.Services.AddScoped<INotificationHandler<BookingApprovedEvent>,   BookingApprovedHandler>();
 builder.Services.AddScoped<INotificationHandler<BookingRejectedEvent>,   BookingRejectedHandler>();
 builder.Services.AddScoped<INotificationHandler<BookingCancelledEvent>,  BookingCancelledHandler>();
-builder.Services.AddScoped<INotificationHandler<InvitationClaimedEvent>, InvitationIssuedHandler>();
+builder.Services.AddScoped<INotificationHandler<InvitationIssuedEvent>, InvitationIssuedHandler>();
 
 // ── Hosted services ───────────────────────────────────────────────────────────
 // SES template seeder runs once at startup to upsert all email templates.

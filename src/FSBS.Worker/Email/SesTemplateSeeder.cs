@@ -91,15 +91,23 @@ internal sealed class SesTemplateSeeder(
         },
         new Template
         {
-            TemplateName = "FsbsInvitationClaimed",
-            SubjectPart  = "Welcome to FSBS — registration complete",
+            TemplateName = "FsbsInvitationIssued",
+            SubjectPart  = "You've been invited to FSBS — {{organisationName}}",
             HtmlPart     = """
-                <h2>Welcome to FSBS</h2>
-                <p>Hi {{name}},</p>
-                <p>Your registration as <strong>{{role}}</strong> is complete.</p>
-                <p>You can now log in to the FSBS portal to manage your bookings.</p>
+                <h2>You've been invited to FSBS</h2>
+                <p>Hi,</p>
+                <p>You have been invited to register as a <strong>{{role}}</strong>
+                for <strong>{{organisationName}}</strong> on the FSBS booking platform.</p>
+                <p>Click the link below to complete your registration. The link expires on
+                <strong>{{expiresAt}}</strong>.</p>
+                <p><a href="https://app.fsbs.example.com/register?token={{token}}&email={{email}}">
+                  Complete your registration
+                </a></p>
+                <p>If you did not expect this invitation you can safely ignore this email.</p>
                 """,
-            TextPart = "Hi {{name}}, your FSBS registration as {{role}} is complete. You can now log in."
+            TextPart = "You've been invited to FSBS as a {{role}} for {{organisationName}}. " +
+                       "Register at https://app.fsbs.example.com/register?token={{token}}&email={{email}}. " +
+                       "Link expires {{expiresAt}}."
         }
     ];
 

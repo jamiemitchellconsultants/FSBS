@@ -19,6 +19,12 @@ public class NetworkStack : Stack
     public SecurityGroup RdsSg { get; }
     public SecurityGroup RedisSg { get; }
 
+    /// <summary>
+    /// Shared security group for in-VPC Lambdas (Cognito triggers, DB grants
+    /// custom resource). Permits egress and is granted ingress to RDS below.
+    /// </summary>
+    public SecurityGroup LambdaSg { get; }
+
     public NetworkStack(Construct scope, string id, NetworkStackProps props) : base(scope, id, props)
     {
         var cloudFrontPrefixListId = props.CloudFrontPrefixListId ?? ResolveCloudFrontPrefixListId();
@@ -57,7 +63,15 @@ public class NetworkStack : Stack
         });
         ApiSg.AddIngressRule(AlbSg, Port.Tcp(8080), "From ALB");
 
-        // RDS — inbound from API tasks only
+        // Lambdas in-VPC — egress to RDS + AWS service endpoints
+        LambdaSg = new SecurityGroup(this, "LambdaSg", new SecurityGroupProps
+        {
+            Vpc = Vpc,
+            Description = "Cognito triggers + DB grants Custom Resource",
+            AllowAllOutbound = true
+        });
+
+        // RDS — inbound from API tasks and in-VPC Lambdas
         RdsSg = new SecurityGroup(this, "RdsSg", new SecurityGroupProps
         {
             Vpc = Vpc,
@@ -65,6 +79,7 @@ public class NetworkStack : Stack
             AllowAllOutbound = false
         });
         RdsSg.AddIngressRule(ApiSg, Port.Tcp(5432), "From API tasks");
+        RdsSg.AddIngressRule(LambdaSg, Port.Tcp(5432), "From in-VPC Lambdas");
 
         // ElastiCache Redis — inbound from API tasks only
         RedisSg = new SecurityGroup(this, "RedisSg", new SecurityGroupProps

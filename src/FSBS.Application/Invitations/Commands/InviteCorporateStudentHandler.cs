@@ -3,6 +3,7 @@ using FSBS.Application.Common.Exceptions;
 using FSBS.Application.Common.Interfaces;
 using FSBS.Domain.Entities;
 using FSBS.Domain.Enums;
+using FSBS.Domain.Events;
 using FSBS.Infrastructure.Persistence.Repositories.Interfaces;
 using MediatR;
 
@@ -11,7 +12,8 @@ namespace FSBS.Application.Invitations.Commands;
 public sealed class InviteCorporateStudentHandler(
     ICurrentUser currentUser,
     IInvitationRepository invitations,
-    IOrganisationRepository organisations)
+    IOrganisationRepository organisations,
+    ISqsPublisher sqs)
     : IRequestHandler<InviteCorporateStudentCommand, CreateCorporateManagerInvitationResult>
 {
     private const int ExpiryDays = 7;
@@ -49,7 +51,14 @@ public sealed class InviteCorporateStudentHandler(
 
         await invitations.CreateAsync(invitation, ct);
 
-        // TODO: emit InvitationIssued domain event → SQS → SES email.
+        await sqs.PublishAsync(new InvitationIssuedEvent(
+            InvitationId:     invitation.Id,
+            OrgId:             invitation.OrgId,
+            OrganisationName:  org.Name,
+            InviteeEmail:      invitation.InviteeEmail,
+            InviteeRole:       invitation.InviteeRole,
+            RawToken:          rawToken,
+            ExpiresAt:         invitation.ExpiresAt), ct);
 
         return new CreateCorporateManagerInvitationResult(
             invitation.Id,

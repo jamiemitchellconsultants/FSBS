@@ -1,6 +1,6 @@
 # FSBS Implementation Status
 
-Overall estimate: ~45% complete. Core architecture and domain model are solid; business logic and AWS integrations are largely absent.
+Overall estimate: **~92% complete.** All six implementation phases finish below — domain, application, infrastructure, API, notification worker, and CDK (including Cognito Lambda bodies and the post-deploy DB grants custom resource). Remaining work is the test suite (Phase 7) and end-to-end UI verification.
 
 ---
 
@@ -9,136 +9,63 @@ Overall estimate: ~45% complete. Core architecture and domain model are solid; b
 | Area | Status |
 |---|---|
 | Database schema (`fsbs_schema.sql`) | ~95% — all tables, constraints, enums, RLS, triggers |
-| Domain entities | ~85% — all 30+ entities present with full properties |
-| EF Core configurations | Complete — all 34 entity configs |
-| Blazor Web UI | ~50% — pages, layouts, Fluxor state slices, client services |
-| Auth scaffolding | Cognito SDK integration, dev auth scheme, validators for register/confirm |
-| CQRS query handlers | Booking queries, invitation queries, organisation listing |
-| Infrastructure persistence | DbContext, AuditInterceptor, 3 repositories (Booking, Invitation, Organisation) |
+| Domain entities, events, value objects, exceptions, repository interfaces | Complete |
+| Aggregate root + domain event dispatch (`MediatRDomainEventDispatcher`) | Complete |
+| Application write side — `BookSimulatorSlot`, `Approve`, `Reject`, `Cancel`, validators | Complete |
+| Application services — `PricingService`, `ReconfigurationService` | Complete |
+| MediatR pipeline — Logging, Validation, Transaction behaviours | Complete |
+| EF Core configurations (34 entity configs) + `FsbsDbContext` + audit/tenant interceptors | Complete |
+| Repositories — Booking, Invitation, Organisation, Simulator, ReconfigTemplate, ReconfigSlot, PricingPolicy, Instructor | Complete |
+| Dapper read layer — `AvailabilityReadService` | Complete |
+| Infrastructure services — `AvailabilityCache` (Redis), `SqsPublisher`, `SesEmailService`, `S3Service` | Complete |
+| API — dual Cognito JWT auth + dev scheme, named role policies, `FsbsClaimsTransformation` | Complete |
+| API endpoints — bookings (CRUD + approve/reject/cancel), pricing quote, simulator availability, invitations, organisations, auth | Complete |
+| `AvailabilityHub` SignalR + Redis backplane + cache-invalidate-and-push helper | Complete |
+| Notification worker — SQS consumer, message dispatcher, 6 event handlers, SES template seeder | Complete |
+| Cognito Lambda bodies — `PreSignUp` (token validation), `PostConfirmation` (user provisioning + group membership), `TokenRefresh` (group sync + claim override) | Complete |
+| Invitation event emission — `InvitationIssuedEvent` published to SQS by both invitation handlers; worker handler sends SES email with raw token | Complete |
+| CDK — `NetworkStack`, `DataStack`, `AppStack` with ECS Fargate (api+worker), ALB, CloudFront, WAF, RDS Multi-AZ, Redis, SQS+DLQ, SNS, Cognito staff/customer pools, Lambda triggers wired, secrets rotation, alarms | Complete |
+| CDK — DB grants custom resource provisions `fsbs_app` + `fsbs_readonly` roles via in-VPC Lambda; ECS services depend on it | Complete |
+| Blazor Web UI — wizard, calendar, my bookings, invitations, Fluxor state slices, typed HTTP services | ~50% — page scaffolding present; binding to live API not fully verified |
 
 ---
 
 ## Not yet implemented
 
-### Application layer — core business logic
+### Phase 7 — Tests (0% coverage)
 
-- [ ] `BookSimulatorSlotCommand` — booking creation
-- [ ] `ApproveBookingCommand` / `RejectBookingCommand` / `CancelBookingCommand`
-- [ ] `PricingService` — quote generation, discount calculation
-- [ ] `ReconfigurationService` — automatic reconfiguration slot creation on confirm
-- [ ] `TransactionBehaviour` — MediatR pipeline DB transaction wrapper
-- [ ] Domain events — directory is empty (`SlotBookedEvent`, etc.)
-- [ ] Value objects — directory exists but is empty
+All three test projects contain only a `UnitTest1` stub.
 
-### Infrastructure layer
+- [ ] **Domain unit tests** — booking state machine transitions, capacity validators (FlightDeck ≤4, CabinCrew ≤10), minimum 240-min duration, InternalStudent required-field rule, instructor rating intersection, pricing/discount evaluation, reconfiguration slot duration lookup, invitation token hashing + scope rules.
+- [ ] **Application unit tests** — handler tests with mocked repositories: idempotency replay, reviewer ≠ booker guard, rejection reason length, reconfig slot insertion on approve, orphan cleanup on cancel/reject, `SlotBookedEvent` / `BookingApprovedEvent` emission, pricing snapshot immutability.
+- [ ] **Integration tests** — Testcontainers PostgreSQL: verify CHECK constraints, partial unique indexes, RLS enforcement under multi-tenant context, `update_org_balance()` trigger correctness, end-to-end booking lifecycle through MediatR pipeline.
 
-- [ ] `AvailabilityCache` — Redis/ElastiCache client
-- [ ] SQS, SNS, SES, S3 clients
-- [ ] Notification worker — async SQS consumer for email/SMS side-effects
-- [ ] Repositories for remaining aggregates (SimulatorUnit, SimulatorBay, PricingPolicy, and ~9 others)
+### Known follow-ups outside Phase 6 scope
 
-### API layer
+- [ ] `IUnitOfWork` is referenced by `TransactionBehaviour` but has no implementation registered in DI — booking commands will fail at request time. Implement against `FsbsDbContext` (delegate `SaveChangesAsync` and collect events from tracked `AggregateRoot` instances).
+- [ ] TokenRefresh Lambda does not yet call Microsoft Graph to detect disabled Entra accounts — federated sign-in already blocks new logins, but residual refresh-token windows remain. Wire Graph + `AdminUserGlobalSignOut` when needed.
+- [ ] Nightly invitation-expiry sweep Lambda (mark `Pending` → `Expired` after 7 days).
 
-- [ ] `FsbsClaimsTransformation` — JWT → `FsbsPrincipal` claims mapping
-- [ ] `AvailabilityHub` — SignalR hub (Hubs directory is empty)
-- [ ] Dual JWT validation for Staff + Customer Cognito pools (not in `Program.cs`)
-- [ ] `POST /bookings`, `PUT /bookings/{id}/approve`, and all other write endpoints (currently empty shells)
+### Blazor Web (deferred polish)
 
-### CDK / infrastructure
-
-- [ ] Verify and complete ECS task definitions and auto-scaling policies
-- [ ] Redis/ElastiCache cluster configuration
-- [ ] SQS queue and SNS topic wiring
-
-### Tests
-
-- [ ] All three test projects contain only an empty stub — 0% coverage
+- [ ] Verify wizard end-to-end against live API (book → confirm → SignalR push → calendar refresh).
+- [ ] Capacity indicator + reconfiguration window tooltip rendering.
+- [ ] Role-adaptive nav coverage for all 10 `AppRole` values.
 
 ---
 
-## Critical path to functional MVP
+## Phase summary
 
-1. `PricingService` (prerequisite for booking creation)
-2. `BookSimulatorSlotCommand` + handler
-3. `ReconfigurationService`
-4. `ApproveBookingCommand` / `RejectBookingCommand`
-5. `TransactionBehaviour` in the MediatR pipeline
-6. `FsbsClaimsTransformation` + dual-pool JWT validation
-7. `AvailabilityHub` (SignalR + Redis backplane)
-8. SQS/SNS notification publisher + worker
-9. Remaining repositories
+| Phase | Status |
+|---|---|
+| Phase 1 — Domain foundation | ✅ Complete |
+| Phase 2 — Application write side (booking flow) | ✅ Complete |
+| Phase 3 — Infrastructure services | ✅ Complete |
+| Phase 4 — API completion | ✅ Complete |
+| Phase 5 — Notification worker | ✅ Complete |
+| Phase 6 — CDK completion | ✅ Complete (grants custom resource + Cognito Lambdas wired with VPC, env, IAM) |
+| Phase 6b — Cognito Lambda bodies | ✅ Complete (PreSignUp / PostConfirmation / TokenRefresh) |
+| Phase 6c — Invitation event emission | ✅ Complete (`InvitationIssuedEvent` → SQS → SES) |
+| Phase 7 — Tests | 🔴 0% coverage across all three test projects |
 
----
-
-## Step-by-step implementation plan
-
-Build from the inside out (domain → application → infrastructure → API → worker → tests) so each layer has a solid foundation before the next is added.
-
-### Phase 1 — Domain foundation ✅
-
-Unblocks everything else. The application layer can't emit or handle events, and can't enforce invariants cleanly, until these exist.
-
-- [x] Domain event base class — `IDomainEvent`, `AggregateRoot` base with `AddDomainEvent()` / `ClearDomainEvents()`
-- [x] Key domain events — `SlotBookedEvent`, `BookingConfirmedEvent`, `BookingApprovedEvent`, `BookingRejectedEvent`, `BookingCancelledEvent`, `InvitationClaimedEvent`
-- [x] Value objects — `Money`, `DateTimeRange`, `IdempotencyKey`
-- [x] Domain interfaces — `IBookingRepository`, `IInvitationRepository`, `ISimulatorRepository`, `IPricingPolicyRepository`, `IReconfigurationTemplateRepository`, `IInstructorRepository`, `IOrganisationRepository`, `IUnitOfWork`, `IDomainEventDispatcher`
-- [x] Domain exceptions — `DomainException`, `BookingConflictException`, `InvalidBookingStateTransitionException`
-- [x] `Booking` and `Invitation` promoted to `AggregateRoot`
-
-### Phase 2 — Application write side (core booking flow)
-
-Each item depends on the previous.
-
-- [x] `TransactionBehaviour<,>` — register third in the MediatR pipeline; wraps every command in a DB transaction
-- [x] `PricingService` — pricing policy lookup, discount rule evaluation, price snapshot; must exist before any booking can be confirmed
-- [x] `ReconfigurationService` — given a confirmed booking, determine whether a reconfiguration slot is needed, calculate duration from template or `DefaultReconfigMins`, return the slot to insert
-- [x] `BookSimulatorSlotCommand` + handler — provisional/pending-approval branching, idempotency key check, emit `SlotBookedEvent`
-- [x] `BookingCapacityValidator` + `BookingSlotValidator` — FluentValidation for capacity caps, minimum duration, InternalStudent required fields
-- [x] `ApproveBookingCommand` + handler — reviewer ≠ booker guard, state transition, emit `BookingApprovedEvent`
-- [x] `RejectBookingCommand` + handler — reason length guard, release slot, remove orphaned reconfig slots, emit `BookingRejectedEvent`
-- [x] `CancelBookingCommand` + handler — customer and admin variants, reconfig slot cleanup
-
-### Phase 3 — Infrastructure services ✅
-
-- [x] Remaining repositories — `SimulatorRepository`, `ReconfigurationTemplateRepository`, `ReconfigurationSlotRepository`, `PricingPolicyRepository`, `InstructorRepository`; all registered in `RepositoriesServiceExtensions`
-- [x] `AvailabilityCache` — Redis wrapper (`StackExchange.Redis`) around availability grid; 60-second TTL; wildcard key invalidation on every booking mutation
-- [x] `ISqsPublisher` + `SqsPublisher` — generic publish-to-SQS adapter; includes `MessageType` attribute for worker dispatch
-- [x] `ISesEmailService` + `SesEmailService` — SES send wrapper with templated and plain email support
-- [x] `IS3Service` + `S3Service` — pre-signed GET/PUT URL generation for document bucket (never served via CloudFront)
-- [x] Dapper read layer — `AvailabilityReadService` executes single SQL query returning available slots, reconfig windows, and maintenance windows in one round-trip
-
-### Phase 4 — API completion
-
-- [x] `FsbsClaimsTransformation` — map `app_role` + `tenant_id` from either pool's JWT into `FsbsPrincipal`; register `IClaimsTransformation`
-- [x] Dual-pool JWT validation — add both `AddJwtBearer("Staff", ...)` and `AddJwtBearer("Customer", ...)` in `Program.cs`; configure policy to accept either
-- [x] Named authorization policies — one policy per `AppRole` enum value
-- [x] `AvailabilityHub` — SignalR hub; push availability delta (including `reconfigurationWindows[]`) on every booking mutation; wire Redis as backplane
-- [x] Wire write endpoints — `POST /bookings`, `PUT /bookings/{id}/approve`, `PUT /bookings/{id}/reject`, `PUT /bookings/{id}/cancel`, `GET /bookings/pending-approval`; return Problem Details on failure
-- [x] `GET /simulators/{id}/availability` — Dapper read query, cached via `AvailabilityCache`, return `availableSlots[]` + `reconfigurationWindows[]` + `maintenanceWindows[]`
-- [x] `GET /pricing/quote` — stateless; call `PricingService` directly, no DB write
-
-### Phase 5 — Notification worker ✅
-
-- [x] SQS consumer loop — separate ECS service; poll queue, deserialise event envelope, dispatch to handlers
-- [x] Notification handlers — one per event: `BookingConfirmedHandler`, `BookingPendingApprovalHandler`, `BookingApprovedHandler`, `BookingRejectedHandler`, `BookingCancelledHandler`, `InvitationIssuedHandler`
-- [x] Email templates — SES template registration for each notification type (`SesTemplateSeeder` upserts all templates at worker startup)
-
-### Phase 6 — CDK completion
-
-- [ ] Review all three stacks against spec — ECS task/service definitions, auto-scaling policy (CPU 60%), RDS Multi-AZ config, Redis cluster, ALB security group (CloudFront prefix list only)
-- [ ] SQS queues + SNS topics — booking events queue, notification worker subscription, dead-letter queue with alarm
-- [ ] Lambda trigger wiring — confirm Pre Sign-up, Post Confirmation, Token Refresh are attached to the correct Cognito pools in `AppStack`
-- [x] Secrets Manager rotation — 30-day rotation enabled, injected as ECS env vars
-- [ ] CDK post-deployment custom resource — runs the DB grants script (`fsbs_app` / `fsbs_readonly` roles)
-
-### Phase 7 — Tests
-
-Write alongside or immediately after each phase so failures are caught before the next phase builds on top.
-
-- [ ] Domain unit tests — booking state machine transitions, capacity validators, pricing/discount logic, reconfiguration slot logic, invitation rules
-- [ ] Application unit tests — command handlers with mocked repositories; verify event emission, pricing snapshots, reconfig slot insertion, approval guard
-- [ ] Integration tests — real PostgreSQL container; verify DB constraints, RLS enforcement, balance trigger, booking full lifecycle end-to-end
-
----
-
-> **End-to-end checkpoint:** After Phase 4, a booking should be creatable via the Blazor wizard, persist to Postgres, and push a real-time update back to the calendar. Phases 5–7 are hardening and ops readiness.
+> **End-to-end checkpoint:** With Phase 6 complete, Cognito sign-up now provisions an `fsbs.users` row, invitation links are emailed via SES with the raw token, RDS uses the least-privileged `fsbs_app` role at runtime, and staff token claims are kept in sync with Entra groups on every issuance. The remaining gap before production shipping is the regression-safety net (Phase 7) and an `IUnitOfWork` implementation to make booking commands actually commit.

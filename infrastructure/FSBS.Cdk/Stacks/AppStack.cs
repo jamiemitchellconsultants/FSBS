@@ -13,6 +13,7 @@ using Amazon.CDK.AWS.S3;
 using Amazon.CDK.AWS.SNS;
 using Amazon.CDK.AWS.SQS;
 using Amazon.CDK.AWS.WAFv2;
+using Amazon.CDK.CustomResources;
 using Constructs;
 using FSBS.Cdk.Lambdas;
 using AlbProps = Amazon.CDK.AWS.ElasticLoadBalancingV2.ApplicationLoadBalancerProps;
@@ -25,6 +26,7 @@ using AlbListenerProps = Amazon.CDK.AWS.ElasticLoadBalancingV2.BaseApplicationLi
 using AlbListenerCert = Amazon.CDK.AWS.ElasticLoadBalancingV2.ListenerCertificate;
 using CfDistribution = Amazon.CDK.AWS.CloudFront.Distribution;
 using CfDistributionProps = Amazon.CDK.AWS.CloudFront.DistributionProps;
+using LambdaFunction = Amazon.CDK.AWS.Lambda.Function;
 
 namespace FSBS.Cdk.Stacks;
 
@@ -35,6 +37,12 @@ public class AppStackProps : StackProps
     public required string DeployEnv { get; init; }
     public required string ApiImageUri { get; init; }
     public required string WorkerImageUri { get; init; }
+
+    /// <summary>
+    /// School-wide root tenant_id used for staff and private customer
+    /// provisioning. Stored as a Cognito Lambda env var.
+    /// </summary>
+    public string? RootTenantId { get; init; }
 }
 
 public class AppStack : Stack
@@ -83,9 +91,42 @@ public class AppStack : Stack
             new Amazon.CDK.AWS.SNS.Subscriptions.SqsSubscription(bookingEventsQueue));
 
         // ── Cognito Lambda triggers ───────────────────────────────────────────
-        var preSignUp = new PreSignUpFunction(this, "PreSignUpFn");
-        var postConfirmation = new PostConfirmationFunction(this, "PostConfirmationFn");
-        var tokenRefresh = new TokenRefreshFunction(this, "TokenRefreshFn");
+        var preSignUp        = new PreSignUpFunction(this, "PreSignUpFn", net.Vpc, net.LambdaSg);
+        var postConfirmation = new PostConfirmationFunction(this, "PostConfirmationFn", net.Vpc, net.LambdaSg);
+        var tokenRefresh     = new TokenRefreshFunction(this, "TokenRefreshFn", net.Vpc, net.LambdaSg);
+
+        var dbEndpointEnv = new Dictionary<string, string>
+        {
+            ["FSBS_DB_SECRET_ARN"] = data.AppDbSecret.SecretArn,
+            ["FSBS_DB_HOST"]       = data.Postgres.DbInstanceEndpointAddress,
+            ["FSBS_DB_PORT"]       = data.Postgres.DbInstanceEndpointPort,
+            ["FSBS_DB_NAME"]       = "fsbs"
+        };
+
+        foreach (var fn in new LambdaFunction[] { preSignUp, postConfirmation, tokenRefresh })
+        {
+            foreach (var kv in dbEndpointEnv) fn.AddEnvironment(kv.Key, kv.Value);
+            data.AppDbSecret.GrantRead(fn);
+        }
+
+        // PostConfirmation also needs the school's root tenant id (used when
+        // provisioning staff and private customer rows).
+        var rootTenantId = props.RootTenantId
+            ?? throw new InvalidOperationException(
+                "AppStackProps.RootTenantId must be set (school's root tenant_id GUID).");
+        postConfirmation.AddEnvironment("FSBS_ROOT_TENANT_ID", rootTenantId);
+
+        // PostConfirmation + TokenRefresh administer Cognito group membership.
+        var cognitoAdminPolicy = new PolicyStatement(new PolicyStatementProps
+        {
+            Effect    = Effect.ALLOW,
+            Actions   = ["cognito-idp:AdminAddUserToGroup",
+                         "cognito-idp:AdminRemoveUserFromGroup",
+                         "cognito-idp:AdminListGroupsForUser"],
+            Resources = ["*"]   // Refined to specific UserPool ARNs after they exist (below).
+        });
+        postConfirmation.AddToRolePolicy(cognitoAdminPolicy);
+        tokenRefresh.AddToRolePolicy(cognitoAdminPolicy);
 
         // ── Cognito Staff Pool (Entra ID OIDC federation) ─────────────────────
         var staffPool = new UserPool(this, "StaffPool", new UserPoolProps
@@ -226,7 +267,8 @@ public class AppStack : Stack
             AssumedBy = new ServicePrincipal("ecs-tasks.amazonaws.com"),
             Description = "FSBS API Fargate task role"
         });
-        data.DbSecret.GrantRead(taskRole);
+        // ECS tasks read the runtime fsbs_app credentials, never the master.
+        data.AppDbSecret.GrantRead(taskRole);
         data.ApiKeysSecret.GrantRead(taskRole);
         staticBucket.GrantReadWrite(taskRole);
         documentsBucket.GrantReadWrite(taskRole);
@@ -276,8 +318,8 @@ public class AppStack : Stack
             },
             Secrets = new Dictionary<string, Amazon.CDK.AWS.ECS.Secret>
             {
-                ["ConnectionStrings__Default"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.DbSecret),
-                ["Secrets__DbCredentials"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.DbSecret),
+                ["ConnectionStrings__Default"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret),
+                ["Secrets__DbCredentials"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret),
                 ["Secrets__ApiKeys"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.ApiKeysSecret)
             }
         });
@@ -356,13 +398,13 @@ public class AppStack : Stack
             },
             Secrets = new Dictionary<string, Amazon.CDK.AWS.ECS.Secret>
             {
-                ["Database__ConnectionString"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.DbSecret),
-                ["Secrets__DbCredentials"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.DbSecret),
+                ["Database__ConnectionString"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret),
+                ["Secrets__DbCredentials"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret),
                 ["Secrets__ApiKeys"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.ApiKeysSecret)
             }
         });
 
-        _ = new FargateService(this, "WorkerService", new FargateServiceProps
+        var workerService = new FargateService(this, "WorkerService", new FargateServiceProps
         {
             Cluster = cluster,
             TaskDefinition = workerTaskDef,
@@ -372,6 +414,43 @@ public class AppStack : Stack
             AssignPublicIp = false,
             ServiceName = "fsbs-worker"
         });
+
+        // ── DB grants Custom Resource ─────────────────────────────────────────
+        // Provisions the runtime fsbs_app + fsbs_readonly roles inside the RDS
+        // instance using the master credentials. Idempotent — safe to re-run.
+        var dbGrantsFn = new DbGrantsFunction(this, "DbGrantsFn", net.Vpc, net.LambdaSg);
+        data.DbSecret.GrantRead(dbGrantsFn);
+        data.AppDbSecret.GrantRead(dbGrantsFn);
+        data.ReadonlyDbSecret.GrantRead(dbGrantsFn);
+
+        var dbGrantsProvider = new Provider(this, "DbGrantsProvider", new ProviderProps
+        {
+            OnEventHandler = dbGrantsFn,
+            LogRetention   = RetentionDays.ONE_MONTH
+        });
+
+        var dbGrants = new CustomResource(this, "DbGrants", new CustomResourceProps
+        {
+            ServiceToken = dbGrantsProvider.ServiceToken,
+            Properties   = new Dictionary<string, object>
+            {
+                ["DbHost"]            = data.Postgres.DbInstanceEndpointAddress,
+                ["DbPort"]            = data.Postgres.DbInstanceEndpointPort,
+                ["DbName"]            = "fsbs",
+                ["MasterSecretArn"]   = data.DbSecret.SecretArn,
+                ["AppSecretArn"]      = data.AppDbSecret.SecretArn,
+                ["ReadonlySecretArn"] = data.ReadonlyDbSecret.SecretArn,
+                // Bumping this on every deploy forces the provider to re-run
+                // even if no other property has changed — picks up rotated
+                // passwords without requiring a separate rotation hook.
+                ["RotationToken"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()
+            }
+        });
+        dbGrants.Node.AddDependency(data.Postgres);
+
+        // ECS tasks must not start until fsbs_app role exists in the DB.
+        apiService.Node.AddDependency(dbGrants);
+        workerService.Node.AddDependency(dbGrants);
 
         // ── WAF WebACL (CLOUDFRONT scope — must be in us-east-1) ─────────────
         var wafAcl = new CfnWebACL(this, "WafAcl", new CfnWebACLProps

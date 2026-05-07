@@ -18,11 +18,26 @@ public class DataStackProps : StackProps
 
 public class DataStack : Stack
 {
+    /// <summary>RDS master credentials. Used only by migrations and the
+    /// DB-grants Custom Resource — never by runtime ECS tasks.</summary>
     public Secret DbSecret { get; }
+
+    /// <summary>Runtime application DB role (<c>fsbs_app</c>): DML on all
+    /// tables, subject to RLS. Used by ECS API and worker tasks.</summary>
+    public Secret AppDbSecret { get; }
+
+    /// <summary>Read-only DB role (<c>fsbs_readonly</c>): SELECT only.
+    /// Used by reporting dashboards and Management-role queries.</summary>
+    public Secret ReadonlyDbSecret { get; }
+
     public Secret ApiKeysSecret { get; }
     public CfnReplicationGroup RedisCluster { get; }
     public Bucket StaticBucket { get; }
     public Bucket DocumentsBucket { get; }
+
+    /// <summary>The RDS instance — exposed so AppStack can target it from the
+    /// DB-grants Custom Resource.</summary>
+    public DatabaseInstance Postgres { get; }
 
     public DataStack(Construct scope, string id, DataStackProps props) : base(scope, id, props)
     {
@@ -30,12 +45,39 @@ public class DataStack : Stack
         var isProd = props.DeployEnv == "production";
 
         // ── RDS credentials ──────────────────────────────────────────────────
+        // Master credentials (created with the RDS instance, retains BYPASSRLS).
+        // The runtime app role is a non-superuser provisioned post-deploy by
+        // the DbGrants Custom Resource and stored in AppDbSecret.
         DbSecret = new Secret(this, "DbSecret", new SecretProps
         {
-            SecretName = "fsbs/rds/credentials",
+            SecretName = "fsbs/rds/master",
+            GenerateSecretString = new SecretStringGenerator
+            {
+                SecretStringTemplate = "{\"username\":\"fsbs_master\"}",
+                GenerateStringKey = "password",
+                ExcludeCharacters = "/@\" "
+            }
+        });
+
+        AppDbSecret = new Secret(this, "AppDbSecret", new SecretProps
+        {
+            SecretName = "fsbs/rds/app",
+            Description = "Runtime fsbs_app DB role — DML, RLS-enforced",
             GenerateSecretString = new SecretStringGenerator
             {
                 SecretStringTemplate = "{\"username\":\"fsbs_app\"}",
+                GenerateStringKey = "password",
+                ExcludeCharacters = "/@\" "
+            }
+        });
+
+        ReadonlyDbSecret = new Secret(this, "ReadonlyDbSecret", new SecretProps
+        {
+            SecretName = "fsbs/rds/readonly",
+            Description = "fsbs_readonly DB role — SELECT only",
+            GenerateSecretString = new SecretStringGenerator
+            {
+                SecretStringTemplate = "{\"username\":\"fsbs_readonly\"}",
                 GenerateStringKey = "password",
                 ExcludeCharacters = "/@\" "
             }
@@ -70,7 +112,7 @@ public class DataStack : Stack
             VpcSubnets = new SubnetSelection { SubnetType = SubnetType.PRIVATE_ISOLATED }
         });
 
-        _ = new DatabaseInstance(this, "Postgres", new DatabaseInstanceProps
+        Postgres = new DatabaseInstance(this, "Postgres", new DatabaseInstanceProps
         {
             Engine = DatabaseInstanceEngine.Postgres(new PostgresInstanceEngineProps
             {

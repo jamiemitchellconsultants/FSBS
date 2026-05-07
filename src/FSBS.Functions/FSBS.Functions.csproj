@@ -18,6 +18,8 @@
     <PackageReference Include="Amazon.Lambda.Core" Version="2.5.0" />
     <PackageReference Include="Amazon.Lambda.CognitoEvents" Version="3.0.0" />
     <PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.4" />
+    <PackageReference Include="AWSSDK.CognitoIdentityProvider" Version="3.7.405" />
+    <PackageReference Include="AWSSDK.SecretsManager" Version="3.7.500" />
     <PackageReference Include="Npgsql" Version="8.0.7" />
   </ItemGroup>
 

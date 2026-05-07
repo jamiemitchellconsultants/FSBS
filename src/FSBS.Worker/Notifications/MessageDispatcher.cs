@@ -20,6 +20,7 @@ internal sealed class MessageDispatcher(IServiceProvider services, ILogger<Messa
             nameof(BookingApprovedEvent)    => Dispatch<BookingApprovedEvent>(messageBody, ct),
             nameof(BookingRejectedEvent)    => Dispatch<BookingRejectedEvent>(messageBody, ct),
             nameof(BookingCancelledEvent)   => Dispatch<BookingCancelledEvent>(messageBody, ct),
+            nameof(InvitationIssuedEvent)   => Dispatch<InvitationIssuedEvent>(messageBody, ct),
             nameof(InvitationClaimedEvent)  => Dispatch<InvitationClaimedEvent>(messageBody, ct),
             _ => UnknownTypeAsync(messageType)
         };

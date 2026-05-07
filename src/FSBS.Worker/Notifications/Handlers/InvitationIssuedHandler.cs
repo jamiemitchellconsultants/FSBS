@@ -4,39 +4,34 @@ using FSBS.Domain.Events;
 namespace FSBS.Worker.Notifications.Handlers;
 
 /// <summary>
-/// Sends a welcome / registration-complete email to the invitee after they
-/// successfully claim their invitation and complete Cognito sign-up.
-/// Fires on <see cref="InvitationClaimedEvent"/>; uses the
-/// <c>FsbsInvitationClaimed</c> SES template.
+/// Sends the registration invitation email to a newly-invited
+/// CorporateManager or CorporateStudent. The raw registration token is
+/// included in the email — this is the single point at which the token
+/// crosses an external boundary; it is never persisted.
+/// Fires on <see cref="InvitationIssuedEvent"/>; uses the
+/// <c>FsbsInvitationIssued</c> SES template.
 /// </summary>
 internal sealed class InvitationIssuedHandler(
     ISesEmailService ses,
-    IUserLookupService users,
-    ILogger<InvitationIssuedHandler> logger) : INotificationHandler<InvitationClaimedEvent>
+    ILogger<InvitationIssuedHandler> logger) : INotificationHandler<InvitationIssuedEvent>
 {
-    private const string TemplateName = "FsbsInvitationClaimed";
+    private const string TemplateName = "FsbsInvitationIssued";
 
-    public async Task HandleAsync(InvitationClaimedEvent notification, CancellationToken ct = default)
+    public async Task HandleAsync(InvitationIssuedEvent notification, CancellationToken ct = default)
     {
         logger.LogInformation(
-            "Sending InvitationClaimed welcome email for user {UserId} (org {OrgId}).",
-            notification.ClaimedBy, notification.OrgId);
+            "Sending InvitationIssued email for invitation {InvitationId} ({Role}) to {Email}.",
+            notification.InvitationId,
+            notification.InviteeRole,
+            notification.InviteeEmail);
 
-        var user = await users.GetContactAsync(notification.ClaimedBy, ct);
-        if (user is null)
+        await ses.SendTemplatedEmailAsync(notification.InviteeEmail, TemplateName, new
         {
-            logger.LogWarning(
-                "InvitationClaimed: user {UserId} not found — skipping welcome email.",
-                notification.ClaimedBy);
-            return;
-        }
-
-        await ses.SendTemplatedEmailAsync(user.Email, TemplateName, new
-        {
-            name        = user.DisplayName,
-            role        = notification.InviteeRole.ToString(),
-            orgId       = notification.OrgId,
-            claimedAt   = notification.OccurredAt
+            email            = notification.InviteeEmail,
+            role             = notification.InviteeRole.ToString(),
+            organisationName = notification.OrganisationName,
+            token            = notification.RawToken,
+            expiresAt        = notification.ExpiresAt
         }, ct);
     }
 }

@@ -16,6 +16,9 @@ var apiImageUri = app.Node.TryGetContext("apiImageUri") as string
     ?? throw new InvalidOperationException("CDK context 'apiImageUri' is required.");
 var workerImageUri = app.Node.TryGetContext("workerImageUri") as string
     ?? throw new InvalidOperationException("CDK context 'workerImageUri' is required.");
+var rootTenantId = app.Node.TryGetContext("rootTenantId") as string
+    ?? throw new InvalidOperationException(
+        "CDK context 'rootTenantId' is required (school's root tenant_id GUID).");
 
 var network = new NetworkStack(app, "FsbsNetworkStack", new NetworkStackProps
 {
@@ -38,7 +41,8 @@ var appStack = new AppStack(app, "FsbsAppStack", new AppStackProps
     Data = data,
     DeployEnv = deployEnv,
     ApiImageUri = apiImageUri,
-    WorkerImageUri = workerImageUri
+    WorkerImageUri = workerImageUri,
+    RootTenantId = rootTenantId
 });
 
 app.Synth();
