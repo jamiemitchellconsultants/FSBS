@@ -1,9 +1,12 @@
+using FSBS.Application.Bookings.Services;
+using FSBS.Application.Pricing.Services;
+
 namespace FSBS.Application.Tests.Common;
 
 /// <summary>
 /// Base class for handler tests. Pre-creates NSubstitute mocks for the
-/// repositories handlers commonly depend on. Subclasses can override the
-/// <see cref="CurrentUser"/> setter to switch role/identity per test.
+/// repositories and services handlers commonly depend on. Subclasses can
+/// reassign <see cref="CurrentUser"/> to switch role/identity per test.
 /// </summary>
 public abstract class HandlerFixtureBase
 {
@@ -15,6 +18,8 @@ public abstract class HandlerFixtureBase
     protected IPricingPolicyRepository PricingPolicyRepository { get; } = Substitute.For<IPricingPolicyRepository>();
     protected IReconfigurationSlotRepository ReconfigurationSlotRepository { get; } = Substitute.For<IReconfigurationSlotRepository>();
     protected IReconfigurationTemplateRepository ReconfigurationTemplateRepository { get; } = Substitute.For<IReconfigurationTemplateRepository>();
+    protected IReconfigurationService ReconfigurationService { get; } = Substitute.For<IReconfigurationService>();
+    protected IPricingService PricingService { get; } = Substitute.For<IPricingService>();
     protected IUnitOfWork UnitOfWork { get; } = Substitute.For<IUnitOfWork>();
 
     protected ICurrentUser CurrentUser { get; set; } = new FakeCurrentUser();

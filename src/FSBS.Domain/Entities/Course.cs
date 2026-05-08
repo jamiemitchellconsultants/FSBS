@@ -18,11 +18,20 @@ public class Course : AuditableEntity, ISoftDeletable, ITenantScoped
     /// <inheritdoc/>
     public Guid TenantId { get; set; }
 
-    /// <summary>Display name of the course shown to students and instructors.</summary>
-    public string Name { get; set; } = string.Empty;
+    /// <summary>Display title of the course shown to students and instructors.</summary>
+    public string Title { get; set; } = string.Empty;
 
     /// <summary>Optional overview or objectives for the course.</summary>
     public string? Description { get; set; }
+
+    /// <summary>Regulatory framework this course satisfies (e.g. "EASA Part-FCL", "UK CAA").</summary>
+    public string? RegulatoryFramework { get; set; }
+
+    /// <summary>Total scheduled hours for the full course. Must be greater than zero.</summary>
+    public decimal TotalHours { get; set; }
+
+    /// <summary>Whether this course is currently active and open for new enrolments.</summary>
+    public bool IsActive { get; set; } = true;
 
     /// <summary>
     /// Whether this is a Flight Deck or Cabin Crew training programme. Restricts

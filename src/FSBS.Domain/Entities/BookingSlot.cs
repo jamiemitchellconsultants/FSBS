@@ -46,6 +46,11 @@ public class BookingSlot : AuditableEntity, ISoftDeletable
     /// </summary>
     public int DurationMins { get; set; }
 
+    /// <summary>
+    /// The lesson this slot delivers, when the booking is part of a structured
+    /// course. <c>null</c> for ad-hoc bookings.
+    /// </summary>
+    public Guid? LessonId { get; set; }
     /// <summary>Current status of the slot within the session lifecycle.</summary>
     public SlotStatus SlotStatus { get; set; }
 

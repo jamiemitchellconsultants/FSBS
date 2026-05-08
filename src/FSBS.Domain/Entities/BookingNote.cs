@@ -14,7 +14,9 @@ public class BookingNote : AuditableEntity, ISoftDeletable
     public Guid AuthorId { get; set; }
 
     /// <summary>The note content. Plain text; displayed in the booking detail view.</summary>
-    public string Body { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    /// <summary>Whether this note is internal (staff-only) or visible to the customer.</summary>
+    public bool IsInternal { get; set; } = true;
 
     /// <inheritdoc/>
     public bool IsDeleted { get; set; }

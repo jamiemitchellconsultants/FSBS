@@ -20,9 +20,14 @@ public class AccountPayment : AuditableEntity, ISoftDeletable
 {
     /// <summary>The account this payment is applied to.</summary>
     public Guid OrgAccountId { get; set; }
-
+    /// <summary>The organisation this payment belongs to.</summary>
+    public Guid OrgId { get; set; }
     /// <summary>The amount received in GBP. Always positive.</summary>
     public decimal AmountGbp { get; set; }
+    /// <summary>The calendar date on which the payment was received.</summary>
+    public DateOnly PaymentDate { get; set; }
+    /// <summary><see cref="AppUser.Id"/> of the SalesStaff member who recorded the payment.</summary>
+    public Guid RecordedBy { get; set; }
 
     /// <summary>
     /// How the payment was made. Drives the information required at entry

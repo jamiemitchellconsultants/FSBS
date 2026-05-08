@@ -10,7 +10,7 @@ public record BookingConfirmedEvent(
     Guid BookedBy,
     Guid? OrgId,
     decimal GrossPriceGbp,
-    decimal DiscountGbp,
+    decimal DiscountPct,
     decimal NetPriceGbp) : IDomainEvent
 {
     public DateTimeOffset OccurredAt { get; } = DateTimeOffset.UtcNow;

@@ -11,7 +11,14 @@ public class BookingNoteConfiguration : IEntityTypeConfiguration<BookingNote>
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).HasColumnName("note_id");
 
-        builder.Property(e => e.Body).IsRequired().HasMaxLength(5000);
+        builder.Property(e => e.AuthorId).IsRequired();
+        builder.Property(e => e.Content).HasColumnName("content").IsRequired().HasColumnType("text");
+        builder.Property(e => e.IsInternal).IsRequired().HasDefaultValue(true);
+
+        builder.HasOne<AppUser>()
+            .WithMany()
+            .HasForeignKey(e => e.AuthorId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
     }

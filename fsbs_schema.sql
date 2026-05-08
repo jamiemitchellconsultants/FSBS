@@ -430,7 +430,7 @@ CREATE TABLE simulator_configurations (
 -- ----------------------------------------------------------------------------
 
 CREATE TABLE reconfiguration_templates (
-    template_id         uuid            NOT NULL DEFAULT uuid_generate_v4(),
+    reconfig_template_id uuid           NOT NULL DEFAULT uuid_generate_v4(),
     from_config_id      uuid            NOT NULL,
     to_config_id        uuid            NOT NULL,
     duration_mins       integer         NOT NULL,
@@ -439,7 +439,7 @@ CREATE TABLE reconfiguration_templates (
     updated_at          timestamptz     NOT NULL DEFAULT now(),
     created_by          uuid            NULL,
     updated_by          uuid            NULL,
-    CONSTRAINT pk_reconfiguration_templates PRIMARY KEY (template_id),
+    CONSTRAINT pk_reconfiguration_templates PRIMARY KEY (reconfig_template_id),
     CONSTRAINT fk_reconfig_templates_from FOREIGN KEY (from_config_id)
         REFERENCES simulator_configurations (config_id),
     CONSTRAINT fk_reconfig_templates_to FOREIGN KEY (to_config_id)
@@ -517,7 +517,7 @@ CREATE INDEX ix_maintenance_windows_bay_range ON maintenance_windows (bay_id, st
 -- =============================================================================
 
 CREATE TABLE schedule_templates (
-    template_id         uuid            NOT NULL DEFAULT uuid_generate_v4(),
+    schedule_template_id uuid           NOT NULL DEFAULT uuid_generate_v4(),
     bay_id              uuid            NOT NULL,
     config_id           uuid            NOT NULL,
     day_of_week         smallint        NOT NULL,  -- 0=Sunday ... 6=Saturday
@@ -531,7 +531,7 @@ CREATE TABLE schedule_templates (
     updated_at          timestamptz     NOT NULL DEFAULT now(),
     created_by          uuid            NULL,
     updated_by          uuid            NULL,
-    CONSTRAINT pk_schedule_templates PRIMARY KEY (template_id),
+    CONSTRAINT pk_schedule_templates PRIMARY KEY (schedule_template_id),
     CONSTRAINT fk_schedule_templates_bay FOREIGN KEY (bay_id)
         REFERENCES simulator_bays (bay_id),
     CONSTRAINT fk_schedule_templates_config FOREIGN KEY (config_id)
@@ -552,9 +552,9 @@ CREATE TABLE pricing_policies (
     config_id               uuid            NOT NULL,
     training_type           training_type   NOT NULL,
     customer_class          customer_class  NOT NULL,
-    rate_per_hour_gbp       numeric(10,2)   NOT NULL,
-    valid_from              date            NOT NULL,
-    valid_to                date            NULL,
+    hourly_rate_gbp         numeric(10,2)   NOT NULL,
+    effective_from          date            NOT NULL,
+    effective_to            date            NULL,
     is_deleted              boolean         NOT NULL DEFAULT false,
     created_at              timestamptz     NOT NULL DEFAULT now(),
     updated_at              timestamptz     NOT NULL DEFAULT now(),
@@ -563,8 +563,8 @@ CREATE TABLE pricing_policies (
     CONSTRAINT pk_pricing_policies PRIMARY KEY (policy_id),
     CONSTRAINT fk_pricing_policies_config FOREIGN KEY (config_id)
         REFERENCES simulator_configurations (config_id),
-    CONSTRAINT ck_pricing_policies_rate CHECK (rate_per_hour_gbp >= 0),
-    CONSTRAINT ck_pricing_policies_dates CHECK (valid_to IS NULL OR valid_to > valid_from)
+    CONSTRAINT ck_pricing_policies_rate CHECK (hourly_rate_gbp >= 0),
+    CONSTRAINT ck_pricing_policies_dates CHECK (effective_to IS NULL OR effective_to > effective_from)
 );
 
 CREATE INDEX ix_pricing_policies_config ON pricing_policies (config_id, training_type, customer_class)
@@ -573,26 +573,22 @@ CREATE INDEX ix_pricing_policies_config ON pricing_policies (config_id, training
 -- ----------------------------------------------------------------------------
 
 CREATE TABLE discount_rules (
-    rule_id             uuid            NOT NULL DEFAULT uuid_generate_v4(),
-    policy_id           uuid            NOT NULL,
+    discount_rule_id    uuid            NOT NULL DEFAULT uuid_generate_v4(),
+    pricing_policy_id   uuid            NOT NULL,
     discount_type       discount_type   NOT NULL,
     priority            integer         NOT NULL DEFAULT 100,
-    threshold_value     numeric(10,2)   NOT NULL,
     discount_pct        numeric(5,2)    NOT NULL,
     is_combinable       boolean         NOT NULL DEFAULT false,
-    valid_from          date            NOT NULL,
-    valid_to            date            NULL,
+    threshold_json      jsonb           NULL,
     is_deleted          boolean         NOT NULL DEFAULT false,
     created_at          timestamptz     NOT NULL DEFAULT now(),
     updated_at          timestamptz     NOT NULL DEFAULT now(),
     created_by          uuid            NULL,
     updated_by          uuid            NULL,
-    CONSTRAINT pk_discount_rules PRIMARY KEY (rule_id),
-    CONSTRAINT fk_discount_rules_policy FOREIGN KEY (policy_id)
+    CONSTRAINT pk_discount_rules PRIMARY KEY (discount_rule_id),
+    CONSTRAINT fk_discount_rules_policy FOREIGN KEY (pricing_policy_id)
         REFERENCES pricing_policies (policy_id) ON DELETE CASCADE,
-    CONSTRAINT ck_discount_rules_pct CHECK (discount_pct > 0 AND discount_pct <= 100),
-    CONSTRAINT ck_discount_rules_threshold CHECK (threshold_value >= 0),
-    CONSTRAINT ck_discount_rules_dates CHECK (valid_to IS NULL OR valid_to > valid_from)
+    CONSTRAINT ck_discount_rules_pct CHECK (discount_pct >= 0 AND discount_pct <= 100)
 );
 
 -- =============================================================================
@@ -878,6 +874,7 @@ COMMENT ON CONSTRAINT ck_booking_approvals_rejection ON booking_approvals
 CREATE TABLE booking_slots (
     slot_id             uuid            NOT NULL DEFAULT uuid_generate_v4(),
     booking_id          uuid            NOT NULL,
+    bay_id              uuid            NOT NULL,
     start_at            timestamptz     NOT NULL,
     end_at              timestamptz     NOT NULL,
     duration_mins       integer         NOT NULL,
@@ -891,6 +888,8 @@ CREATE TABLE booking_slots (
     CONSTRAINT pk_booking_slots PRIMARY KEY (slot_id),
     CONSTRAINT fk_booking_slots_booking FOREIGN KEY (booking_id)
         REFERENCES bookings (booking_id) ON DELETE CASCADE,
+    CONSTRAINT fk_booking_slots_bay FOREIGN KEY (bay_id)
+        REFERENCES simulator_bays (bay_id),
     CONSTRAINT fk_booking_slots_lesson FOREIGN KEY (lesson_id)
         REFERENCES lessons (lesson_id) ON DELETE SET NULL,
     CONSTRAINT ck_booking_slots_min_duration
@@ -902,12 +901,8 @@ COMMENT ON CONSTRAINT ck_booking_slots_min_duration ON booking_slots
     IS 'Minimum booking duration is 4 hours (240 minutes)';
 
 -- Prevent double-booking: no two non-cancelled slots can overlap on the same bay
--- Note: the bay_id must be joined via bookings; enforce via trigger or application layer
--- Direct partial unique index on (bay_id from bookings join, start_at, end_at) is better handled
--- by the application-layer BookingCapacityValidator. The DB constraint below ensures
--- slot-level consistency within a single booking.
-CREATE UNIQUE INDEX uq_booking_slots_no_overlap
-    ON booking_slots (booking_id, start_at)
+CREATE UNIQUE INDEX uq_booking_slots_bay_time
+    ON booking_slots (bay_id, start_at, end_at)
     WHERE slot_status != 'Cancelled' AND is_deleted = false;
 
 CREATE INDEX ix_booking_slots_booking_id ON booking_slots (booking_id) WHERE is_deleted = false;
@@ -918,7 +913,7 @@ CREATE INDEX ix_booking_slots_time_range ON booking_slots (start_at, end_at) WHE
 CREATE TABLE reconfiguration_slots (
     reconfig_slot_id    uuid            NOT NULL DEFAULT uuid_generate_v4(),
     bay_id              uuid            NOT NULL,
-    from_booking_id     uuid            NULL,  -- NULL if first booking of the day
+    preceding_booking_id uuid           NULL,  -- NULL if first booking of the day
     to_booking_id       uuid            NULL,  -- NULL if last booking of the day
     start_at            timestamptz     NOT NULL,
     end_at              timestamptz     NOT NULL,
@@ -930,7 +925,7 @@ CREATE TABLE reconfiguration_slots (
     CONSTRAINT pk_reconfiguration_slots PRIMARY KEY (reconfig_slot_id),
     CONSTRAINT fk_reconfiguration_slots_bay FOREIGN KEY (bay_id)
         REFERENCES simulator_bays (bay_id),
-    CONSTRAINT fk_reconfiguration_slots_from_booking FOREIGN KEY (from_booking_id)
+    CONSTRAINT fk_reconfiguration_slots_from_booking FOREIGN KEY (preceding_booking_id)
         REFERENCES bookings (booking_id) ON DELETE SET NULL,
     CONSTRAINT fk_reconfiguration_slots_to_booking FOREIGN KEY (to_booking_id)
         REFERENCES bookings (booking_id) ON DELETE SET NULL,
@@ -959,9 +954,9 @@ CREATE TABLE booking_discounts (
     CONSTRAINT fk_booking_discounts_booking FOREIGN KEY (booking_id)
         REFERENCES bookings (booking_id) ON DELETE CASCADE,
     CONSTRAINT fk_booking_discounts_rule FOREIGN KEY (rule_id)
-        REFERENCES discount_rules (rule_id) ON DELETE SET NULL,
-    CONSTRAINT ck_booking_discounts_pct CHECK (discount_pct > 0 AND discount_pct <= 100),
-    CONSTRAINT ck_booking_discounts_amount CHECK (amount_gbp > 0)
+        REFERENCES discount_rules (discount_rule_id) ON DELETE SET NULL,
+    CONSTRAINT ck_booking_discounts_pct CHECK (discount_pct >= 0 AND discount_pct <= 100),
+    CONSTRAINT ck_booking_discounts_amount CHECK (amount_gbp >= 0)
 );
 
 COMMENT ON TABLE booking_discounts
@@ -998,6 +993,7 @@ CREATE TABLE invoices (
     booking_id          uuid            NOT NULL,
     org_id              uuid            NULL,
     user_id             uuid            NOT NULL,
+    issued_date         date            NOT NULL,
     gross_gbp           numeric(12,2)   NOT NULL,
     discount_gbp        numeric(12,2)   NOT NULL DEFAULT 0,
     net_gbp             numeric(12,2)   NOT NULL,
@@ -1038,6 +1034,7 @@ CREATE INDEX ix_payment_allocations_invoice_id ON payment_allocations (invoice_i
 CREATE TABLE reports (
     report_id           uuid            NOT NULL DEFAULT uuid_generate_v4(),
     name                varchar(300)    NOT NULL,
+    description         text            NULL,
     definition_json     jsonb           NOT NULL,
     owner_id            uuid            NOT NULL,
     is_shared           boolean         NOT NULL DEFAULT false,
@@ -1133,7 +1130,7 @@ CREATE TABLE account_statements (
     period_end          date            NOT NULL,
     opening_balance_gbp numeric(12,2)   NOT NULL,
     closing_balance_gbp numeric(12,2)   NOT NULL,
-    statement_s3_key    varchar(500)    NULL,
+    statement_s3_key    varchar(500)    NOT NULL,
     generated_at        timestamptz     NOT NULL DEFAULT now(),
     generated_by        uuid            NOT NULL,
     CONSTRAINT pk_account_statements PRIMARY KEY (statement_id),

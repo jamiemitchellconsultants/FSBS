@@ -18,7 +18,15 @@ public static class BookingWizardReducers
 
     [ReducerMethod]
     public static BookingWizardState OnSetSimulator(BookingWizardState state, SetWizardSimulatorAction a) =>
-        state with { SelectedSimulatorId = a.SimulatorId };
+        state with { SelectedSimulatorId = a.SimulatorId, SelectedBayId = null, SelectedConfigurationId = null };
+
+    [ReducerMethod]
+    public static BookingWizardState OnSetBay(BookingWizardState state, SetWizardBayAction a) =>
+        state with { SelectedBayId = a.BayId };
+
+    [ReducerMethod]
+    public static BookingWizardState OnSetConfiguration(BookingWizardState state, SetWizardConfigurationAction a) =>
+        state with { SelectedConfigurationId = a.ConfigurationId };
 
     [ReducerMethod]
     public static BookingWizardState OnSetDate(BookingWizardState state, SetWizardDateAction a) =>

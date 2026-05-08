@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using FSBS.Shared.Simulators;
 
 namespace FSBS.Web.Services;
 
@@ -6,24 +7,25 @@ public sealed class SimulatorService(HttpClient http)
 {
     public async Task<IReadOnlyList<SimulatorSummary>> GetSimulatorsAsync(CancellationToken ct = default)
     {
-        var result = await http.GetFromJsonAsync<SimulatorPage>("v1/simulators?limit=100", ct);
-        return result?.Items ?? [];
+        var result = await http.GetFromJsonAsync<SimulatorListResponse>("v1/simulators", ct);
+        return result?.Items
+            .Select(d => new SimulatorSummary(d.UnitId, d.Name, d.IsActive))
+            .ToList() ?? [];
     }
 
-    public Task<object?> GetSimulatorAsync(Guid simulatorId, CancellationToken ct = default) =>
-        Task.FromResult<object?>(null);
+    public async Task<SimulatorDetailDto?> GetSimulatorDetailAsync(Guid simulatorId, CancellationToken ct = default)
+    {
+        try
+        {
+            return await http.GetFromJsonAsync<SimulatorDetailDto>($"v1/simulators/{simulatorId}", ct);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
 
-    public Task<IReadOnlyList<object>> GetConfigurationsAsync(Guid simulatorId, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<object>>([]);
-
-    public Task<IReadOnlyList<object>> GetMaintenanceWindowsAsync(Guid simulatorId, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<object>>([]);
-
-    public Task<IReadOnlyList<object>> GetReconfigTemplatesAsync(CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<object>>([]);
-
-    private sealed record SimulatorPage(IReadOnlyList<SimulatorSummary> Items);
+    private sealed record SimulatorListResponse(IReadOnlyList<SimulatorDetailDto> Items);
 }
 
 public sealed record SimulatorSummary(Guid UnitId, string Name, bool IsActive);
-

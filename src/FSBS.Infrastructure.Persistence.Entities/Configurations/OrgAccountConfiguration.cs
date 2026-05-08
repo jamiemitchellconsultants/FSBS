@@ -10,10 +10,12 @@ public class OrgAccountConfiguration : IEntityTypeConfiguration<OrgAccount>
     public void Configure(EntityTypeBuilder<OrgAccount> builder)
     {
         builder.HasKey(e => e.Id);
-        builder.Property(e => e.Id).HasColumnName("org_account_id");
+        builder.Property(e => e.Id).HasColumnName("account_id");
 
         builder.Property(e => e.CreditLimitGbp).HasPrecision(12, 2).IsRequired();
         builder.Property(e => e.Status).HasConversion<string>().IsRequired();
+        builder.Property(e => e.PaymentTermsDays).IsRequired().HasDefaultValue(30);
+        builder.HasCheckConstraint("ck_org_accounts_payment_terms", "payment_terms_days > 0");
 
         builder.Property(e => e.CurrentBalanceGbp)
             .HasPrecision(12, 2)
@@ -27,7 +29,7 @@ public class OrgAccountConfiguration : IEntityTypeConfiguration<OrgAccount>
             .HasForeignKey(p => p.OrgAccountId);
 
         builder.HasMany(e => e.Statements)
-            .WithOne(s => s.OrgAccount)
-            .HasForeignKey(s => s.OrgAccountId);
+            .WithOne()
+            .HasForeignKey("OrgAccountId");
     }
 }

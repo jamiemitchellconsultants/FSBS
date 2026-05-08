@@ -27,14 +27,6 @@
     <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_submitError</MudAlert>
 }
 
-@if (_submitSuccessId.HasValue)
-{
-    <MudAlert Severity="Severity.Success" Dense="true" Class="mb-3">
-        @(IsInternalStudent ? "Booking submitted for approval." : "Booking created successfully.")
-        <MudLink Href="@($"/bookings/{_submitSuccessId.Value}?from=mybookings")" Class="ml-1">Open booking</MudLink>
-    </MudAlert>
-}
-
 @if (_loadingSimulators)
 {
     <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
@@ -43,7 +35,7 @@
 <MudPaper Elevation="2" Class="pa-4 mb-4">
     @if (WizardState.Value.CurrentStep == 1)
     {
-        <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600">1) Simulator and Slot</MudText>
+        <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600">1) Simulator, Bay and Slot</MudText>
 
         <MudSelect T="Guid?"
                    Label="Simulator"
@@ -59,6 +51,44 @@
                 <MudSelectItem T="Guid?" Value="@simulator.UnitId">@simulator.Name</MudSelectItem>
             }
         </MudSelect>
+
+        @if (_loadingDetail)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mb-3" />
+        }
+
+        @if (_simulatorDetail is not null)
+        {
+            <MudSelect T="Guid?"
+                       Label="Bay"
+                       Dense="true"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Value="@_selectedBayId"
+                       ValueChanged="OnBayChanged"
+                       Style="max-width:420px"
+                       Class="mb-3">
+                @foreach (var bay in _simulatorDetail.Bays)
+                {
+                    <MudSelectItem T="Guid?" Value="@bay.BayId">Bay @bay.BayCode</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="Guid?"
+                       Label="Configuration"
+                       Dense="true"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Value="@_selectedConfigurationId"
+                       ValueChanged="OnConfigurationChanged"
+                       Style="max-width:420px"
+                       Class="mb-3">
+                @foreach (var config in _simulatorDetail.Configurations)
+                {
+                    <MudSelectItem T="Guid?" Value="@config.ConfigurationId">@config.Name (@config.AircraftType)</MudSelectItem>
+                }
+            </MudSelect>
+        }
 
         <MudGrid Spacing="2">
             <MudItem xs="12" sm="4">
@@ -90,8 +120,10 @@
                    ValueChanged="OnTrainingTypeChanged"
                    Style="max-width:420px"
                    Class="mb-3">
-            <MudSelectItem T="string" Value='@("FlightDeck")'>FlightDeck</MudSelectItem>
-            <MudSelectItem T="string" Value='@("CabinCrew")'>CabinCrew</MudSelectItem>
+            @foreach (var t in GetAvailableTrainingTypes())
+            {
+                <MudSelectItem T="string" Value="@t">@t</MudSelectItem>
+            }
         </MudSelect>
 
         <MudNumericField T="int"
@@ -136,18 +168,12 @@
 
         <MudStack Spacing="1" Class="mb-3">
             <MudText Typo="Typo.body2">Simulator: @GetSelectedSimulatorName()</MudText>
+            <MudText Typo="Typo.body2">Bay: @GetSelectedBayCode()</MudText>
+            <MudText Typo="Typo.body2">Configuration: @GetSelectedConfigurationName()</MudText>
             <MudText Typo="Typo.body2">Date: @(_selectedDate?.ToString("dddd, d MMM yyyy") ?? "-")</MudText>
             <MudText Typo="Typo.body2">Time: @_startText - @_endText</MudText>
             <MudText Typo="Typo.body2">Training: @_trainingType</MudText>
             <MudText Typo="Typo.body2">Students: @_studentCount</MudText>
-            @if (IsInternalStudent)
-            {
-                <MudText Typo="Typo.body2">Pricing Profile: Staff rate (no discounts)</MudText>
-            }
-            else if (IsCorporateStudent)
-            {
-                <MudText Typo="Typo.body2">Pricing Profile: Corporate rate</MudText>
-            }
         </MudStack>
 
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
@@ -166,6 +192,8 @@
 
         <MudStack Spacing="1" Class="mb-3">
             <MudText Typo="Typo.body2">Simulator: @GetSelectedSimulatorName()</MudText>
+            <MudText Typo="Typo.body2">Bay: @GetSelectedBayCode()</MudText>
+            <MudText Typo="Typo.body2">Configuration: @GetSelectedConfigurationName()</MudText>
             <MudText Typo="Typo.body2">Date: @(_selectedDate?.ToString("dddd, d MMM yyyy") ?? "-")</MudText>
             <MudText Typo="Typo.body2">Time: @_startText - @_endText</MudText>
             <MudText Typo="Typo.body2">Training: @_trainingType</MudText>
@@ -202,16 +230,18 @@
 
 @code {
     private IReadOnlyList<SimulatorSummary> _simulators = [];
+    private SimulatorDetailDto? _simulatorDetail;
     private bool _loadingSimulators;
+    private bool _loadingDetail;
     private string? _loadError;
     private string? _submitError;
-    private Guid? _submitSuccessId;
     private bool _submitting;
     private bool _quoting;
 
     private Guid? _selectedSimulatorId;
+    private Guid? _selectedBayId;
+    private Guid? _selectedConfigurationId;
     private DateOnly? _selectedDate;
-    private Guid? _orgId;
     private string _appRole = string.Empty;
     private string? _departmentName;
     private string? _budgetCode;
@@ -223,7 +253,6 @@
     private decimal? _quotedPrice;
 
     private bool IsInternalStudent => string.Equals(_appRole, "InternalStudent", StringComparison.OrdinalIgnoreCase);
-    private bool IsCorporateStudent => string.Equals(_appRole, "CorporateStudent", StringComparison.OrdinalIgnoreCase);
     private int TotalSteps => IsInternalStudent ? 5 : 4;
     private int PricingStep => IsInternalStudent ? 4 : 3;
     private int ConfirmStep => IsInternalStudent ? 5 : 4;
@@ -233,21 +262,25 @@
         HydrateFromSession();
         HydrateFromState();
         await LoadSimulatorsAsync();
+
+        if (_selectedSimulatorId.HasValue)
+            await LoadSimulatorDetailAsync(_selectedSimulatorId.Value);
     }
 
     private void HydrateFromSession()
     {
         _appRole = SessionState.Value.AppRole;
-        _orgId = Guid.TryParse(SessionState.Value.OrgId, out var orgId) ? orgId : null;
-
         Dispatcher.Dispatch(new SetWizardBookerRoleAction(_appRole));
-        Dispatcher.Dispatch(new SetWizardOrgAction(_orgId));
+        Dispatcher.Dispatch(new SetWizardOrgAction(
+            Guid.TryParse(SessionState.Value.OrgId, out var orgId) ? orgId : null));
     }
 
     private void HydrateFromState()
     {
         var s = WizardState.Value;
         _selectedSimulatorId = s.SelectedSimulatorId;
+        _selectedBayId = s.SelectedBayId;
+        _selectedConfigurationId = s.SelectedConfigurationId;
         _selectedDate = s.SelectedDate;
         _departmentName = s.DepartmentName;
         _budgetCode = s.BudgetCode;
@@ -263,7 +296,6 @@
     {
         _loadingSimulators = true;
         _loadError = null;
-
         try
         {
             _simulators = (await SimulatorService.GetSimulatorsAsync())
@@ -281,13 +313,50 @@
         }
     }
 
-    private Task OnSimulatorChanged(Guid? simulatorId)
+    private async Task LoadSimulatorDetailAsync(Guid simulatorId)
+    {
+        _loadingDetail = true;
+        try
+        {
+            _simulatorDetail = await SimulatorService.GetSimulatorDetailAsync(simulatorId);
+        }
+        catch
+        {
+            _simulatorDetail = null;
+        }
+        finally
+        {
+            _loadingDetail = false;
+        }
+    }
+
+    private async Task OnSimulatorChanged(Guid? simulatorId)
     {
         _selectedSimulatorId = simulatorId;
+        _selectedBayId = null;
+        _selectedConfigurationId = null;
+        _simulatorDetail = null;
+
         if (simulatorId.HasValue)
         {
             Dispatcher.Dispatch(new SetWizardSimulatorAction(simulatorId.Value));
+            await LoadSimulatorDetailAsync(simulatorId.Value);
         }
+    }
+
+    private Task OnBayChanged(Guid? bayId)
+    {
+        _selectedBayId = bayId;
+        if (bayId.HasValue)
+            Dispatcher.Dispatch(new SetWizardBayAction(bayId.Value));
+        return Task.CompletedTask;
+    }
+
+    private Task OnConfigurationChanged(Guid? configId)
+    {
+        _selectedConfigurationId = configId;
+        if (configId.HasValue)
+            Dispatcher.Dispatch(new SetWizardConfigurationAction(configId.Value));
         return Task.CompletedTask;
     }
 
@@ -331,24 +400,19 @@
     {
         _submitError = null;
         if (!ValidateCurrentStep())
-        {
             return;
-        }
 
         var next = Math.Min(WizardState.Value.CurrentStep + 1, TotalSteps);
         Dispatcher.Dispatch(new SetWizardStepAction(next));
 
         if (next == PricingStep && !_quotedPrice.HasValue)
-        {
             await RefreshQuoteAsync();
-        }
     }
 
     private Task BackAsync()
     {
         _submitError = null;
-        var prev = Math.Max(WizardState.Value.CurrentStep - 1, 1);
-        Dispatcher.Dispatch(new SetWizardStepAction(prev));
+        Dispatcher.Dispatch(new SetWizardStepAction(Math.Max(WizardState.Value.CurrentStep - 1, 1)));
         return Task.CompletedTask;
     }
 
@@ -362,24 +426,24 @@
     private async Task RefreshQuoteAsync()
     {
         _submitError = null;
-        if (!_selectedSimulatorId.HasValue || !_selectedDate.HasValue || !TryParseTimes(out var start, out var end))
+        if (!_selectedConfigurationId.HasValue || !_selectedDate.HasValue || !TryParseTimes(out var start, out var end))
         {
-            _submitError = "Please provide simulator, date and valid start/end time first.";
+            _submitError = "Please complete simulator, configuration, date and times first.";
             return;
         }
 
         _quoting = true;
         try
         {
-            var quote = await PricingService.GetQuoteForRoleAsync(
-                _selectedSimulatorId.Value,
+            var slotStart = new DateTimeOffset(_selectedDate.Value.ToDateTime(start), TimeSpan.Zero);
+            var durationMins = (int)(end - start).TotalMinutes;
+
+            var quote = await PricingService.GetQuoteForConfigAsync(
+                _selectedConfigurationId.Value,
                 _trainingType,
                 _studentCount,
-                _selectedDate.Value,
-                start,
-                end,
-                _appRole,
-                _orgId);
+                slotStart,
+                durationMins);
 
             _quotedPrice = quote;
             Dispatcher.Dispatch(new SetWizardQuoteAction(quote));
@@ -397,14 +461,12 @@
     private async Task SubmitAsync()
     {
         _submitError = null;
-        _submitSuccessId = null;
 
         if (!ValidateAll())
-        {
             return;
-        }
 
-        if (!TryParseTimes(out var start, out var end) || !_selectedDate.HasValue || !_selectedSimulatorId.HasValue)
+        if (!TryParseTimes(out var start, out var end) || !_selectedDate.HasValue
+            || !_selectedSimulatorId.HasValue || !_selectedBayId.HasValue || !_selectedConfigurationId.HasValue)
         {
             _submitError = "Please complete all booking details before submission.";
             return;
@@ -415,20 +477,22 @@
 
         try
         {
+            var slotStart = new DateTimeOffset(_selectedDate.Value.ToDateTime(start), TimeSpan.Zero);
+            var slotEnd   = new DateTimeOffset(_selectedDate.Value.ToDateTime(end), TimeSpan.Zero);
+
             var id = await BookingService.CreateBookingAsync(
                 new CreateBookingRequest(
-                    Guid.NewGuid(),
-                    _selectedSimulatorId.Value,
-                    _selectedDate.Value,
-                    start,
-                    end,
-                    _trainingType,
-                    _studentCount,
+                    IdempotencyKey: Guid.NewGuid(),
+                    SimulatorId: _selectedSimulatorId.Value,
+                    BayId: _selectedBayId.Value,
+                    ConfigurationId: _selectedConfigurationId.Value,
+                    TrainingType: _trainingType,
+                    SlotStart: slotStart,
+                    SlotEnd: slotEnd,
+                    StudentCount: _studentCount,
                     InstructorId: null,
-                    OrgId: _orgId,
                     DepartmentName: IsInternalStudent ? _departmentName : null,
-                    BudgetCode: IsInternalStudent ? _budgetCode : null,
-                    BookerRole: _appRole));
+                    BudgetCode: IsInternalStudent ? _budgetCode : null));
 
             if (id == Guid.Empty)
             {
@@ -437,7 +501,6 @@
                 return;
             }
 
-            _submitSuccessId = id;
             Dispatcher.Dispatch(new SetWizardCreatedBookingAction(id));
             Dispatcher.Dispatch(new ResetWizardAction());
             Nav.NavigateTo($"/bookings/{id}?from=mybookings");
@@ -461,6 +524,18 @@
             if (!_selectedSimulatorId.HasValue)
             {
                 _submitError = "Select a simulator to continue.";
+                return false;
+            }
+
+            if (!_selectedBayId.HasValue)
+            {
+                _submitError = "Select a bay to continue.";
+                return false;
+            }
+
+            if (!_selectedConfigurationId.HasValue)
+            {
+                _submitError = "Select a configuration to continue.";
                 return false;
             }
 
@@ -537,29 +612,40 @@
         return true;
     }
 
-    private bool TryParseDate(out DateOnly date)
-    {
-        return DateOnly.TryParse(_dateText, out date);
-    }
+    private bool TryParseDate(out DateOnly date) => DateOnly.TryParse(_dateText, out date);
 
     private bool TryParseTimes(out TimeOnly start, out TimeOnly end)
     {
         var validStart = TimeOnly.TryParse(_startText, out start);
-        var validEnd = TimeOnly.TryParse(_endText, out end);
+        var validEnd   = TimeOnly.TryParse(_endText, out end);
         return validStart && validEnd;
     }
 
-    private void OnDateChanged(ChangeEventArgs e) =>
-        _dateText = e.Value?.ToString() ?? string.Empty;
-
-    private void OnStartChanged(ChangeEventArgs e) =>
-        _startText = e.Value?.ToString() ?? string.Empty;
-
-    private void OnEndChanged(ChangeEventArgs e) =>
-        _endText = e.Value?.ToString() ?? string.Empty;
+    private void OnDateChanged(ChangeEventArgs e)  => _dateText  = e.Value?.ToString() ?? string.Empty;
+    private void OnStartChanged(ChangeEventArgs e) => _startText = e.Value?.ToString() ?? string.Empty;
+    private void OnEndChanged(ChangeEventArgs e)   => _endText   = e.Value?.ToString() ?? string.Empty;
 
     private string GetSelectedSimulatorName() =>
         _simulators.FirstOrDefault(x => x.UnitId == _selectedSimulatorId)?.Name ?? "Not selected";
+
+    private string GetSelectedBayCode() =>
+        _simulatorDetail?.Bays.FirstOrDefault(b => b.BayId == _selectedBayId)?.BayCode is { } code
+            ? $"Bay {code}" : "Not selected";
+
+    private string GetSelectedConfigurationName() =>
+        _simulatorDetail?.Configurations.FirstOrDefault(c => c.ConfigurationId == _selectedConfigurationId)?.Name
+            ?? "Not selected";
+
+    private IReadOnlyList<string> GetAvailableTrainingTypes()
+    {
+        if (_simulatorDetail is null || !_selectedConfigurationId.HasValue)
+            return ["FlightDeck", "CabinCrew"];
+
+        var config = _simulatorDetail.Configurations
+            .FirstOrDefault(c => c.ConfigurationId == _selectedConfigurationId.Value);
+
+        return config?.SupportedTrainingTypes is { Count: > 0 }
+            ? config.SupportedTrainingTypes
+            : ["FlightDeck", "CabinCrew"];
+    }
 }
-
-

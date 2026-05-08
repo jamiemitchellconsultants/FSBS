@@ -9,16 +9,19 @@ public class SimulatorConfigurationConfiguration : IEntityTypeConfiguration<Simu
     public void Configure(EntityTypeBuilder<SimulatorConfiguration> builder)
     {
         builder.HasKey(e => e.Id);
-        builder.Property(e => e.Id).HasColumnName("configuration_id");
+        builder.Property(e => e.Id).HasColumnName("config_id");
 
+        builder.Property(e => e.Name).IsRequired().HasMaxLength(200);
         builder.Property(e => e.AircraftType).IsRequired().HasMaxLength(50);
         builder.Property(e => e.ConfigMode).HasConversion<string>().IsRequired();
         builder.Property(e => e.SupportedTrainingTypes).HasColumnType("fsbs.training_type[]").IsRequired();
         builder.Property(e => e.MaxCapacityFlightDeck).IsRequired();
         builder.Property(e => e.MaxCapacityCabinCrew).IsRequired();
+        builder.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
 
-        builder.HasCheckConstraint("ck_simulator_config_fd_capacity", "max_capacity_flight_deck <= 4");
-        builder.HasCheckConstraint("ck_simulator_config_cc_capacity", "max_capacity_cabin_crew <= 10");
+        builder.HasCheckConstraint("ck_simulator_config_fd_capacity", "max_capacity_flight_deck > 0 AND max_capacity_flight_deck <= 4");
+        builder.HasCheckConstraint("ck_simulator_config_cc_capacity", "max_capacity_cabin_crew > 0 AND max_capacity_cabin_crew <= 10");
+        builder.HasCheckConstraint("ck_simulator_config_training_types", "array_length(supported_training_types, 1) >= 1");
 
         builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
@@ -28,7 +31,7 @@ public class SimulatorConfigurationConfiguration : IEntityTypeConfiguration<Simu
 
         builder.HasMany(e => e.ScheduleTemplates)
             .WithOne(t => t.Configuration)
-            .HasForeignKey(t => t.ConfigurationId);
+            .HasForeignKey(t => t.ConfigId);
 
         builder.HasMany(e => e.PricingPolicies)
             .WithOne(p => p.Configuration)

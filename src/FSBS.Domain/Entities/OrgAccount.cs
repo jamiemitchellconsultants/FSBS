@@ -50,6 +50,11 @@ public class OrgAccount : AuditableEntity
     /// account blocks new bookings for the organisation.
     /// </summary>
     public AccountStatus Status { get; set; }
+    /// <summary>
+    /// Number of days after invoice issue date that payment is due.
+    /// Defaults to 30. Used when calculating invoice due dates.
+    /// </summary>
+    public int PaymentTermsDays { get; set; } = 30;
 
     /// <summary>Navigation to the owning organisation.</summary>
     public Organisation Organisation { get; set; } = null!;

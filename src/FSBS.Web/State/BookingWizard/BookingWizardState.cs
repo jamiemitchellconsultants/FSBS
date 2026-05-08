@@ -9,6 +9,8 @@ public record BookingWizardState
     public string? BookerRole { get; init; }
     public Guid? OrgId { get; init; }
     public Guid? SelectedSimulatorId { get; init; }
+    public Guid? SelectedBayId { get; init; }
+    public Guid? SelectedConfigurationId { get; init; }
     public DateOnly? SelectedDate { get; init; }
     public TimeOnly? SlotStart { get; init; }
     public TimeOnly? SlotEnd { get; init; }

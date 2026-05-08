@@ -14,6 +14,11 @@ public class OrganisationConfiguration : IEntityTypeConfiguration<Organisation>
         builder.Property(e => e.Name).IsRequired().HasMaxLength(200);
         builder.Property(e => e.CustomerClass).HasConversion<string>().IsRequired();
         builder.Property(e => e.TenantId).IsRequired();
+        builder.Property(e => e.ContractType).HasMaxLength(50);
+        builder.Property(e => e.CreditLimitGbp).HasPrecision(12, 2).IsRequired();
+        builder.Property(e => e.BillingEmail).IsRequired().HasMaxLength(255);
+        builder.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
+        builder.HasCheckConstraint("ck_organisations_credit_limit", "credit_limit_gbp >= 0");
 
         builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 

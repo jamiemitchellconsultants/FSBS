@@ -27,6 +27,21 @@ public class Report : AuditableEntity, ISoftDeletable
     /// </summary>
     public string DefinitionJson { get; set; } = string.Empty;
 
+    /// <summary><see cref="AppUser.Id"/> of the user who created and owns this report definition.</summary>
+    public Guid OwnerId { get; set; }
+
+    /// <summary>Whether this report is visible to all Management/SystemAdmin users or only the owner.</summary>
+    public bool IsShared { get; set; }
+
+    /// <summary>
+    /// Optional cron expression for scheduled automatic execution (e.g. <c>"0 6 * * 1"</c>).
+    /// <c>null</c> means the report is run on demand only.
+    /// </summary>
+    public string? ScheduleCron { get; set; }
+
+    /// <summary>UTC timestamp of the most recent completed run. <c>null</c> if never run.</summary>
+    public DateTimeOffset? LastRunAt { get; set; }
+
     /// <inheritdoc/>
     public bool IsDeleted { get; set; }
 

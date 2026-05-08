@@ -15,7 +15,10 @@ public class SimulatorUnit : AuditableEntity, ISoftDeletable
 {
     /// <summary>Human-readable name displayed in the scheduling calendar (e.g. "FFS-1").</summary>
     public string Name { get; set; } = string.Empty;
-
+    /// <summary>FSTD qualification level (e.g. "FFS Level D", "FTD Level 2").</summary>
+    public string FstdLevel { get; set; } = string.Empty;
+    /// <summary>Optional simulator manufacturer name (e.g. "CAE", "L3Harris").</summary>
+    public string? Manufacturer { get; set; }
     /// <summary>Optional physical location description (e.g. "Bay A, Building 3").</summary>
     public string? Location { get; set; }
 
@@ -32,9 +35,10 @@ public class SimulatorUnit : AuditableEntity, ISoftDeletable
     /// </summary>
     public int DefaultReconfigMins { get; set; }
 
+    /// <summary>Whether this simulator unit is currently operational and available for scheduling.</summary>
+    public bool IsActive { get; set; } = true;
     /// <inheritdoc/>
     public bool IsDeleted { get; set; }
-
     /// <summary>Navigation to the currently active configuration.</summary>
     public SimulatorConfiguration? ActiveConfiguration { get; set; }
 
@@ -44,6 +48,4 @@ public class SimulatorUnit : AuditableEntity, ISoftDeletable
     /// <summary>The physical bays that make up this simulator unit.</summary>
     public ICollection<SimulatorBay> Bays { get; set; } = [];
 
-    /// <summary>Scheduled maintenance periods during which this unit is unavailable.</summary>
-    public ICollection<MaintenanceWindow> MaintenanceWindows { get; set; } = [];
 }

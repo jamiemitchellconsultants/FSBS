@@ -11,8 +11,18 @@ public class AccountStatementConfiguration : IEntityTypeConfiguration<AccountSta
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).HasColumnName("statement_id");
 
+        builder.Property(e => e.OrgId).IsRequired();
         builder.Property(e => e.GeneratedAt).IsRequired();
         builder.Property(e => e.GeneratedBy).IsRequired();
-        builder.Property(e => e.StatementJson).HasColumnType("jsonb").IsRequired();
+        builder.Property(e => e.PeriodStart).IsRequired();
+        builder.Property(e => e.PeriodEnd).IsRequired();
+        builder.Property(e => e.OpeningBalanceGbp).HasPrecision(12, 2).IsRequired();
+        builder.Property(e => e.ClosingBalanceGbp).HasPrecision(12, 2).IsRequired();
+        builder.Property(e => e.StatementS3Key).IsRequired().HasMaxLength(500);
+
+        builder.HasOne(e => e.Organisation)
+            .WithMany()
+            .HasForeignKey(e => e.OrgId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

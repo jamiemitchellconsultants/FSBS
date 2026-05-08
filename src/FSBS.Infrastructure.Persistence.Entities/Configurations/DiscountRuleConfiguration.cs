@@ -14,7 +14,9 @@ public class DiscountRuleConfiguration : IEntityTypeConfiguration<DiscountRule>
         builder.Property(e => e.DiscountType).HasConversion<string>().IsRequired();
         builder.Property(e => e.Priority).IsRequired();
         builder.Property(e => e.DiscountPct).HasPrecision(5, 2).IsRequired();
+        builder.Property(e => e.IsCombinable).IsRequired();
         builder.Property(e => e.ThresholdJson).HasColumnType("jsonb");
+        builder.HasCheckConstraint("ck_discount_rules_pct", "discount_pct >= 0 AND discount_pct <= 100");
 
         builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
     }

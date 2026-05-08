@@ -31,8 +31,9 @@ public class BookingDiscount : EntityBase
     /// <summary>
     /// The discount rule that was applied. Stored as a FK for traceability;
     /// the actual percentage and amount are snapshotted on this record.
+    /// <c>null</c> if the source rule has since been deleted.
     /// </summary>
-    public Guid DiscountRuleId { get; set; }
+    public Guid? DiscountRuleId { get; set; }
 
     /// <summary>
     /// Category of the discount at the time of application. Snapshotted so
@@ -51,7 +52,7 @@ public class BookingDiscount : EntityBase
     /// <see cref="DiscountPct"/> applied to the booking's gross price at
     /// confirmation time.
     /// </summary>
-    public decimal DiscountAmountGbp { get; set; }
+    public decimal AmountGbp { get; set; }
 
     /// <summary>UTC timestamp at which the booking was confirmed and this record was written.</summary>
     public DateTimeOffset CreatedAt { get; set; }

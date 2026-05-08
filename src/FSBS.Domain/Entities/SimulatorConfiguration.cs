@@ -26,7 +26,8 @@ public class SimulatorConfiguration : AuditableEntity, ISoftDeletable
 {
     /// <summary>The simulator unit this configuration belongs to.</summary>
     public Guid SimulatorUnitId { get; set; }
-
+    /// <summary>Human-readable name for this configuration (e.g. "B737-800 Full Flight").</summary>
+    public string Name { get; set; } = string.Empty;
     /// <summary>
     /// ICAO or common designation of the aircraft type this configuration
     /// simulates (e.g. "B737-800", "A320").
@@ -60,9 +61,10 @@ public class SimulatorConfiguration : AuditableEntity, ISoftDeletable
     /// </summary>
     public int MaxCapacityCabinCrew { get; set; }
 
+    /// <summary>Whether this configuration is currently available for scheduling.</summary>
+    public bool IsActive { get; set; } = true;
     /// <inheritdoc/>
     public bool IsDeleted { get; set; }
-
     /// <summary>Navigation to the owning simulator unit.</summary>
     public SimulatorUnit SimulatorUnit { get; set; } = null!;
 

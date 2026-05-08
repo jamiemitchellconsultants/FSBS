@@ -14,10 +14,12 @@ public class SimulatorBay : AuditableEntity, ISoftDeletable
     public Guid SimulatorUnitId { get; set; }
 
     /// <summary>
-    /// Short display name for the bay as shown on the scheduling calendar
-    /// (e.g. "Bay 1", "West Wing Bay").
+    /// Short unique code for the bay within its simulator unit (e.g. "A", "B1").
+    /// Displayed on the scheduling calendar.
     /// </summary>
-    public string Name { get; set; } = string.Empty;
+    public string BayCode { get; set; } = string.Empty;
+    /// <summary>Optional description of the bay's physical setup or special characteristics.</summary>
+    public string? Description { get; set; }
 
     /// <summary>
     /// Operational state of the bay. <c>Operational</c> bays are bookable;
@@ -32,6 +34,8 @@ public class SimulatorBay : AuditableEntity, ISoftDeletable
     /// <summary>Navigation to the owning simulator unit.</summary>
     public SimulatorUnit SimulatorUnit { get; set; } = null!;
 
+    /// <summary>Scheduled maintenance periods during which this bay is unavailable.</summary>
+    public ICollection<MaintenanceWindow> MaintenanceWindows { get; set; } = [];
     /// <summary>All booking slots reserved in this bay.</summary>
     public ICollection<BookingSlot> BookingSlots { get; set; } = [];
 

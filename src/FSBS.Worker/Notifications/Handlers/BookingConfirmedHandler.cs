@@ -30,7 +30,7 @@ internal sealed class BookingConfirmedHandler(
             name         = booker.DisplayName,
             bookingId    = notification.BookingId,
             grossPrice   = notification.GrossPriceGbp,
-            discount     = notification.DiscountGbp,
+            discount     = notification.DiscountPct,
             netPrice     = notification.NetPriceGbp,
             occurredAt   = notification.OccurredAt
         }, ct);

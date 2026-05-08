@@ -10,9 +10,9 @@ public class Module : AuditableEntity, ISoftDeletable
     public Guid CourseId { get; set; }
 
     /// <summary>
-    /// Display name of the module (e.g. "Phase 1 — Normal Procedures").
+    /// Display title of the module (e.g. "Phase 1 — Normal Procedures").
     /// </summary>
-    public string Name { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
 
     /// <summary>
     /// 1-based position within the course. Modules are presented to students

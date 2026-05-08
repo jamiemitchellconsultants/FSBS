@@ -18,18 +18,21 @@ public class Enrolment : AuditableEntity, ISoftDeletable
 {
     /// <summary>The student enrolled on the course.</summary>
     public Guid UserId { get; set; }
-
     /// <summary>The course the student is enrolled on.</summary>
     public Guid CourseId { get; set; }
+    /// <summary>The organisation sponsoring this enrolment. <c>null</c> for private students.</summary>
+    public Guid? OrgId { get; set; }
+    /// <summary>UTC timestamp at which the student was enrolled.</summary>
+    public DateTimeOffset EnrolledAt { get; set; }
 
     /// <summary>Current progress state of the enrolment.</summary>
     public EnrolmentStatus Status { get; set; }
 
     /// <summary>
-    /// The calendar date on which the enrolment was marked <c>Completed</c>.
+    /// The UTC timestamp at which the enrolment was marked <c>Completed</c>.
     /// <c>null</c> while the enrolment is still active.
     /// </summary>
-    public DateOnly? CompletedOn { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
 
     /// <inheritdoc/>
     public bool IsDeleted { get; set; }

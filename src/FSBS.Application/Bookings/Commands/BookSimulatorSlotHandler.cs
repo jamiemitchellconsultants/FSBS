@@ -86,7 +86,7 @@ public sealed class BookSimulatorSlotHandler(
             OrgId = currentUser.OrgId,
             BookerRole = currentUser.Role,
             TrainingType = command.TrainingType,
-            ConfigurationId = command.ConfigurationId,
+            ConfigId = command.ConfigurationId,
             StudentCount = command.StudentCount,
             Status = status,
             IdempotencyKey = command.IdempotencyKey,

@@ -36,13 +36,19 @@ public class ReportRun : EntityBase
     /// <summary>UTC timestamp of the most recent status transition.</summary>
     public DateTimeOffset UpdatedAt { get; set; }
 
+    /// <summary>UTC timestamp at which the worker began processing this run.</summary>
+    public DateTimeOffset? StartedAt { get; set; }
+
+    /// <summary>UTC timestamp at which the run reached <c>Completed</c> or <c>Failed</c> state.</summary>
+    public DateTimeOffset? CompletedAt { get; set; }
+
     /// <summary>
     /// S3 object key within the <c>fsbs-documents</c> bucket for the generated
     /// report file. Populated only when <see cref="Status"/> is <c>Completed</c>.
     /// Access is granted via a pre-signed URL — the bucket is never served
     /// through CloudFront.
     /// </summary>
-    public string? OutputS3Key { get; set; }
+    public string? ResultS3Key { get; set; }
 
     /// <summary>
     /// Human-readable error message captured when <see cref="Status"/> is

@@ -93,7 +93,7 @@ public sealed class BookingBuilder
             OrgId = _orgId,
             BookerRole = _bookerRole,
             TrainingType = _trainingType,
-            ConfigurationId = _configurationId,
+            ConfigId = _configurationId,
             StudentCount = _studentCount,
             Status = _status,
             DepartmentName = _departmentName,

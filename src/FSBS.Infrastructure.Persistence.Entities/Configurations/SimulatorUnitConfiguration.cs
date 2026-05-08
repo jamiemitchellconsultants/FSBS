@@ -9,11 +9,16 @@ public class SimulatorUnitConfiguration : IEntityTypeConfiguration<SimulatorUnit
     public void Configure(EntityTypeBuilder<SimulatorUnit> builder)
     {
         builder.HasKey(e => e.Id);
-        builder.Property(e => e.Id).HasColumnName("simulator_unit_id");
+        builder.Property(e => e.Id).HasColumnName("unit_id");
 
-        builder.Property(e => e.Name).IsRequired().HasMaxLength(100);
+        builder.Property(e => e.Name).IsRequired().HasMaxLength(200);
+        builder.Property(e => e.FstdLevel).IsRequired().HasMaxLength(20);
+        builder.Property(e => e.Manufacturer).HasMaxLength(100);
         builder.Property(e => e.Location).HasMaxLength(200);
         builder.Property(e => e.DefaultReconfigMins).IsRequired();
+        builder.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
+
+        builder.HasCheckConstraint("ck_simulator_units_reconfig_mins", "default_reconfig_mins > 0");
 
         builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
@@ -25,9 +30,5 @@ public class SimulatorUnitConfiguration : IEntityTypeConfiguration<SimulatorUnit
         builder.HasMany(e => e.Bays)
             .WithOne(b => b.SimulatorUnit)
             .HasForeignKey(b => b.SimulatorUnitId);
-
-        builder.HasMany(e => e.MaintenanceWindows)
-            .WithOne(m => m.SimulatorUnit)
-            .HasForeignKey(m => m.SimulatorUnitId);
     }
 }

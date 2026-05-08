@@ -12,13 +12,20 @@ public class ProgressRecordConfiguration : IEntityTypeConfiguration<ProgressReco
         builder.Property(e => e.Id).HasColumnName("progress_record_id");
 
         builder.Property(e => e.CompletedAt).IsRequired();
-        builder.Property(e => e.SignedOffBy).IsRequired();
-        builder.Property(e => e.Notes).HasMaxLength(2000);
+        builder.Property(e => e.InstructorId);
+        builder.Property(e => e.Grade).HasMaxLength(20);
+        builder.Property(e => e.Notes).HasColumnType("text");
 
         builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
         builder.HasOne(e => e.Lesson)
             .WithMany()
             .HasForeignKey(e => e.LessonId);
+
+        builder.HasOne<Instructor>()
+            .WithMany()
+            .HasForeignKey(e => e.InstructorId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

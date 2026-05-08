@@ -11,10 +11,14 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).HasColumnName("course_id");
 
-        builder.Property(e => e.Name).IsRequired().HasMaxLength(200);
-        builder.Property(e => e.Description).HasMaxLength(2000);
+        builder.Property(e => e.Title).HasColumnName("title").IsRequired().HasMaxLength(300);
+        builder.Property(e => e.Description).HasColumnType("text");
+        builder.Property(e => e.RegulatoryFramework).HasMaxLength(100);
+        builder.Property(e => e.TotalHours).HasPrecision(6, 1).IsRequired();
+        builder.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
         builder.Property(e => e.TrainingType).HasColumnType("fsbs.training_type").IsRequired();
         builder.Property(e => e.TenantId).IsRequired();
+        builder.HasCheckConstraint("ck_courses_total_hours", "total_hours > 0");
 
         builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 

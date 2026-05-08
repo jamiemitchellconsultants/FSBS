@@ -20,7 +20,7 @@ namespace FSBS.Domain.Entities;
 /// all discount rules; the staff rate applies exclusively.
 /// </para>
 /// <para>
-/// <b>Price immutability:</b> <see cref="GrossPriceGbp"/>, <see cref="DiscountGbp"/>,
+/// <b>Price immutability:</b> <see cref="GrossPriceGbp"/>, <see cref="DiscountPct"/>,
 /// and <see cref="NetPriceGbp"/> are set once when the booking transitions to
 /// <c>Confirmed</c>. They must not be recalculated or overwritten thereafter.
 /// </para>
@@ -62,7 +62,13 @@ public class Booking : AggregateRoot, ISoftDeletable
     /// The simulator configuration selected for this booking. Determines the
     /// applicable <see cref="PricingPolicy"/> and maximum capacity.
     /// </summary>
-    public Guid ConfigurationId { get; set; }
+    public Guid ConfigId { get; set; }
+
+    /// <summary>
+    /// The enrolment this booking is associated with, when the session is part
+    /// of a structured course. <c>null</c> for ad-hoc bookings.
+    /// </summary>
+    public Guid? EnrolmentId { get; set; }
 
     /// <summary>
     /// Number of students attending the session. Must be ≥ 1, ≤ 4 for
@@ -81,10 +87,10 @@ public class Booking : AggregateRoot, ISoftDeletable
     public decimal? GrossPriceGbp { get; set; }
 
     /// <summary>
-    /// Total discount applied in GBP. Set at confirmation; <c>null</c> before
+    /// Discount percentage applied (0–100). Set at confirmation; <c>null</c> before
     /// confirmation or when no discount applies.
     /// </summary>
-    public decimal? DiscountGbp { get; set; }
+    public decimal? DiscountPct { get; set; }
 
     /// <summary>
     /// Final invoiceable amount in GBP (<c>GrossPriceGbp − DiscountGbp</c>).
@@ -111,11 +117,20 @@ public class Booking : AggregateRoot, ISoftDeletable
     /// </summary>
     public Guid IdempotencyKey { get; set; }
 
+    /// <summary>
+    /// UTC timestamp at which a <c>Provisional</c> booking expires and the
+    /// reserved slot is released. <c>null</c> for non-provisional bookings.
+    /// </summary>
+    public DateTimeOffset? ProvisionalExpiresAt { get; set; }
+
     /// <inheritdoc/>
     public bool IsDeleted { get; set; }
 
     /// <summary>Navigation to the simulator configuration selected for this booking.</summary>
     public SimulatorConfiguration Configuration { get; set; } = null!;
+
+    /// <summary>Navigation to the enrolment this booking is linked to, if any.</summary>
+    public Enrolment? Enrolment { get; set; }
 
     /// <summary>The one or more time slots reserved in a simulator bay for this booking.</summary>
     public ICollection<BookingSlot> Slots { get; set; } = [];

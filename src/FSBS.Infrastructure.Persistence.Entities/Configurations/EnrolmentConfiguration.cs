@@ -11,7 +11,10 @@ public class EnrolmentConfiguration : IEntityTypeConfiguration<Enrolment>
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).HasColumnName("enrolment_id");
 
+        builder.Property(e => e.OrgId);
+        builder.Property(e => e.EnrolledAt).IsRequired();
         builder.Property(e => e.Status).HasConversion<string>().IsRequired();
+        builder.Property(e => e.CompletedAt);
 
         builder.HasIndex(e => new { e.UserId, e.CourseId })
             .IsUnique()
@@ -22,6 +25,12 @@ public class EnrolmentConfiguration : IEntityTypeConfiguration<Enrolment>
         builder.HasOne(e => e.User)
             .WithMany()
             .HasForeignKey(e => e.UserId);
+
+        builder.HasOne<Organisation>()
+            .WithMany()
+            .HasForeignKey(e => e.OrgId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(e => e.ProgressRecords)
             .WithOne(p => p.Enrolment)

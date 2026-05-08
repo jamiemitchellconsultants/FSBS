@@ -11,11 +11,14 @@ public class ReconfigurationSlotConfiguration : IEntityTypeConfiguration<Reconfi
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).HasColumnName("reconfig_slot_id");
 
+        builder.Property(e => e.BayId).IsRequired();
+        builder.Property(e => e.PrecedingBookingId);
+        builder.Property(e => e.ToBookingId);
         builder.Property(e => e.StartAt).IsRequired();
         builder.Property(e => e.EndAt).IsRequired();
         builder.Property(e => e.DurationMins).IsRequired();
 
-        builder.HasIndex(e => new { e.BayId, e.StartAt, e.EndAt })
+        builder.HasIndex(e => new { e.BayId, e.StartAt })
             .IsUnique()
             .HasDatabaseName("uq_reconfig_slots_bay_time");
 
@@ -28,16 +31,13 @@ public class ReconfigurationSlotConfiguration : IEntityTypeConfiguration<Reconfi
         builder.HasOne(e => e.PrecedingBooking)
             .WithMany()
             .HasForeignKey(e => e.PrecedingBookingId)
-            .IsRequired(false);
-
-        builder.HasOne(e => e.FromConfiguration)
-            .WithMany()
-            .HasForeignKey(e => e.FromConfigId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(e => e.ToConfiguration)
+        builder.HasOne(e => e.ToBooking)
             .WithMany()
-            .HasForeignKey(e => e.ToConfigId)
+            .HasForeignKey(e => e.ToBookingId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

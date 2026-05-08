@@ -24,4 +24,7 @@ public interface ISimulatorRepository
     Task<IReadOnlyList<SimulatorConfiguration>> ListConfigurationsForTrainingTypeAsync(
         Enums.TrainingType trainingType,
         CancellationToken ct = default);
+
+    /// <summary>Returns all non-deleted simulator units with their Bays and Configurations loaded.</summary>
+    Task<IReadOnlyList<SimulatorUnit>> ListAllAsync(CancellationToken ct = default);
 }

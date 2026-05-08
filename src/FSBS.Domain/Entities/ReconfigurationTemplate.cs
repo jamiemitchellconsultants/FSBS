@@ -15,9 +15,6 @@ namespace FSBS.Domain.Entities;
 /// </remarks>
 public class ReconfigurationTemplate : AuditableEntity
 {
-    /// <summary>The simulator unit this template applies to.</summary>
-    public Guid SimulatorUnitId { get; set; }
-
     /// <summary>The configuration the unit is switching <em>away from</em>.</summary>
     public Guid FromConfigId { get; set; }
 
@@ -30,9 +27,6 @@ public class ReconfigurationTemplate : AuditableEntity
     /// the two adjacent bookings.
     /// </summary>
     public int DurationMins { get; set; }
-
-    /// <summary>Navigation to the owning simulator unit.</summary>
-    public SimulatorUnit SimulatorUnit { get; set; } = null!;
 
     /// <summary>The configuration being transitioned from.</summary>
     public SimulatorConfiguration FromConfiguration { get; set; } = null!;

@@ -11,19 +11,17 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).HasColumnName("invoice_id");
 
-        builder.Property(e => e.InvoiceNumber).IsRequired().HasMaxLength(50);
+        builder.Property(e => e.UserId).IsRequired();
         builder.Property(e => e.Status).HasConversion<string>().IsRequired();
         builder.Property(e => e.GrossGbp).HasPrecision(12, 2).IsRequired();
         builder.Property(e => e.DiscountGbp).HasPrecision(12, 2).IsRequired();
         builder.Property(e => e.NetGbp).HasPrecision(12, 2).IsRequired();
-        builder.Property(e => e.IssuedOn).IsRequired();
-        builder.Property(e => e.DueOn).IsRequired();
+        builder.Property(e => e.IssuedDate).IsRequired();
+        builder.Property(e => e.DueDate);
+        builder.Property(e => e.PaidAt);
 
         builder.HasCheckConstraint("ck_invoices_net", "net_gbp = gross_gbp - discount_gbp");
-
-        builder.HasIndex(e => e.InvoiceNumber)
-            .IsUnique()
-            .HasDatabaseName("uq_invoices_number");
+        builder.HasCheckConstraint("ck_invoices_amounts", "gross_gbp >= 0 AND discount_gbp >= 0 AND net_gbp >= 0");
 
         builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 
@@ -34,6 +32,11 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.HasOne(e => e.Organisation)
             .WithMany()
             .HasForeignKey(e => e.OrgId);
+
+        builder.HasOne<AppUser>()
+            .WithMany()
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(e => e.Allocations)
             .WithOne(a => a.Invoice)

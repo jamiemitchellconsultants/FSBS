@@ -20,7 +20,7 @@ public sealed class ReconfigurationService(
         var unit = await simulatorRepository.FindByIdAsync(bay.SimulatorUnitId, ct)
             ?? throw new InvalidOperationException($"SimulatorUnit {bay.SimulatorUnitId} not found.");
 
-        var fromConfigId = confirmedBooking.ConfigurationId;
+        var fromConfigId = confirmedBooking.ConfigId;
         var slotEnd = confirmedSlot.EndAt;
 
         var nextSlot = await bookingRepository.FindNextSlotOnBayAsync(
@@ -33,10 +33,9 @@ public sealed class ReconfigurationService(
             var nextBooking = await bookingRepository.FindByIdAsync(nextSlot.BookingId, ct)
                 ?? throw new InvalidOperationException($"Booking {nextSlot.BookingId} not found.");
 
-            if (nextBooking.ConfigurationId == fromConfigId)
+            if (nextBooking.ConfigId == fromConfigId)
                 return null;
-
-            toConfigId = nextBooking.ConfigurationId;
+            toConfigId = nextBooking.ConfigId;
         }
         else
         {
@@ -49,8 +48,6 @@ public sealed class ReconfigurationService(
         {
             BayId = confirmedSlot.BayId,
             PrecedingBookingId = confirmedBooking.Id,
-            FromConfigId = fromConfigId,
-            ToConfigId = toConfigId,
             StartAt = slotEnd,
             EndAt = slotEnd.AddMinutes(durationMins),
             DurationMins = durationMins

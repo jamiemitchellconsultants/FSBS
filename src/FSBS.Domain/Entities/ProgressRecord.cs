@@ -18,10 +18,16 @@ public class ProgressRecord : AuditableEntity, ISoftDeletable
     public DateTimeOffset CompletedAt { get; set; }
 
     /// <summary>
-    /// <see cref="AppUser.Id"/> of the instructor or CourseDirector who
-    /// signed off the student's performance. Must hold a qualifying role.
+    /// The instructor who delivered and signed off this lesson.
+    /// <c>null</c> if signed off by a CourseDirector without an assigned instructor.
     /// </summary>
-    public Guid SignedOffBy { get; set; }
+    public Guid? InstructorId { get; set; }
+
+    /// <summary>
+    /// Optional grade awarded for this lesson (e.g. "1", "2", "3", "4" on the
+    /// standard EASA grading scale, or a school-defined code).
+    /// </summary>
+    public string? Grade { get; set; }
 
     /// <summary>
     /// Optional debrief notes or performance observations recorded by the

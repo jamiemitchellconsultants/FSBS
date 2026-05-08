@@ -14,6 +14,7 @@ public class BookingSlotConfiguration : IEntityTypeConfiguration<BookingSlot>
         builder.Property(e => e.StartAt).IsRequired();
         builder.Property(e => e.EndAt).IsRequired();
         builder.Property(e => e.DurationMins).IsRequired();
+        builder.Property(e => e.LessonId);
         builder.Property(e => e.SlotStatus).HasConversion<string>().IsRequired();
 
         builder.HasCheckConstraint("ck_booking_slots_min_duration", "duration_mins >= 240");
@@ -28,5 +29,13 @@ public class BookingSlotConfiguration : IEntityTypeConfiguration<BookingSlot>
         builder.HasOne(e => e.Bay)
             .WithMany(b => b.BookingSlots)
             .HasForeignKey(e => e.BayId);
+
+        builder.HasOne<Lesson>()
+            .WithMany()
+            .HasForeignKey(e => e.LessonId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasCheckConstraint("ck_booking_slots_range", "end_at > start_at");
     }
 }

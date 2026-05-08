@@ -11,7 +11,13 @@ public class InstructorConfiguration : IEntityTypeConfiguration<Instructor>
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).HasColumnName("instructor_id");
 
+        builder.Property(e => e.EmployeeNumber).IsRequired().HasMaxLength(50);
+        builder.Property(e => e.MaxHoursPerWeek).IsRequired();
+        builder.Property(e => e.HireDate).IsRequired();
         builder.Property(e => e.TrainingTypeRatings).HasColumnType("fsbs.training_type[]").IsRequired();
+        builder.HasIndex(e => e.UserId).IsUnique().HasDatabaseName("uq_instructors_user");
+        builder.HasIndex(e => e.EmployeeNumber).IsUnique().HasDatabaseName("uq_instructors_employee_number");
+        builder.HasCheckConstraint("ck_instructors_hours", "max_hours_per_week > 0");
 
         builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 

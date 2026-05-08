@@ -26,12 +26,22 @@ public class BookingApproval : AuditableEntity
 {
     /// <summary>The booking this approval record belongs to.</summary>
     public Guid BookingId { get; set; }
-
     /// <summary>
     /// <see cref="AppUser.Id"/> of the InternalStudent who submitted the booking.
     /// Used to enforce the self-approval ban.
     /// </summary>
     public Guid RequestedBy { get; set; }
+    /// <summary>UTC timestamp at which the booking was submitted for approval.</summary>
+    public DateTimeOffset RequestedAt { get; set; }
+    /// <summary>
+    /// Snapshot of the department name at submission time, copied from the booking.
+    /// Preserved here so the approval record is self-contained even if the booking is amended.
+    /// </summary>
+    public string? DepartmentName { get; set; }
+    /// <summary>
+    /// Snapshot of the budget code at submission time, copied from the booking.
+    /// </summary>
+    public string? BudgetCode { get; set; }
 
     /// <summary>
     /// <see cref="AppUser.Id"/> of the SalesStaff or SystemAdmin user who acted

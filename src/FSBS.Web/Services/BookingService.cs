@@ -120,16 +120,15 @@ public sealed class BookingService(HttpClient http)
 public sealed record CreateBookingRequest(
     Guid IdempotencyKey,
     Guid SimulatorId,
-    DateOnly Date,
-    TimeOnly Start,
-    TimeOnly End,
+    Guid BayId,
+    Guid ConfigurationId,
     string TrainingType,
+    DateTimeOffset SlotStart,
+    DateTimeOffset SlotEnd,
     int StudentCount,
     Guid? InstructorId = null,
-    Guid? OrgId = null,
     string? DepartmentName = null,
-    string? BudgetCode = null,
-    string? BookerRole = null);
+    string? BudgetCode = null);
 
 public sealed record BookingCreatedResponse(Guid BookingId);
 

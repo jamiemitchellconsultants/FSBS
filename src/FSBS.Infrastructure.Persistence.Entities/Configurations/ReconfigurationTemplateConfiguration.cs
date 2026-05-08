@@ -11,6 +11,8 @@ public class ReconfigurationTemplateConfiguration : IEntityTypeConfiguration<Rec
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).HasColumnName("reconfig_template_id");
 
+        builder.Property(e => e.FromConfigId).IsRequired();
+        builder.Property(e => e.ToConfigId).IsRequired();
         builder.Property(e => e.DurationMins).IsRequired();
 
         builder.HasIndex(e => new { e.FromConfigId, e.ToConfigId })
@@ -21,10 +23,6 @@ public class ReconfigurationTemplateConfiguration : IEntityTypeConfiguration<Rec
             "from_config_id != to_config_id");
 
         builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
-
-        builder.HasOne(e => e.SimulatorUnit)
-            .WithMany()
-            .HasForeignKey(e => e.SimulatorUnitId);
 
         builder.HasOne(e => e.FromConfiguration)
             .WithMany()

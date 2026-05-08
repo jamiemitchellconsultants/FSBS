@@ -35,9 +35,23 @@ public class Organisation : AuditableEntity, ISoftDeletable, ITenantScoped
     /// </summary>
     public CustomerClass CustomerClass { get; set; }
 
+    /// <summary>
+    /// Optional contract type descriptor (e.g. "Annual", "Ad-hoc").
+    /// Used for reporting and account management.
+    /// </summary>
+    public string? ContractType { get; set; }
+    /// <summary>
+    /// Maximum outstanding balance (GBP) the school will extend to this
+    /// organisation before blocking new bookings. Mirrors the value on
+    /// <see cref="OrgAccount.CreditLimitGbp"/> for quick access.
+    /// </summary>
+    public decimal CreditLimitGbp { get; set; }
+    /// <summary>Primary billing email address for invoices and account notifications.</summary>
+    public string BillingEmail { get; set; } = string.Empty;
+    /// <summary>Whether this organisation is currently active and able to make bookings.</summary>
+    public bool IsActive { get; set; } = true;
     /// <inheritdoc/>
     public bool IsDeleted { get; set; }
-
     /// <summary>The financial account held for this organisation.</summary>
     public OrgAccount? Account { get; set; }
 

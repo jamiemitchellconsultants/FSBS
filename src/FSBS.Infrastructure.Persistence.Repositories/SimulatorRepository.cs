@@ -31,4 +31,12 @@ internal sealed class SimulatorRepository(FsbsDbContext db) : ISimulatorReposito
             .Where(c => c.SupportedTrainingTypes.Contains(trainingType))
             .OrderBy(c => c.AircraftType)
             .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<SimulatorUnit>> ListAllAsync(CancellationToken ct = default) =>
+        await db.SimulatorUnits
+            .Include(u => u.Bays)
+            .Include(u => u.Configurations)
+            .Where(u => !u.IsDeleted)
+            .OrderBy(u => u.Name)
+            .ToListAsync(ct);
 }

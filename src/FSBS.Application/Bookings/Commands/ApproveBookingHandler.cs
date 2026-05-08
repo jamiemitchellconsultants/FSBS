@@ -37,7 +37,7 @@ public sealed class ApproveBookingHandler(
 
         var pricing = await pricingService.CalculateAsync(
             new PricingRequest(
-                ConfigurationId: booking.ConfigurationId,
+                ConfigurationId: booking.ConfigId,
                 TrainingType: booking.TrainingType,
                 CustomerClass: DeriveCustomerClass(booking.BookerRole),
                 BookerRole: booking.BookerRole,
@@ -64,7 +64,7 @@ public sealed class ApproveBookingHandler(
         return new ApproveBookingResult(
             booking.Id,
             booking.GrossPriceGbp!.Value,
-            booking.DiscountGbp!.Value,
+            booking.DiscountPct ?? 0,
             booking.NetPriceGbp!.Value);
     }
 
@@ -72,7 +72,9 @@ public sealed class ApproveBookingHandler(
     {
         booking.Status = BookingStatus.Confirmed;
         booking.GrossPriceGbp = pricing.GrossPrice.Amount;
-        booking.DiscountGbp = pricing.DiscountAmount.Amount;
+        booking.DiscountPct = pricing.GrossPrice.Amount > 0
+            ? Math.Round(pricing.DiscountAmount.Amount / pricing.GrossPrice.Amount * 100, 2)
+            : 0;
         booking.NetPriceGbp = pricing.NetPrice.Amount;
 
         foreach (var d in pricing.AppliedDiscounts)
@@ -84,7 +86,7 @@ public sealed class ApproveBookingHandler(
                 DiscountRuleId = d.DiscountRuleId,
                 DiscountType = d.DiscountType,
                 DiscountPct = d.DiscountPct,
-                DiscountAmountGbp = d.DiscountAmount.Amount,
+                AmountGbp = d.DiscountAmount.Amount,
                 CreatedAt = DateTimeOffset.UtcNow,
             });
         }

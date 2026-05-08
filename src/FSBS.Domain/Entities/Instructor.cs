@@ -22,6 +22,15 @@ public class Instructor : AuditableEntity, ISoftDeletable
     /// </summary>
     public Guid UserId { get; set; }
 
+    /// <summary>Unique employee number assigned by HR (e.g. "EMP-0042").</summary>
+    public string EmployeeNumber { get; set; } = string.Empty;
+
+    /// <summary>Maximum number of hours per week this instructor may be scheduled.</summary>
+    public short MaxHoursPerWeek { get; set; }
+
+    /// <summary>The date on which the instructor was hired.</summary>
+    public DateOnly HireDate { get; set; }
+
     /// <summary>
     /// Training types this instructor is rated to deliver. Stored as a native
     /// PostgreSQL <c>training_type[]</c> array. An instructor may hold ratings

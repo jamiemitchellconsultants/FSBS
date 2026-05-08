@@ -40,11 +40,11 @@ public class ReconfigurationSlot : AuditableEntity
     /// </summary>
     public Guid? PrecedingBookingId { get; set; }
 
-    /// <summary>The configuration the simulator is transitioning <em>from</em>.</summary>
-    public Guid FromConfigId { get; set; }
-
-    /// <summary>The configuration the simulator is transitioning <em>to</em>.</summary>
-    public Guid ToConfigId { get; set; }
+    /// <summary>
+    /// The <see cref="Booking"/> that will follow this reconfiguration window.
+    /// <c>null</c> when the slot was inserted proactively with no subsequent booking.
+    /// </summary>
+    public Guid? ToBookingId { get; set; }
 
     /// <summary>UTC start of the reconfiguration window.</summary>
     public DateTimeOffset StartAt { get; set; }
@@ -65,9 +65,6 @@ public class ReconfigurationSlot : AuditableEntity
     /// <summary>Navigation to the booking that preceded this reconfiguration.</summary>
     public Booking? PrecedingBooking { get; set; }
 
-    /// <summary>The configuration being transitioned from.</summary>
-    public SimulatorConfiguration FromConfiguration { get; set; } = null!;
-
-    /// <summary>The configuration being transitioned to.</summary>
-    public SimulatorConfiguration ToConfiguration { get; set; } = null!;
+    /// <summary>Navigation to the booking that follows this reconfiguration.</summary>
+    public Booking? ToBooking { get; set; }
 }

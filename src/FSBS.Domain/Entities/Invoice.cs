@@ -32,11 +32,8 @@ public class Invoice : AuditableEntity, ISoftDeletable
     /// <summary>The organisation billed by this invoice.</summary>
     public Guid OrgId { get; set; }
 
-    /// <summary>
-    /// Human-readable invoice reference displayed on the document and in
-    /// the customer portal (e.g. "INV-2024-00142").
-    /// </summary>
-    public string InvoiceNumber { get; set; } = string.Empty;
+    /// <summary>The user (student or booker) this invoice is associated with.</summary>
+    public Guid UserId { get; set; }
 
     /// <summary>
     /// Current status in the invoice lifecycle:
@@ -59,10 +56,13 @@ public class Invoice : AuditableEntity, ISoftDeletable
     public decimal NetGbp { get; set; }
 
     /// <summary>The calendar date on which the invoice was issued to the organisation.</summary>
-    public DateOnly IssuedOn { get; set; }
+    public DateOnly IssuedDate { get; set; }
 
     /// <summary>Payment due date. Invoices past this date are marked <c>Overdue</c>.</summary>
-    public DateOnly DueOn { get; set; }
+    public DateOnly? DueDate { get; set; }
+
+    /// <summary>UTC timestamp at which the invoice was fully paid. <c>null</c> until settled.</summary>
+    public DateTimeOffset? PaidAt { get; set; }
 
     /// <inheritdoc/>
     public bool IsDeleted { get; set; }

@@ -34,7 +34,7 @@ internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
                 FirstSlotStartAt = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.StartAt).FirstOrDefault(),
                 FirstSlotEndAt   = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.EndAt).FirstOrDefault(),
                 FirstSlotDurationMins = b.Slots.OrderBy(s => s.StartAt).Select(s => (int?)s.DurationMins).FirstOrDefault(),
-                FirstSlotBayName = b.Slots.OrderBy(s => s.StartAt).Select(s => s.Bay.Name).FirstOrDefault(),
+                FirstSlotBayName = b.Slots.OrderBy(s => s.StartAt).Select(s => s.Bay.BayCode).FirstOrDefault(),
                 FirstSlotUnitName = b.Slots.OrderBy(s => s.StartAt).Select(s => s.Bay.SimulatorUnit.Name).FirstOrDefault(),
                 InstructorFirstName = b.Slots
                     .OrderBy(s => s.StartAt)
@@ -108,7 +108,7 @@ internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
                 FirstSlotStartAt = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.StartAt).FirstOrDefault(),
                 FirstSlotEndAt   = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.EndAt).FirstOrDefault(),
                 FirstSlotDurationMins = b.Slots.OrderBy(s => s.StartAt).Select(s => (int?)s.DurationMins).FirstOrDefault(),
-                FirstSlotBayName = b.Slots.OrderBy(s => s.StartAt).Select(s => s.Bay.Name).FirstOrDefault(),
+                FirstSlotBayName = b.Slots.OrderBy(s => s.StartAt).Select(s => s.Bay.BayCode).FirstOrDefault(),
                 FirstSlotUnitName = b.Slots.OrderBy(s => s.StartAt).Select(s => s.Bay.SimulatorUnit.Name).FirstOrDefault(),
                 InstructorFirstName = b.Slots
                     .OrderBy(s => s.StartAt)
@@ -161,7 +161,7 @@ internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
         var slots = booking.Slots.Select(s => new BookingSlotDto(
             s.Id,
             s.Bay.SimulatorUnit.Name,
-            s.Bay.Name,
+            s.Bay.BayCode,
             s.Instructor is not null
                 ? $"{s.Instructor.User.Profile!.FirstName} {s.Instructor.User.Profile.LastName}"
                 : null,
@@ -181,7 +181,7 @@ internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
         var discounts = booking.Discounts.Select(d => new BookingDiscountDto(
             d.DiscountType.ToString(),
             d.DiscountPct,
-            d.DiscountAmountGbp
+            d.AmountGbp
         )).ToList();
 
         return new BookingDetailDto(
@@ -193,7 +193,7 @@ internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
             booking.Configuration.SimulatorUnit.Name,
             booking.StudentCount,
             booking.GrossPriceGbp,
-            booking.DiscountGbp,
+            booking.DiscountPct,
             booking.NetPriceGbp,
             booking.DepartmentName,
             booking.BudgetCode,
@@ -222,7 +222,7 @@ internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
                 FirstSlotStartAt = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.StartAt).FirstOrDefault(),
                 FirstSlotEndAt   = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.EndAt).FirstOrDefault(),
                 FirstSlotDurationMins = b.Slots.OrderBy(s => s.StartAt).Select(s => (int?)s.DurationMins).FirstOrDefault(),
-                FirstSlotBayName = b.Slots.OrderBy(s => s.StartAt).Select(s => s.Bay.Name).FirstOrDefault(),
+                FirstSlotBayName = b.Slots.OrderBy(s => s.StartAt).Select(s => s.Bay.BayCode).FirstOrDefault(),
                 FirstSlotUnitName = b.Slots.OrderBy(s => s.StartAt).Select(s => s.Bay.SimulatorUnit.Name).FirstOrDefault(),
                 InstructorFirstName = b.Slots
                     .OrderBy(s => s.StartAt)

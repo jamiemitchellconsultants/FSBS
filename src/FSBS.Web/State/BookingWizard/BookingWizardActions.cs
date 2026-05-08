@@ -4,6 +4,8 @@ public record SetWizardStepAction(int Step);
 public record SetWizardBookerRoleAction(string Role);
 public record SetWizardOrgAction(Guid? OrgId);
 public record SetWizardSimulatorAction(Guid SimulatorId);
+public record SetWizardBayAction(Guid BayId);
+public record SetWizardConfigurationAction(Guid ConfigurationId);
 public record SetWizardDateAction(DateOnly Date);
 public record SetWizardSlotAction(TimeOnly Start, TimeOnly End);
 public record SetWizardTrainingTypeAction(string TrainingType);
