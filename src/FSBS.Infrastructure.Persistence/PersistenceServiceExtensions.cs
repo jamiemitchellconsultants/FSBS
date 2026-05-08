@@ -1,9 +1,11 @@
+using System.Data;
 using FSBS.Domain.Interfaces;
 using FSBS.Domain.Enums;
 using FSBS.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 
 namespace FSBS.Infrastructure.Persistence;
 
@@ -35,6 +37,13 @@ public static class PersistenceServiceExtensions
 
         // Scoped so the unit of work shares the request-scoped FsbsDbContext.
         services.AddScoped<IUnitOfWork, FsbsUnitOfWork>();
+
+        // Dapper read services (e.g. AvailabilityReadService) take an IDbConnection
+        // directly. Scoped lifetime gives one connection per request, opened lazily
+        // by Dapper and disposed when the request scope ends.
+        services.AddScoped<IDbConnection>(_ => new NpgsqlConnection(
+            config.GetConnectionString("Fsbs")
+                ?? throw new InvalidOperationException("Connection string 'Fsbs' is not configured.")));
 
         return services;
     }

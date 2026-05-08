@@ -7,12 +7,13 @@ public static class RepositoriesServiceExtensions
 {
     public static IServiceCollection AddRepositories(this IServiceCollection services)
     {
-        // Existing repositories — implement interfaces from Repositories.Interfaces
+        // Read-side repositories — implement interfaces from Repositories.Interfaces
         services.AddScoped<IInvitationRepository, InvitationRepository>();
         services.AddScoped<IOrganisationRepository, OrganisationRepository>();
         services.AddScoped<IBookingRepository, BookingRepository>();
 
-        // Phase 3 repositories — implement interfaces from Domain.Interfaces
+        // Write-side repositories — implement interfaces from Domain.Interfaces
+        services.AddScoped<Domain.Interfaces.IBookingRepository, BookingWriteRepository>();
         services.AddScoped<Domain.Interfaces.ISimulatorRepository, SimulatorRepository>();
         services.AddScoped<Domain.Interfaces.IReconfigurationTemplateRepository, ReconfigurationTemplateRepository>();
         services.AddScoped<Domain.Interfaces.IReconfigurationSlotRepository, ReconfigurationSlotRepository>();

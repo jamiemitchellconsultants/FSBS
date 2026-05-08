@@ -3,7 +3,7 @@
 This file is the authoritative technical reference for the FSBS codebase. Read it in full before writing any code. All architectural decisions, naming conventions, business rules, and infrastructure choices are defined here and must be followed exactly.
 
 ---
-imp
+
 ## Project overview
 
 A multi-tenant, role-based flight simulator booking platform for a flight training school. Two user populations: **Staff** (Entra ID auth) and **Customers** (Cognito auth). Supports simulator configuration management, booking with reconfiguration windows, instructor scheduling, student progress tracking, corporate account management, invitation-only customer registration, and management reporting.
@@ -15,24 +15,37 @@ A multi-tenant, role-based flight simulator booking platform for a flight traini
 ```
 FSBS.sln
 ├── src/
-│   ├── FSBS.Domain/           # Entities, value objects, domain events, aggregate roots, interfaces
-│   ├── FSBS.Application/      # CQRS use cases (MediatR), DTOs, FluentValidation, IServices
-│   ├── FSBS.Infrastructure/   # EF Core DbContext, repositories, AWS SDK clients, SES/SQS adapters
-│   ├── FSBS.Api/              # ASP.NET Core 10 minimal API, controllers, middleware, SignalR hub
-│   ├── FSBS.Web/              # Blazor WebAssembly SPA
+│   ├── FSBS.Domain/                                  # Entities, value objects, domain events, aggregate roots, repository interfaces
+│   ├── FSBS.Application/                             # CQRS use cases (MediatR), DTOs, FluentValidation, IServices
+│   ├── FSBS.Infrastructure/                          # AWS SDK clients (Cognito, SQS, SES, S3), Redis cache, email/messaging adapters
+│   ├── FSBS.Infrastructure.Persistence/              # FsbsDbContext, FsbsUnitOfWork, audit/tenant interceptors
+│   ├── FSBS.Infrastructure.Persistence.Entities/     # EF Core Fluent API configurations (one per entity)
+│   ├── FSBS.Infrastructure.Persistence.Migrations/   # EF migrations + design-time DbContextFactory
+│   ├── FSBS.Infrastructure.Persistence.Repositories/ # Read repos (DTO projections) + write repos (aggregate ops) + Dapper read services
+│   ├── FSBS.Infrastructure.Persistence.Repositories.Interfaces/ # Read-side DTO repository interfaces
+│   ├── FSBS.Api/                                     # ASP.NET Core 10 minimal API, endpoints, middleware, SignalR hub
+│   ├── FSBS.Worker/                                  # Notification worker (SQS consumer → SES dispatcher) — separate ECS Fargate service
+│   ├── FSBS.Functions/                               # AWS Lambdas: PreSignUp, PostConfirmation, TokenRefresh, DbGrants (post-deploy custom resource)
+│   ├── FSBS.Web/                                     # Blazor WebAssembly SPA
 │   │   ├── Pages/             # Routable page components (one folder per feature)
 │   │   ├── Components/        # Shared UI components (calendar, wizard, capacity indicator)
 │   │   ├── Services/          # Typed HttpClient wrappers, SignalR client, pricing quote service
 │   │   ├── State/             # Fluxor store slices (booking wizard, calendar, pricing, session)
 │   │   └── Layout/            # Shell, role-adaptive nav, breadcrumbs
-│   └── FSBS.Shared/           # DTOs, enums, FluentValidation rules — shared by Api and Web
+│   └── FSBS.Shared/                                  # DTOs, enums, FluentValidation rules — shared by Api and Web
 ├── infrastructure/
-│   └── FSBS.Cdk/              # AWS CDK in C# — NetworkStack, DataStack, AppStack
+│   └── FSBS.Cdk/                                     # AWS CDK in C# — NetworkStack, DataStack, AppStack
 └── tests/
-    ├── FSBS.Domain.Tests/
-    ├── FSBS.Application.Tests/
-    └── FSBS.Integration.Tests/
+    ├── FSBS.Domain.Tests/                            # Pure-domain unit tests (xUnit + FluentAssertions)
+    ├── FSBS.Application.Tests/                       # Handler tests with mocked repositories (xUnit + NSubstitute)
+    └── FSBS.Integration.Tests/                       # Testcontainers PostgreSQL + WebApplicationFactory
 ```
+
+Note that domain repository interfaces split between two namespaces:
+- `FSBS.Domain.Interfaces.*` — write-side, used by command handlers (load aggregate, mutate, persist).
+- `FSBS.Infrastructure.Persistence.Repositories.Interfaces.*` — read-side, returns DTOs directly to query handlers.
+
+Both sets are registered together in `RepositoriesServiceExtensions.AddRepositories`.
 
 ---
 
@@ -446,14 +459,16 @@ Key events the notification worker must handle:
 | Approval workflow | `FSBS.Application/Bookings/Commands/ApproveBookingCommand.cs` |
 | Pricing engine | `FSBS.Application/Pricing/Services/PricingService.cs` |
 | Reconfig logic | `FSBS.Application/Bookings/Services/ReconfigurationService.cs` |
-| Availability cache | `FSBS.Infrastructure/Availability/AvailabilityCache.cs` |
+| Availability cache | `FSBS.Infrastructure/Availability/AvailabilityCache.cs` (Redis) and `NoOpAvailabilityCache.cs` (fallback) |
 | SignalR hub | `FSBS.Api/Hubs/AvailabilityHub.cs` |
 | JWT claims | `FSBS.Api/Auth/FsbsClaimsTransformation.cs` |
-| EF DbContext | `FSBS.Infrastructure/Persistence/FsbsDbContext.cs` |
-| Global query filters | `FSBS.Infrastructure/Persistence/Configurations/` |
-| Invitation token | `FSBS.Application/Invitations/Commands/CreateInvitationCommand.cs` |
-| Pre Sign-up Lambda | `FSBS.Cdk/Lambdas/PreSignUpFunction/` |
-| CDK stacks | `FSBS.Cdk/Stacks/` |
+| EF DbContext | `FSBS.Infrastructure.Persistence/FsbsDbContext.cs` |
+| Global query filters | `FSBS.Infrastructure.Persistence.Entities/Configurations/` |
+| Booking write repository | `FSBS.Infrastructure.Persistence.Repositories/BookingWriteRepository.cs` (implements `Domain.Interfaces.IBookingRepository`) |
+| Invitation token | `FSBS.Application/Invitations/Commands/CreateCorporateManagerInvitationCommand.cs` |
+| Cognito Lambdas | `FSBS.Functions/PreSignUp/`, `FSBS.Functions/PostConfirmation/`, `FSBS.Functions/TokenRefresh/` |
+| CDK stacks | `infrastructure/FSBS.Cdk/Stacks/` |
+| Test strategy | `TestStrategy.md` (three-tier pyramid: Domain.Tests / Application.Tests / Integration.Tests) |
 
 ---
 

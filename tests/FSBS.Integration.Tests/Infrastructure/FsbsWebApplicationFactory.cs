@@ -1,11 +1,8 @@
-using System.Data;
 using Amazon.CognitoIdentityProvider;
 using Amazon.S3;
 using Amazon.SimpleEmail;
 using Amazon.SQS;
-using FSBS.Application.Common.Interfaces;
 using FSBS.Infrastructure.Persistence;
-using Npgsql;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
@@ -39,18 +36,6 @@ public sealed class FsbsWebApplicationFactory(string connectionString)
         // We then strip Dev auth and replace it with `TestAuthHandler` below.
         builder.UseEnvironment("Development");
 
-        // Disable startup-time DI graph validation. The production wiring has
-        // unresolved registrations (e.g. Domain.Interfaces.IBookingRepository
-        // has no implementation registered in AddRepositories) that would
-        // otherwise abort host construction. Tests that depend on those
-        // services will still surface the missing registration at request
-        // time with a clear error.
-        builder.UseDefaultServiceProvider(opts =>
-        {
-            opts.ValidateOnBuild = false;
-            opts.ValidateScopes = false;
-        });
-
         builder.ConfigureAppConfiguration((_, cfg) =>
         {
             cfg.AddInMemoryCollection(new Dictionary<string, string?>
@@ -76,18 +61,6 @@ public sealed class FsbsWebApplicationFactory(string connectionString)
             services.Replace(ServiceDescriptor.Singleton(SesMock));
             services.Replace(ServiceDescriptor.Singleton(S3Mock));
             services.Replace(ServiceDescriptor.Singleton(CognitoMock));
-
-            // Register fakes for services the production wiring leaves
-            // unregistered when Redis is absent. Without these, route-argument
-            // inference fails at host startup because IAvailabilityCache and
-            // IAvailabilityReadService appear as endpoint parameters.
-            services.AddSingleton(Substitute.For<IAvailabilityCache>());
-            services.AddSingleton(Substitute.For<IAvailabilityReadService>());
-
-            // Dapper read service in production is constructed in Worker only;
-            // provide a real Postgres connection per scope so the API host can
-            // resolve any IDbConnection dependency.
-            services.AddScoped<IDbConnection>(_ => new NpgsqlConnection(connectionString));
 
             // Swap the default authentication scheme to the test header handler.
             services.AddAuthentication(TestAuthHandler.SchemeName)
