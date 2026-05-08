@@ -1,20 +1,20 @@
 # Blazor UI Build Order
 
-## Phase 1 — Auth Shell (unblock everything else)
+## Phase 1 — Auth Shell (unblock everything else) ✅
 The `AnonymousAuthStateProvider` is a stub — nothing role-adaptive works until this is real. Build this first so every subsequent page can be tested with actual identity.
 
-1. Replace `AnonymousAuthStateProvider` with a real Cognito OIDC provider (PKCE flow for customers, redirect to `/staff-login` for Entra)
-2. Populate `SessionState` (UserId, AppRole, OrgId) on login so the Fluxor store has identity context
-3. Wire `/login`, `/register`, `/register/confirm`, `/invitation/claim` pages — these already exist as scaffolding in `Pages/Public/`
+1. [x] Replace `AnonymousAuthStateProvider` with a real Cognito OIDC provider (PKCE flow for customers, redirect to `/staff-login` for Entra)
+2. [x] Populate `SessionState` (UserId, AppRole, OrgId) on login so the Fluxor store has identity context
+3. [x] Wire `/login`, `/register`, `/register/confirm`, `/invitation/claim` pages — these already exist as scaffolding in `Pages/Public/`
 
 ---
 
-## Phase 2 — Availability Calendar (core entry point)
+## Phase 2 — Availability Calendar (core entry point) ✅
 `AvailabilityMonth.razor` is the most complete page and is the natural landing page after login. It's ~90% done.
 
-4. Verify month → week drill-down against live API
-5. Add capacity indicator tooltip on month cells (reconfiguration window overlay is noted as missing in ToDo)
-6. Confirm SignalR push via `AvailabilityHubClient` refreshes the calendar without a full reload
+4. [x] Verify month → week drill-down against live API
+5. [x] Add capacity indicator tooltip on month cells (reconfiguration window overlay is noted as missing in ToDo)
+6. [x] Confirm SignalR push via `AvailabilityHubClient` refreshes the calendar without a full reload
 
 ---
 

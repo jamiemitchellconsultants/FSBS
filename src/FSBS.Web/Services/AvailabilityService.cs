@@ -81,6 +81,11 @@ public sealed class AvailabilityService(HttpClient http)
                 day => new DateOnly(normalizedMonthStart.Year, normalizedMonthStart.Month, day),
                 _ => 0d);
 
+        var reconfigurationByDay = Enumerable.Range(1, daysInMonth)
+            .ToDictionary(
+                day => new DateOnly(normalizedMonthStart.Year, normalizedMonthStart.Month, day),
+                _ => new ReconfigurationDayTotals(0, 0));
+
         IReadOnlyList<Guid> simulatorIds;
         if (simulatorId.HasValue)
         {
@@ -129,11 +134,34 @@ public sealed class AvailabilityService(HttpClient http)
             {
                 AddSlotHours(totalsByDay, slot.StartAt, slot.EndAt, normalizedMonthStart, monthEndExclusive);
             }
+
+            if (response.ReconfigurationWindows is null)
+            {
+                continue;
+            }
+
+            foreach (var reconfigurationWindow in response.ReconfigurationWindows)
+            {
+                AddReconfigurationWindow(
+                    reconfigurationByDay,
+                    reconfigurationWindow.StartAt,
+                    reconfigurationWindow.EndAt,
+                    normalizedMonthStart,
+                    monthEndExclusive);
+            }
         }
 
         var days = totalsByDay
             .OrderBy(x => x.Key)
-            .Select(x => new DayAvailability(x.Key, Math.Round(x.Value, 2)))
+            .Select(x =>
+            {
+                var reconfiguration = reconfigurationByDay[x.Key];
+                return new DayAvailability(
+                    x.Key,
+                    Math.Round(x.Value, 2),
+                    reconfiguration.WindowCount,
+                    reconfiguration.DurationMins);
+            })
             .ToList();
 
         return new MonthAvailabilityResult(normalizedMonthStart, days, null);
@@ -195,6 +223,54 @@ public sealed class AvailabilityService(HttpClient http)
         }
     }
 
+    private static void AddReconfigurationWindow(
+        IDictionary<DateOnly, ReconfigurationDayTotals> reconfigurationByDay,
+        DateTimeOffset start,
+        DateTimeOffset end,
+        DateOnly monthStart,
+        DateOnly monthEndExclusive)
+    {
+        var clampedStart = DateTimeOffset.Compare(start, new DateTimeOffset(monthStart.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero)) < 0
+            ? new DateTimeOffset(monthStart.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero)
+            : start;
+        var clampedEnd = DateTimeOffset.Compare(end, new DateTimeOffset(monthEndExclusive.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero)) > 0
+            ? new DateTimeOffset(monthEndExclusive.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero)
+            : end;
+
+        if (clampedEnd <= clampedStart)
+        {
+            return;
+        }
+
+        var cursor = clampedStart;
+        var countedDays = new HashSet<DateOnly>();
+        while (cursor < clampedEnd)
+        {
+            var day = DateOnly.FromDateTime(cursor.UtcDateTime.Date);
+            if (!reconfigurationByDay.TryGetValue(day, out var currentDayTotals))
+            {
+                var nextDay = new DateTimeOffset(day.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+                cursor = nextDay;
+                continue;
+            }
+
+            var nextDayBoundary = new DateTimeOffset(day.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            var segmentEnd = clampedEnd < nextDayBoundary ? clampedEnd : nextDayBoundary;
+            var segmentMins = (int)Math.Round((segmentEnd - cursor).TotalMinutes);
+            if (segmentMins > 0)
+            {
+                var shouldIncrementWindowCount = countedDays.Add(day);
+                reconfigurationByDay[day] = currentDayTotals with
+                {
+                    DurationMins = currentDayTotals.DurationMins + segmentMins,
+                    WindowCount = shouldIncrementWindowCount ? currentDayTotals.WindowCount + 1 : currentDayTotals.WindowCount
+                };
+            }
+
+            cursor = segmentEnd;
+        }
+    }
+
     private sealed record SimulatorPage(IReadOnlyList<SimulatorItem> Items);
     private sealed record SimulatorItem(Guid UnitId);
     private sealed record AvailabilityResponse(
@@ -202,9 +278,14 @@ public sealed class AvailabilityService(HttpClient http)
         IReadOnlyList<ReconfigurationWindow>? ReconfigurationWindows);
     private sealed record AvailableSlot(DateTimeOffset StartAt, DateTimeOffset EndAt);
     private sealed record ReconfigurationWindow(DateTimeOffset StartAt, DateTimeOffset EndAt, int DurationMins);
+    private sealed record ReconfigurationDayTotals(int WindowCount, int DurationMins);
 }
 
-public sealed record DayAvailability(DateOnly Date, double AvailableHours);
+public sealed record DayAvailability(
+    DateOnly Date,
+    double AvailableHours,
+    int ReconfigurationWindowCount,
+    int ReconfigurationDurationMins);
 public sealed record MonthAvailabilityResult(DateOnly MonthStart, IReadOnlyList<DayAvailability> Days, string? Warning);
 public sealed record WeekReconfigurationWindow(DateTimeOffset StartAt, DateTimeOffset EndAt, int DurationMins, Guid SimulatorId);
 public sealed record WeekReconfigurationResult(DateOnly WeekStart, IReadOnlyList<WeekReconfigurationWindow> Windows, string? Warning);

@@ -3,9 +3,11 @@
 @inject AvailabilityService AvailabilityService
 @inject SimulatorService SimulatorService
 @inject BookingService BookingService
+@inject AvailabilityHubClient AvailabilityHubClient
 @inject IState<CalendarState> CalendarState
 @inject IState<SessionState> SessionState
 @inject IDispatcher Dispatcher
+@implements IAsyncDisposable
 
 <PageTitle>Simulator Availability</PageTitle>
 
@@ -81,34 +83,41 @@
                 var isValidDay = dayNum >= 1 && dayNum <= _daysInMonth;
                 var cellDate = isValidDay ? new DateOnly(_monthStart.Year, _monthStart.Month, dayNum) : (DateOnly?)null;
                 var isToday = cellDate == _today;
-                var hours = isValidDay && cellDate is not null && _hoursByDay.TryGetValue(cellDate.Value, out var value)
-                    ? value
-                    : 0;
+                var dayMetrics = isValidDay && cellDate is not null ? GetDayAvailability(cellDate.Value) : null;
+                var hours = dayMetrics?.AvailableHours ?? 0;
 
-                <div style="border:1px solid var(--mud-palette-lines-default);min-height:88px;padding:6px;cursor:@(isValidDay ? "pointer" : "default");background:@GetCellBackground(isValidDay, isToday, hours)"
-                     @onclick="(() => OnMonthDayClicked(cellDate))">
-                    @if (isValidDay)
-                    {
-                        <div style="display:flex;justify-content:space-between;align-items:center">
-                            <MudText Typo="Typo.caption" Style="@($"font-weight:{(isToday ? "700" : "400")}")">@dayNum</MudText>
-                            @if (isToday)
+                <MudTooltip Placement="Placement.Top" Arrow="true" Disabled="@(!isValidDay)" Text="@(isValidDay && dayMetrics is not null ? BuildCapacityTooltip(dayMetrics) : string.Empty)">
+                    <div style="position:relative;border:1px solid var(--mud-palette-lines-default);min-height:88px;padding:6px;cursor:@(isValidDay ? "pointer" : "default");background:@GetCellBackground(isValidDay, isToday, hours)"
+                         @onclick="(() => OnMonthDayClicked(cellDate))">
+                        @if (isValidDay)
+                        {
+                            <div style="display:flex;justify-content:space-between;align-items:center">
+                                <MudText Typo="Typo.caption" Style="@($"font-weight:{(isToday ? "700" : "400")}")">@dayNum</MudText>
+                                @if (isToday)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">Today</MudChip>
+                                }
+                            </div>
+
+                            <MudText Typo="Typo.body2" Class="mt-2" Style="font-weight:600">
+                                @hours.ToString("0.##") h
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="@GetAvailabilityColor(hours)">@GetAvailabilityLabel(hours)</MudText>
+
+                            @if (dayMetrics is { ReconfigurationWindowCount: > 0 })
                             {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">Today</MudChip>
+                                <div style="position:absolute;left:0;right:0;bottom:0;height:8px;background:repeating-linear-gradient(135deg,var(--mud-palette-grey-light) 0,var(--mud-palette-grey-light) 6px,var(--mud-palette-grey-dark) 6px,var(--mud-palette-grey-dark) 12px)"
+                                     title="Reconfiguration windows present"></div>
                             }
-                        </div>
-
-                        <MudText Typo="Typo.body2" Class="mt-2" Style="font-weight:600">
-                            @hours.ToString("0.##") h
-                        </MudText>
-                        <MudText Typo="Typo.caption" Color="@GetAvailabilityColor(hours)">@GetAvailabilityLabel(hours)</MudText>
-                    }
-                </div>
+                        }
+                    </div>
+                </MudTooltip>
             }
         </div>
     </MudPaper>
 
     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-3">
-        Total available this month: <b>@_hoursByDay.Values.Sum().ToString("0.##") hours</b>
+        Total available this month: <b>@_dayAvailabilityByDate.Values.Sum(x => x.AvailableHours).ToString("0.##") hours</b>
     </MudText>
 }
 else
@@ -188,12 +197,15 @@ else
     private DateOnly _monthStart = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Today);
     private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
-    private readonly Dictionary<DateOnly, double> _hoursByDay = new();
+    private readonly Dictionary<DateOnly, DayAvailability> _dayAvailabilityByDate = new();
     private IReadOnlyList<SimulatorSummary> _simulators = [];
     private Guid? _selectedSimulatorId;
     private AvailabilityViewMode _viewMode = AvailabilityViewMode.Month;
     private IReadOnlyList<WeekBookingViewItem> _weekBookings = [];
     private IReadOnlyList<WeekReconfigurationWindow> _weekReconfiguration = [];
+    private DateTimeOffset? _lastRealtimeRefreshAt;
+    private bool _hubConnected;
+    private bool _disposed;
 
     private bool _isLoading;
     private string? _error;
@@ -209,9 +221,12 @@ else
         _monthStart = new DateOnly(persistedMonth.Year, persistedMonth.Month, 1);
         _selectedDate = CalendarState.Value.WeekStart;
         _selectedSimulatorId = CalendarState.Value.SimulatorId;
+        CalendarState.StateChanged += OnCalendarStateChanged;
 
         await LoadSimulatorsAsync();
         await LoadMonthAsync();
+        await EnsureRealtimeConnectedAsync();
+        await SyncRealtimeSubscriptionsAsync();
     }
 
     private async Task PreviousMonth()
@@ -266,10 +281,12 @@ else
         if (_viewMode == AvailabilityViewMode.Month)
         {
             await LoadMonthAsync();
+            await SyncRealtimeSubscriptionsAsync();
             return;
         }
 
         await LoadWeekAsync();
+        await SyncRealtimeSubscriptionsAsync();
     }
 
     private async Task OnMonthDayClicked(DateOnly? day)
@@ -314,7 +331,7 @@ else
         _isLoading = true;
         _error = null;
         _warning = null;
-        _hoursByDay.Clear();
+        _dayAvailabilityByDate.Clear();
 
         try
         {
@@ -323,7 +340,7 @@ else
 
             foreach (var day in result.Days)
             {
-                _hoursByDay[day.Date] = day.AvailableHours;
+                _dayAvailabilityByDate[day.Date] = day;
             }
         }
         catch
@@ -350,7 +367,7 @@ else
 
         try
         {
-            var bookings = await BookingService.GetBookingsForRangeAsync(weekStartOffset, weekEndOffset);
+            var bookings = await BookingService.GetBookingsForRangeAsync(weekStartOffset, weekEndOffset, _selectedSimulatorId);
             _weekBookings = bookings.Select(b => new WeekBookingViewItem(b, CanAccessBooking(b))).ToList();
 
             var reconfig = await AvailabilityService.GetWeekReconfigurationAsync(weekStart, _selectedSimulatorId);
@@ -372,6 +389,27 @@ else
     }
 
     private double MaxDailyHours => _selectedSimulatorId.HasValue ? 24d : Math.Max(24d, _simulators.Count * 24d);
+
+    private DayAvailability GetDayAvailability(DateOnly day)
+    {
+        return _dayAvailabilityByDate.TryGetValue(day, out var availability)
+            ? availability
+            : new DayAvailability(day, 0, 0, 0);
+    }
+
+    private string BuildCapacityTooltip(DayAvailability day)
+    {
+        var utilizationPercent = MaxDailyHours <= 0
+            ? 0
+            : Math.Round((day.AvailableHours / MaxDailyHours) * 100, 0);
+
+        if (day.ReconfigurationWindowCount <= 0)
+        {
+            return $"{day.Date:ddd d MMM}: {day.AvailableHours:0.##}h available ({utilizationPercent:0}% capacity free).";
+        }
+
+        return $"{day.Date:ddd d MMM}: {day.AvailableHours:0.##}h available ({utilizationPercent:0}% capacity free), {day.ReconfigurationWindowCount} reconfiguration window(s), {day.ReconfigurationDurationMins} min total reconfiguration.";
+    }
 
     private string GetCellBackground(bool isValidDay, bool isToday, double hours)
     {
@@ -442,6 +480,82 @@ else
             booking.BookerRole,
             booking.BookerUserId,
             booking.BookerOrgId);
+    }
+
+    private async Task EnsureRealtimeConnectedAsync()
+    {
+        if (_hubConnected)
+        {
+            return;
+        }
+
+        try
+        {
+            await AvailabilityHubClient.StartAsync("/hubs/availability");
+            _hubConnected = true;
+        }
+        catch
+        {
+            _warning ??= "Live updates are unavailable. Manual refresh still works.";
+        }
+    }
+
+    private async Task SyncRealtimeSubscriptionsAsync()
+    {
+        if (!_hubConnected)
+        {
+            return;
+        }
+
+        var simulatorIds = _selectedSimulatorId.HasValue
+            ? new[] { _selectedSimulatorId.Value }
+            : _simulators.Select(x => x.UnitId).ToArray();
+
+        await AvailabilityHubClient.SetSubscribedSimulatorsAsync(simulatorIds);
+    }
+
+    private void OnCalendarStateChanged(object? _, EventArgs __)
+    {
+        var refreshAt = CalendarState.Value.LastRealtimeRefreshAt;
+        if (refreshAt is null || refreshAt == _lastRealtimeRefreshAt || _disposed)
+        {
+            return;
+        }
+
+        _lastRealtimeRefreshAt = refreshAt;
+        _ = InvokeAsync(RefreshVisibleViewFromRealtimeAsync);
+    }
+
+    private async Task RefreshVisibleViewFromRealtimeAsync()
+    {
+        if (_isLoading)
+        {
+            return;
+        }
+
+        if (_viewMode == AvailabilityViewMode.Month)
+        {
+            await LoadMonthAsync();
+            return;
+        }
+
+        await LoadWeekAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        CalendarState.StateChanged -= OnCalendarStateChanged;
+
+        if (_hubConnected)
+        {
+            await AvailabilityHubClient.StopAsync();
+        }
     }
 
     private enum AvailabilityViewMode

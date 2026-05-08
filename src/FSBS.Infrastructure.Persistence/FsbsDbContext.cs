@@ -1,5 +1,6 @@
 using FSBS.Application.Common.Interfaces;
 using FSBS.Domain.Entities;
+using FSBS.Domain.Enums;
 using FSBS.Infrastructure.Persistence.Entities.Configurations;
 using FSBS.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
@@ -272,6 +273,7 @@ public class FsbsDbContext(DbContextOptions<FsbsDbContext> options, ICurrentUser
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("fsbs");
+        modelBuilder.HasPostgresEnum<TrainingType>("fsbs", "training_type");
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(BookingConfiguration).Assembly);
         ApplyGlobalQueryFilters(modelBuilder);

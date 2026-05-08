@@ -12,4 +12,5 @@ public record CalendarState
     public IReadOnlyList<object> AvailabilityGrid { get; init; } = [];
     public IReadOnlyList<object> ReconfigWindows { get; init; } = [];
     public IReadOnlyList<object> MaintenanceWindows { get; init; } = [];
+    public DateTimeOffset? LastRealtimeRefreshAt { get; init; }
 }

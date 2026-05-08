@@ -11,7 +11,7 @@ public class InstructorConfiguration : IEntityTypeConfiguration<Instructor>
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).HasColumnName("instructor_id");
 
-        builder.Property(e => e.TrainingTypeRatings).HasColumnType("training_type[]").IsRequired();
+        builder.Property(e => e.TrainingTypeRatings).HasColumnType("fsbs.training_type[]").IsRequired();
 
         builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
 

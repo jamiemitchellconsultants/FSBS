@@ -29,4 +29,10 @@ public static class CalendarReducers
             ReconfigWindows = a.ReconfigWindows,
             MaintenanceWindows = a.MaintenanceWindows
         };
+
+    [ReducerMethod]
+    public static CalendarState OnRealtimeRefreshRequested(
+        CalendarState state,
+        CalendarRealtimeRefreshRequestedAction a) =>
+        state with { LastRealtimeRefreshAt = a.TriggeredAt };
 }

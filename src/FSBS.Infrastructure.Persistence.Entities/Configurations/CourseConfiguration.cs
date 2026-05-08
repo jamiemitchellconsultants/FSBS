@@ -13,7 +13,7 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
 
         builder.Property(e => e.Name).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(2000);
-        builder.Property(e => e.TrainingType).HasConversion<string>().IsRequired();
+        builder.Property(e => e.TrainingType).HasColumnType("fsbs.training_type").IsRequired();
         builder.Property(e => e.TenantId).IsRequired();
 
         builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();

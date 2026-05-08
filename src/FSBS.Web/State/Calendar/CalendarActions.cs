@@ -9,3 +9,4 @@ public record CalendarLoadedAction(
     IReadOnlyList<object> ReconfigWindows,
     IReadOnlyList<object> MaintenanceWindows);
 public record ApplyCalendarDeltaAction(object Delta);
+public record CalendarRealtimeRefreshRequestedAction(DateTimeOffset TriggeredAt);

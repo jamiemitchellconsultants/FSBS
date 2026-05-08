@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using FSBS.Domain.Enums;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,13 +8,16 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialSetup : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.EnsureSchema(
                 name: "fsbs");
+
+            migrationBuilder.AlterDatabase()
+                .Annotation("Npgsql:Enum:fsbs.training_type", "flight_deck,cabin_crew");
 
             migrationBuilder.CreateTable(
                 name: "app_users",
@@ -45,7 +50,7 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    training_type = table.Column<string>(type: "text", nullable: false),
+                    training_type = table.Column<TrainingType>(type: "fsbs.training_type", nullable: false),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -127,7 +132,7 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                 {
                     instructor_id = table.Column<Guid>(type: "uuid", nullable: false),
                     user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    training_type_ratings = table.Column<int[]>(type: "training_type[]", nullable: false),
+                    training_type_ratings = table.Column<List<TrainingType>>(type: "fsbs.training_type[]", nullable: false),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -621,7 +626,7 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     booked_by = table.Column<Guid>(type: "uuid", nullable: false),
                     org_id = table.Column<Guid>(type: "uuid", nullable: true),
                     booker_role = table.Column<string>(type: "text", nullable: false),
-                    training_type = table.Column<string>(type: "text", nullable: false),
+                    training_type = table.Column<TrainingType>(type: "fsbs.training_type", nullable: false),
                     configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
                     student_count = table.Column<int>(type: "integer", nullable: false),
                     status = table.Column<string>(type: "text", nullable: false),
@@ -641,9 +646,9 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_bookings", x => x.booking_id);
-                    table.CheckConstraint("ck_bookings_cc_capacity", "training_type != 'CabinCrew' OR student_count <= 10");
+                    table.CheckConstraint("ck_bookings_cc_capacity", "training_type != 'cabin_crew' OR student_count <= 10");
                     table.CheckConstraint("ck_bookings_discount_pct", "discount_gbp IS NULL OR (discount_gbp >= 0 AND discount_gbp <= gross_price_gbp)");
-                    table.CheckConstraint("ck_bookings_fd_capacity", "training_type != 'FlightDeck' OR student_count <= 4");
+                    table.CheckConstraint("ck_bookings_fd_capacity", "training_type != 'flight_deck' OR student_count <= 4");
                     table.CheckConstraint("ck_bookings_student_count", "student_count >= 1");
                 });
 
@@ -776,7 +781,7 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                 {
                     pricing_policy_id = table.Column<Guid>(type: "uuid", nullable: false),
                     configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    training_type = table.Column<string>(type: "text", nullable: false),
+                    training_type = table.Column<TrainingType>(type: "fsbs.training_type", nullable: false),
                     customer_class = table.Column<string>(type: "text", nullable: false),
                     hourly_rate_gbp = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: false),
                     effective_from = table.Column<DateOnly>(type: "date", nullable: false),
@@ -896,7 +901,7 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     simulator_unit_id = table.Column<Guid>(type: "uuid", nullable: false),
                     aircraft_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     config_mode = table.Column<string>(type: "text", nullable: false),
-                    supported_training_types = table.Column<int[]>(type: "training_type[]", nullable: false),
+                    supported_training_types = table.Column<List<TrainingType>>(type: "fsbs.training_type[]", nullable: false),
                     max_capacity_flight_deck = table.Column<int>(type: "integer", nullable: false),
                     max_capacity_cabin_crew = table.Column<int>(type: "integer", nullable: false),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),

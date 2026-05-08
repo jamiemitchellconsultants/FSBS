@@ -10,7 +10,6 @@ using Amazon.CDK.AWS.ECS;
 using Amazon.CDK.AWS.IAM;
 using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.S3;
-using Amazon.CDK.AWS.SecretsManager;
 using Amazon.CDK.AWS.SNS;
 using Amazon.CDK.AWS.SQS;
 using Amazon.CDK.AWS.WAFv2;
@@ -28,6 +27,7 @@ using AlbListenerCert = Amazon.CDK.AWS.ElasticLoadBalancingV2.ListenerCertificat
 using CfDistribution = Amazon.CDK.AWS.CloudFront.Distribution;
 using CfDistributionProps = Amazon.CDK.AWS.CloudFront.DistributionProps;
 using LambdaFunction = Amazon.CDK.AWS.Lambda.Function;
+using SecretsManagerSecret = Amazon.CDK.AWS.SecretsManager.Secret;
 
 namespace FSBS.Cdk.Stacks;
 
@@ -164,7 +164,7 @@ public class AppStack : Stack
         });
 
         // Entra ID OIDC identity provider
-        var entraClientSecret = Secret.FromSecretNameV2(this, "EntraClientSecret", "fsbs/entra/client-secret");
+        var entraClientSecret = SecretsManagerSecret.FromSecretNameV2(this, "EntraClientSecret", "fsbs/entra/client-secret");
 
         var entraIdp = new UserPoolIdentityProviderOidc(this, "EntraIdp", new UserPoolIdentityProviderOidcProps
         {

@@ -149,3 +149,6 @@ app.MapPricingEndpoints();
 app.MapHub<AvailabilityHub>("/hubs/availability");
 
 app.Run();
+
+// Exposed so integration tests can target this assembly via WebApplicationFactory<Program>.
+public partial class Program;

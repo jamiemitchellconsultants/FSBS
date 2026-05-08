@@ -33,15 +33,19 @@ public sealed class BookingService(HttpClient http)
     public async Task<IReadOnlyList<BookingSummaryDto>> GetBookingsForRangeAsync(
         DateTimeOffset from,
         DateTimeOffset to,
+        Guid? simulatorId = null,
         CancellationToken ct = default)
     {
-        var dateFrom = from.UtcDateTime.ToString("yyyy-MM-dd");
-        var dateTo = to.UtcDateTime.ToString("yyyy-MM-dd");
+        var dateFrom = Uri.EscapeDataString(from.ToString("O"));
+        var dateTo = Uri.EscapeDataString(to.ToString("O"));
+        var simulatorQuery = simulatorId.HasValue
+            ? $"&simulatorId={Uri.EscapeDataString(simulatorId.Value.ToString())}"
+            : string.Empty;
 
         try
         {
             var result = await http.GetFromJsonAsync<PagedResult<BookingSummaryDto>>(
-                $"v1/bookings?from={Uri.EscapeDataString(dateFrom)}&to={Uri.EscapeDataString(dateTo)}&limit=500",
+                $"v1/bookings?from={dateFrom}&to={dateTo}&limit=500{simulatorQuery}",
                 ct);
 
             if (result?.Items is { Count: > 0 })
@@ -54,7 +58,7 @@ public sealed class BookingService(HttpClient http)
             // Fallback for scaffolding environments that only expose /bookings/range.
         }
 
-        return await GetMyBookingsForRangeAsync(from, to, ct);
+        return await GetMyBookingsForRangeAsync(from, to, simulatorId, ct);
     }
 
     public async Task<PagedResult<BookingSummaryDto>> GetMyBookingsAsync(
@@ -69,9 +73,17 @@ public sealed class BookingService(HttpClient http)
     }
 
     public async Task<IReadOnlyList<BookingSummaryDto>> GetMyBookingsForRangeAsync(
-        DateTimeOffset from, DateTimeOffset to, CancellationToken ct = default)
+        DateTimeOffset from,
+        DateTimeOffset to,
+        Guid? simulatorId = null,
+        CancellationToken ct = default)
     {
         var url = $"v1/bookings/range?from={Uri.EscapeDataString(from.ToString("O"))}&to={Uri.EscapeDataString(to.ToString("O"))}";
+        if (simulatorId.HasValue)
+        {
+            url += $"&simulatorId={Uri.EscapeDataString(simulatorId.Value.ToString())}";
+        }
+
         var result = await http.GetFromJsonAsync<IReadOnlyList<BookingSummaryDto>>(url, ct);
         return result ?? [];
     }

@@ -17,6 +17,7 @@ public class FsbsDbContextFactory : IDesignTimeDbContextFactory<FsbsDbContext>
                 {
                     o.MigrationsHistoryTable("__ef_migrations_history", "fsbs");
                     o.MigrationsAssembly(typeof(FsbsDbContextFactory).Assembly.GetName().Name);
+                    o.MapEnum<TrainingType>("training_type", "fsbs");
                 })
             .UseSnakeCaseNamingConvention()
             .Options;

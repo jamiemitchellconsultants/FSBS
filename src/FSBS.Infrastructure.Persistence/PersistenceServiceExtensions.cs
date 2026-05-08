@@ -1,4 +1,5 @@
 using FSBS.Domain.Interfaces;
+using FSBS.Domain.Enums;
 using FSBS.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -25,6 +26,7 @@ public static class PersistenceServiceExtensions
                     {
                         npgsql.MigrationsHistoryTable("__ef_migrations_history", "fsbs");
                         npgsql.MigrationsAssembly("FSBS.Infrastructure.Persistence.Migrations");
+                        npgsql.MapEnum<TrainingType>("training_type", "fsbs");
                     })
                 .UseSnakeCaseNamingConvention()
                 .AddInterceptors(
