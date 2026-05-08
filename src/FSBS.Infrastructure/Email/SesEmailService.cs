@@ -15,6 +15,7 @@ internal sealed class SesEmailService(
 {
     private readonly SesSettings _settings = options.Value;
 
+    /// <summary>Sends a templated SES email using a pre-registered template name and JSON data object.</summary>
     public async Task SendTemplatedEmailAsync(
         string toAddress,
         string templateName,
@@ -31,6 +32,7 @@ internal sealed class SesEmailService(
         await ses.SendTemplatedEmailAsync(request, ct);
     }
 
+    /// <summary>Sends a plain HTML email with an explicit subject and body.</summary>
     public async Task SendEmailAsync(
         string toAddress,
         string subject,

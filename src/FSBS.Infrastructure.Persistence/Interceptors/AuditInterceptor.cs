@@ -5,6 +5,12 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace FSBS.Infrastructure.Persistence.Interceptors;
 
+/// <summary>
+/// Stamps <c>CreatedAt</c>, <c>CreatedBy</c>, <c>UpdatedAt</c>, and <c>UpdatedBy</c>
+/// on every <see cref="AuditableEntity"/> before <c>SaveChanges</c> completes.
+/// Registered as a scoped service so it resolves <see cref="ICurrentUser"/> from
+/// the correct request scope on every save.
+/// </summary>
 public sealed class AuditInterceptor(ICurrentUser currentUser) : SaveChangesInterceptor
 {
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)

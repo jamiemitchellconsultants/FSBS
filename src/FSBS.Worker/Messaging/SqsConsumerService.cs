@@ -25,6 +25,10 @@ internal sealed class SqsConsumerService(
         PropertyNameCaseInsensitive = true
     };
 
+    /// <summary>
+    /// Runs the SQS long-poll loop until <paramref name="stoppingToken"/> is cancelled.
+    /// Backs off 5 seconds on unhandled exceptions to avoid tight error loops.
+    /// </summary>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("SQS consumer started. Queue: {QueueUrl}", _settings.BookingEventsQueueUrl);

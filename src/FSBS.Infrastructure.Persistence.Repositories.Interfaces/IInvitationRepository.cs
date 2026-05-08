@@ -4,7 +4,13 @@ namespace FSBS.Infrastructure.Persistence.Repositories.Interfaces;
 
 public interface IInvitationRepository
 {
+    /// <summary>
+    /// Returns <c>true</c> when a Pending invitation already exists for the
+    /// given email and organisation, preventing duplicate invitations.
+    /// </summary>
     Task<bool> HasPendingAsync(string inviteeEmail, Guid orgId, CancellationToken ct = default);
+
+    /// <summary>Persists a new invitation record.</summary>
     Task CreateAsync(Invitation invitation, CancellationToken ct = default);
 
     /// <summary>

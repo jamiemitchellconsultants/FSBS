@@ -9,8 +9,18 @@ using Npgsql;
 
 namespace FSBS.Infrastructure.Persistence;
 
+/// <summary>
+/// DI registration extension for the EF Core persistence layer.
+/// Registers <see cref="FsbsDbContext"/>, interceptors, <see cref="IUnitOfWork"/>,
+/// and a scoped <see cref="System.Data.IDbConnection"/> for Dapper read services.
+/// </summary>
 public static class PersistenceServiceExtensions
 {
+    /// <summary>
+    /// Adds the EF Core <see cref="FsbsDbContext"/>, audit and tenant interceptors,
+    /// <see cref="IUnitOfWork"/>, and a Dapper <see cref="System.Data.IDbConnection"/>
+    /// to the service collection.
+    /// </summary>
     public static IServiceCollection AddPersistence(this IServiceCollection services, IConfiguration config)
     {
         // Scoped (not singleton) so ICurrentUser is resolved from the correct

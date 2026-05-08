@@ -10,6 +10,11 @@ namespace FSBS.Worker.Notifications;
 /// </summary>
 internal sealed class UserLookupService(IDbConnection db) : IUserLookupService
 {
+    /// <summary>
+    /// Executes a single Dapper query to resolve the email and display name
+    /// for the given user ID. Returns <c>null</c> when the user does not exist
+    /// or has been soft-deleted.
+    /// </summary>
     public async Task<UserContact?> GetContactAsync(Guid userId, CancellationToken ct = default)
     {
         const string sql = """

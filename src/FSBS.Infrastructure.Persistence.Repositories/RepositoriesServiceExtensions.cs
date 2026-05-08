@@ -3,8 +3,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FSBS.Infrastructure.Persistence.Repositories;
 
+/// <summary>
+/// DI registration extension for all repository implementations.
+/// Registers both read-side repositories (from <c>Repositories.Interfaces</c>)
+/// and write-side repositories (from <c>Domain.Interfaces</c>).
+/// </summary>
 public static class RepositoriesServiceExtensions
 {
+    /// <summary>
+    /// Adds all read-side and write-side repository implementations as scoped services.
+    /// Call this from <c>FSBS.Api/Program.cs</c> after <c>AddPersistence</c>.
+    /// </summary>
     public static IServiceCollection AddRepositories(this IServiceCollection services)
     {
         // Read-side repositories — implement interfaces from Repositories.Interfaces

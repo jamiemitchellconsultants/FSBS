@@ -15,8 +15,18 @@ using StackExchange.Redis;
 
 namespace FSBS.Infrastructure;
 
+/// <summary>
+/// DI registration extension for all infrastructure services: Cognito, SQS, SES, S3,
+/// and the Redis availability cache. Registers stubs when <c>DevAuth:Enabled</c> is
+/// true so local development requires no AWS credentials.
+/// </summary>
 public static class InfrastructureServiceExtensions
 {
+    /// <summary>
+    /// Adds Cognito, SQS, SES, S3, and Redis services to the service collection.
+    /// Binds settings from the <c>Cognito</c>, <c>Sqs</c>, <c>Ses</c>, <c>S3</c>,
+    /// and <c>Redis</c> configuration sections.
+    /// </summary>
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)

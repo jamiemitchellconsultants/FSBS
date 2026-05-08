@@ -7,6 +7,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FSBS.Infrastructure.Persistence.Repositories;
 
+/// <summary>
+/// EF Core read-side implementation of <see cref="IBookingRepository"/>.
+/// Uses EF Core projections to return DTOs directly without loading full aggregates.
+/// Cursor-based pagination encodes <c>(slotStartAt, bookingId)</c> as a Base64 token.
+/// </summary>
 internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
 {
     public async Task<PagedResult<BookingSummaryDto>> GetMyBookingsPageAsync(

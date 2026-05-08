@@ -16,6 +16,9 @@ internal sealed class S3Service(
 {
     private readonly S3Settings _settings = options.Value;
 
+    /// <summary>
+    /// Generates a pre-signed GET URL for the given S3 object key in the documents bucket.
+    /// </summary>
     public Task<string> GeneratePresignedGetUrlAsync(
         string objectKey,
         int expiryMinutes = 15,
@@ -31,6 +34,9 @@ internal sealed class S3Service(
         return Task.FromResult(s3.GetPreSignedURL(request));
     }
 
+    /// <summary>
+    /// Generates a pre-signed PUT URL for uploading a document to the documents bucket.
+    /// </summary>
     public Task<string> GeneratePresignedPutUrlAsync(
         string objectKey,
         string contentType,

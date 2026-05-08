@@ -5,6 +5,10 @@ using FSBS.Domain.Enums;
 
 namespace FSBS.Api.Endpoints;
 
+/// <summary>
+/// Minimal API endpoints for stateless pricing quote calculation.
+/// Routes are under <c>/v1/pricing</c> and require authentication.
+/// </summary>
 public static class PricingEndpoints
 {
     public static IEndpointRouteBuilder MapPricingEndpoints(this IEndpointRouteBuilder app)
@@ -87,12 +91,14 @@ public static class PricingEndpoints
     }
 }
 
+/// <summary>Response body for <c>GET /v1/pricing/quote</c>.</summary>
 public record PricingQuoteResponse(
     decimal GrossPriceGbp,
     decimal DiscountGbp,
     decimal NetPriceGbp,
     IReadOnlyList<AppliedDiscountDto> AppliedDiscounts);
 
+/// <summary>A single discount rule applied to the pricing quote.</summary>
 public record AppliedDiscountDto(
     Guid DiscountRuleId,
     string DiscountType,

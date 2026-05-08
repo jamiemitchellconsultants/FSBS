@@ -12,6 +12,11 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace FSBS.Api.Endpoints;
 
+/// <summary>
+/// Minimal API endpoints for booking CRUD, approval, rejection, and cancellation.
+/// All routes are under <c>/v1/bookings</c> and require authentication.
+/// Write endpoints invalidate the Redis availability cache and push a SignalR delta after each mutation.
+/// </summary>
 public static class BookingEndpoints
 {
     public static IEndpointRouteBuilder MapBookingEndpoints(this IEndpointRouteBuilder app)

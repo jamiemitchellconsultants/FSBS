@@ -4,6 +4,10 @@ using MediatR;
 
 namespace FSBS.Api.Endpoints;
 
+/// <summary>
+/// Minimal API endpoints for listing and looking up organisations.
+/// Routes are under <c>/v1/organisations</c> and require authentication.
+/// </summary>
 public static class OrganisationEndpoints
 {
     public static IEndpointRouteBuilder MapOrganisationEndpoints(this IEndpointRouteBuilder app)
@@ -28,4 +32,5 @@ public static class OrganisationEndpoints
     }
 }
 
+/// <summary>Response body for <c>GET /v1/organisations</c>.</summary>
 public record OrganisationListResponse(IReadOnlyList<OrganisationSummary> Items);

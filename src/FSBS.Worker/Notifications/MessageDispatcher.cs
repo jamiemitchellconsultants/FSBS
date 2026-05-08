@@ -12,6 +12,11 @@ internal sealed class MessageDispatcher(IServiceProvider services, ILogger<Messa
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
+    /// <summary>
+    /// Deserialises the SQS message body and invokes the registered
+    /// <see cref="INotificationHandler{T}"/> for the given message type.
+    /// Logs a warning and discards the message when no handler is registered.
+    /// </summary>
     public Task DispatchAsync(string messageType, string messageBody, CancellationToken ct = default) =>
         messageType switch
         {

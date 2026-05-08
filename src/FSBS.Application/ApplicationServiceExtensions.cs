@@ -10,8 +10,18 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FSBS.Application;
 
+/// <summary>
+/// DI registration extension for the Application layer.
+/// Registers MediatR with the three pipeline behaviours, FluentValidation validators,
+/// and application-layer services.
+/// </summary>
 public static class ApplicationServiceExtensions
 {
+    /// <summary>
+    /// Adds MediatR (with <c>LoggingBehaviour</c>, <c>ValidationBehaviour</c>, and
+    /// <c>TransactionBehaviour</c>), FluentValidation validators, and scoped
+    /// application services to the service collection.
+    /// </summary>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         var assembly = typeof(ApplicationServiceExtensions).Assembly;

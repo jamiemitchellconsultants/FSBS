@@ -8,6 +8,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FSBS.Api.Endpoints;
 
+/// <summary>
+/// Minimal API endpoints for customer self-registration, confirmation, and session management.
+/// All routes are under <c>/v1/auth</c> and are anonymous unless noted.
+/// </summary>
 public static class AuthEndpoints
 {
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
@@ -290,6 +294,7 @@ public record RegisterInvitedRequest(
     string LastName,
     string? PhoneNumber);
 
+/// <summary>Response body for <c>POST /v1/auth/register/invited</c>.</summary>
 public record RegisterInvitedResponse(
     Guid UserId,
     string Email,

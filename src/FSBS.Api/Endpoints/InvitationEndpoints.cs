@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FSBS.Api.Endpoints;
 
+/// <summary>
+/// Minimal API endpoints for issuing and validating corporate invitations.
+/// Routes are under <c>/v1/invitations</c>.
+/// </summary>
 public static class InvitationEndpoints
 {
     public static IEndpointRouteBuilder MapInvitationEndpoints(this IEndpointRouteBuilder app)
@@ -86,18 +90,23 @@ public static class InvitationEndpoints
     }
 }
 
+/// <summary>Request body for <c>POST /v1/invitations</c> (SalesStaff / SystemAdmin).</summary>
 public record IssueCorporateManagerInvitationRequest(string InviteeEmail, Guid OrgId);
 
+/// <summary>Request body for <c>POST /v1/invitations/students</c> (CorporateManager).</summary>
 public record InviteCorporateStudentRequest(string InviteeEmail);
 
+/// <summary>Query parameters for <c>GET /v1/invitations/validate</c>.</summary>
 public record ValidateInvitationTokenRequest(string? Token);
 
+/// <summary>Response body for <c>GET /v1/invitations/validate</c>.</summary>
 public record ValidateInvitationTokenResponse(
     bool IsValid,
     string? InviteeEmail,
     string? OrgName,
     string? Role);
 
+/// <summary>Response body for invitation creation endpoints.</summary>
 public record IssueCorporateManagerInvitationResponse(
     Guid InvitationId,
     string InviteeEmail,

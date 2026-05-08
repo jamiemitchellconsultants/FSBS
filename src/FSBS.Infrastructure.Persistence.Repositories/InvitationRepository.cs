@@ -6,8 +6,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FSBS.Infrastructure.Persistence.Repositories;
 
+/// <summary>
+/// EF Core implementation of <see cref="IInvitationRepository"/>.
+/// Uses <c>IgnoreQueryFilters</c> on unauthenticated paths to bypass the
+/// tenant query filter that would otherwise match nothing for anonymous callers.
+/// </summary>
 internal sealed class InvitationRepository(FsbsDbContext db) : IInvitationRepository
 {
+    /// <summary>
+    /// Returns <c>true</c> when a Pending invitation already exists for the
+    /// given email and organisation, preventing duplicate invitations.
+    /// </summary>
     public Task<bool> HasPendingAsync(string inviteeEmail, Guid orgId, CancellationToken ct = default) =>
         db.Invitations.AnyAsync(
             i => i.InviteeEmail == inviteeEmail
@@ -15,6 +24,7 @@ internal sealed class InvitationRepository(FsbsDbContext db) : IInvitationReposi
               && i.Status       == InvitationStatus.Pending,
             ct);
 
+    /// <summary>Persists a new invitation record.</summary>
     public async Task CreateAsync(Invitation invitation, CancellationToken ct = default)
     {
         db.Invitations.Add(invitation);

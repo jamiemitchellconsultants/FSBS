@@ -16,6 +16,10 @@ internal sealed class SqsPublisher(IAmazonSQS sqs, IOptions<SqsSettings> options
 {
     private readonly SqsSettings _settings = options.Value;
 
+    /// <summary>
+    /// Serialises <paramref name="message"/> as JSON and sends it to the booking
+    /// events SQS queue with a <c>MessageType</c> attribute set to the CLR type name.
+    /// </summary>
     public async Task PublishAsync<T>(T message, CancellationToken ct = default) where T : class
     {
         var body = JsonSerializer.Serialize(message);

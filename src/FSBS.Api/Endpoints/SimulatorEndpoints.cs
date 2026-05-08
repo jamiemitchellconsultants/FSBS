@@ -3,6 +3,11 @@ using FSBS.Application.Simulators.Queries;
 
 namespace FSBS.Api.Endpoints;
 
+/// <summary>
+/// Minimal API endpoints for querying simulator availability.
+/// Routes are under <c>/v1/simulators</c> and require authentication.
+/// Responses are served from the Redis availability cache when available (60-second TTL).
+/// </summary>
 public static class SimulatorEndpoints
 {
     public static IEndpointRouteBuilder MapSimulatorEndpoints(this IEndpointRouteBuilder app)
