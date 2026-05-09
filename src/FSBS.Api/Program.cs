@@ -146,6 +146,7 @@ app.MapInvitationEndpoints();
 app.MapOrganisationEndpoints();
 app.MapBookingEndpoints();
 app.MapSimulatorEndpoints();
+app.MapAircraftTypeEndpoints();
 app.MapPricingEndpoints();
 app.MapHub<AvailabilityHub>("/hubs/availability");
 

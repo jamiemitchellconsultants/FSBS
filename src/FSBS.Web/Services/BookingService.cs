@@ -103,18 +103,32 @@ public sealed class BookingService(HttpClient http)
     public Task<Guid> CreateBookingAsync(object command, CancellationToken ct = default) =>
         Task.FromResult(Guid.Empty);
 
-    public Task ApproveBookingAsync(Guid bookingId, CancellationToken ct = default) =>
-        Task.CompletedTask;
+    public async Task ApproveBookingAsync(Guid bookingId, Guid simulatorId, CancellationToken ct = default)
+    {
+        var response = await http.PutAsJsonAsync(
+            $"v1/bookings/{bookingId}/approve",
+            new { SimulatorId = simulatorId },
+            ct);
+        response.EnsureSuccessStatusCode();
+    }
 
-    public Task RejectBookingAsync(Guid bookingId, string reason, CancellationToken ct = default) =>
-        Task.CompletedTask;
+    public async Task RejectBookingAsync(Guid bookingId, Guid simulatorId, string reason, CancellationToken ct = default)
+    {
+        var response = await http.PutAsJsonAsync(
+            $"v1/bookings/{bookingId}/reject",
+            new { SimulatorId = simulatorId, Reason = reason },
+            ct);
+        response.EnsureSuccessStatusCode();
+    }
 
     public Task CancelBookingAsync(Guid bookingId, CancellationToken ct = default) =>
         Task.CompletedTask;
 
-    public Task<IReadOnlyList<object>> GetPendingApprovalsAsync(
-        string? afterCursor = null, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<object>>([]);
+    public async Task<IReadOnlyList<BookingSummaryDto>> GetPendingApprovalsAsync(CancellationToken ct = default)
+    {
+        var result = await http.GetFromJsonAsync<IReadOnlyList<BookingSummaryDto>>("v1/bookings/pending-approval", ct);
+        return result ?? [];
+    }
 }
 
 public sealed record CreateBookingRequest(

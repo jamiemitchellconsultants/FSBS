@@ -85,7 +85,7 @@
                        Class="mb-3">
                 @foreach (var config in _simulatorDetail.Configurations)
                 {
-                    <MudSelectItem T="Guid?" Value="@config.ConfigurationId">@config.Name (@config.AircraftType)</MudSelectItem>
+                    <MudSelectItem T="Guid?" Value="@config.ConfigurationId">@config.Name (@config.AircraftTypeIcaoCode)</MudSelectItem>
                 }
             </MudSelect>
         }

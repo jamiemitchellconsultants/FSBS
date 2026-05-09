@@ -12,7 +12,7 @@ public class SimulatorConfigurationConfiguration : IEntityTypeConfiguration<Simu
         builder.Property(e => e.Id).HasColumnName("config_id");
 
         builder.Property(e => e.Name).IsRequired().HasMaxLength(200);
-        builder.Property(e => e.AircraftType).IsRequired().HasMaxLength(50);
+        builder.Property(e => e.AircraftTypeId).IsRequired().HasColumnName("aircraft_type_id");
         builder.Property(e => e.ConfigMode).HasConversion<string>().IsRequired();
         builder.Property(e => e.SupportedTrainingTypes).HasColumnType("fsbs.training_type[]").IsRequired();
         builder.Property(e => e.MaxCapacityFlightDeck).IsRequired();

@@ -11,6 +11,8 @@ internal sealed class SimulatorRepository(FsbsDbContext db) : ISimulatorReposito
     public Task<SimulatorUnit?> FindByIdAsync(Guid id, CancellationToken ct = default) =>
         db.SimulatorUnits
             .Include(u => u.Bays)
+            .Include(u => u.Configurations)
+                .ThenInclude(c => c.AircraftType)
             .Include(u => u.ActiveConfiguration)
             .FirstOrDefaultAsync(u => u.Id == id, ct);
 
@@ -36,6 +38,7 @@ internal sealed class SimulatorRepository(FsbsDbContext db) : ISimulatorReposito
         await db.SimulatorUnits
             .Include(u => u.Bays)
             .Include(u => u.Configurations)
+                .ThenInclude(c => c.AircraftType)
             .Where(u => !u.IsDeleted)
             .OrderBy(u => u.Name)
             .ToListAsync(ct);

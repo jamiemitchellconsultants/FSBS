@@ -28,6 +28,7 @@ public static class RepositoriesServiceExtensions
         services.AddScoped<Domain.Interfaces.IReconfigurationSlotRepository, ReconfigurationSlotRepository>();
         services.AddScoped<Domain.Interfaces.IPricingPolicyRepository, PricingPolicyRepository>();
         services.AddScoped<Domain.Interfaces.IInstructorRepository, InstructorRepository>();
+        services.AddScoped<Domain.Interfaces.IAircraftTypeRepository, AircraftTypeRepository>();
         services.AddScoped<Application.Common.Interfaces.IAvailabilityReadService, AvailabilityReadService>();
 
         return services;

@@ -1,0 +1,104 @@
+@inject SimulatorService SimulatorSvc
+@inject ISnackbar Snackbar
+@using FSBS.Shared.Simulators
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_bayCode"
+                          Label="Bay Code"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Placeholder="e.g. A"
+                          Required="true"
+                          RequiredError="Bay Code is required." />
+
+            <MudTextField @bind-Value="_description"
+                          Label="Description"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Lines="2" />
+
+            @if (Bay is not null)
+            {
+                <MudSelect @bind-Value="_status"
+                           Label="Status"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense">
+                    <MudSelectItem Value="@("Operational")">Operational</MudSelectItem>
+                    <MudSelectItem Value="@("Maintenance")">Maintenance</MudSelectItem>
+                    <MudSelectItem Value="@("Decommissioned")">Decommissioned</MudSelectItem>
+                </MudSelect>
+            }
+
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_saving">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_saving">
+            @(_saving ? "Saving…" : (Bay is null ? "Create" : "Save"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Guid UnitId { get; set; }
+    [Parameter] public SimulatorBayDto? Bay { get; set; }
+
+    private string _bayCode = string.Empty;
+    private string? _description;
+    private string _status = "Operational";
+    private bool _saving;
+    private string? _error;
+
+    protected override void OnParametersSet()
+    {
+        if (Bay is null) return;
+        _bayCode = Bay.BayCode;
+        _status = Bay.Status;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_bayCode))
+        {
+            _error = "Bay Code is required.";
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        try
+        {
+            SimulatorBayDto result;
+            if (Bay is null)
+            {
+                result = await SimulatorSvc.CreateBayAsync(UnitId,
+                    new CreateSimulatorBayRequest(_bayCode.Trim(), _description?.Trim()));
+                Snackbar.Add($"Bay '{result.BayCode}' created.", Severity.Success);
+            }
+            else
+            {
+                result = await SimulatorSvc.UpdateBayAsync(UnitId, Bay.BayId,
+                    new UpdateSimulatorBayRequest(_bayCode.Trim(), _description?.Trim(), _status));
+                Snackbar.Add($"Bay '{result.BayCode}' updated.", Severity.Success);
+            }
+            MudDialog.Close(DialogResult.Ok(result));
+        }
+        catch
+        {
+            _error = "Failed to save. Please try again.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

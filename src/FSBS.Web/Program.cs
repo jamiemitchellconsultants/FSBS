@@ -31,6 +31,7 @@ builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<InvitationService>();
 builder.Services.AddScoped<OrganisationService>();
 builder.Services.AddScoped<SimulatorService>();
+builder.Services.AddScoped<AircraftTypeService>();
 builder.Services.AddScoped<CourseService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<AvailabilityHubClient>();

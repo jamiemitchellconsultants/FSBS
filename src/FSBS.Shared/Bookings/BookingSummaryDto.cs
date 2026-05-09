@@ -15,5 +15,9 @@ public record BookingSummaryDto(
     decimal? NetPriceGbp,
     string BookerRole,
     Guid? BookerUserId = null,
-    Guid? BookerOrgId = null
+    Guid? BookerOrgId = null,
+    Guid? SimulatorUnitId = null,
+    string? DepartmentName = null,
+    string? BudgetCode = null,
+    DateTimeOffset? SubmittedAt = null
 );

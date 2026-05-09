@@ -1,0 +1,327 @@
+@page "/staff/organisations/payments"
+@layout MainLayout
+@attribute [Authorize(Roles = "SalesStaff,SystemAdmin")]
+@inject OrganisationService OrgSvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Record Payment — FSBS</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">Record Payment on Account</MudText>
+
+@if (_loadingOrgs)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+
+<MudGrid Spacing="4">
+
+    @* ── Left: form ── *@
+    <MudItem xs="12" md="5">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600">Payment Details</MudText>
+
+            <MudStack Spacing="3">
+                <MudSelect T="Guid?"
+                           Label="Organisation"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Value="_orgId"
+                           ValueChanged="OnOrgChanged"
+                           Disabled="_loadingOrgs || _submitting">
+                    @foreach (var org in _orgs)
+                    {
+                        <MudSelectItem T="Guid?" Value="@org.Id">@org.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudNumericField T="decimal"
+                                 Label="Amount (£)"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Min="0.01m"
+                                 Format="N2"
+                                 @bind-Value="_amount"
+                                 Disabled="_submitting" />
+
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">Payment Date</MudText>
+                    <input type="date"
+                           class="mud-input-slot pa-2"
+                           style="width:100%"
+                           value="@_paymentDateText"
+                           @onchange="OnDateChanged"
+                           disabled="@_submitting" />
+                </div>
+
+                <MudSelect @bind-Value="_paymentMethod"
+                           Label="Payment Method"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Disabled="_submitting">
+                    <MudSelectItem Value="@("BankTransfer")">Bank Transfer</MudSelectItem>
+                    <MudSelectItem Value="@("Cheque")">Cheque</MudSelectItem>
+                    <MudSelectItem Value="@("Cash")">Cash</MudSelectItem>
+                    <MudSelectItem Value="@("CreditNote")">Credit Note</MudSelectItem>
+                    <MudSelectItem Value="@("Adjustment")">Adjustment</MudSelectItem>
+                </MudSelect>
+
+                <MudTextField @bind-Value="_reference"
+                              Label="Reference"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Placeholder="e.g. bank transfer ref, cheque number"
+                              Disabled="_submitting" />
+
+                <MudTextField @bind-Value="_notes"
+                              Label="Notes"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Lines="2"
+                              Disabled="_submitting" />
+
+                @if (_error is not null)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+                }
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Disabled="@(_submitting || _orgId is null)"
+                           OnClick="SubmitAsync">
+                    @(_submitting ? "Recording…" : "Record Payment")
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    @* ── Right: account summary + recent payments ── *@
+    <MudItem xs="12" md="7">
+        @if (_loadingAccount)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
+        }
+
+        @if (_account is not null)
+        {
+            <MudPaper Elevation="2" Class="pa-4 mb-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:600">
+                    Account — @_account.OrgName
+                </MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Balance</MudText>
+                        <MudText Typo="Typo.body1"
+                                 Style="@($"font-weight:700;color:{BalanceColour(_account.CurrentBalanceGbp)}")">
+                            £@_account.CurrentBalanceGbp.ToString("N2")
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Credit Limit</MudText>
+                        <MudText Typo="Typo.body2">£@_account.CreditLimitGbp.ToString("N2")</MudText>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Status</MudText>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@AccountStatusColour(_account.Status)"
+                                 Variant="Variant.Outlined">
+                            @_account.Status
+                        </MudChip>
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Payment Terms</MudText>
+                        <MudText Typo="Typo.body2">@_account.PaymentTermsDays days</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <MudPaper Elevation="2" Class="pa-0">
+                <div class="pa-3 pb-1">
+                    <MudText Typo="Typo.subtitle2">Recent Payments</MudText>
+                </div>
+                @if (_account.RecentPayments.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">
+                        No payments recorded yet.
+                    </MudText>
+                }
+                else
+                {
+                    <MudTable Items="@_account.RecentPayments" Dense="true" Hover="false" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>Date</MudTh>
+                            <MudTh>Method</MudTh>
+                            <MudTh>Reference</MudTh>
+                            <MudTh Style="text-align:right">Amount</MudTh>
+                            <MudTh>Status</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.PaymentDate.ToString("d MMM yyyy")</MudTd>
+                            <MudTd>@context.PaymentMethod</MudTd>
+                            <MudTd>
+                                <MudText Typo="Typo.body2" Style="font-family:monospace">
+                                    @(context.Reference ?? "—")
+                                </MudText>
+                            </MudTd>
+                            <MudTd Style="text-align:right">
+                                <MudText Typo="Typo.body2" Style="font-weight:600">
+                                    £@context.AmountGbp.ToString("N2")
+                                </MudText>
+                            </MudTd>
+                            <MudTd>
+                                <MudChip T="string" Size="Size.Small"
+                                         Color="@PaymentStatusColour(context.Status)"
+                                         Variant="Variant.Outlined">
+                                    @context.Status
+                                </MudChip>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudPaper>
+        }
+        else if (_orgId.HasValue && !_loadingAccount)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true">
+                No account found for this organisation.
+            </MudAlert>
+        }
+    </MudItem>
+
+</MudGrid>
+
+@code {
+    private IReadOnlyList<OrganisationSummaryDto> _orgs = [];
+    private bool _loadingOrgs;
+    private bool _loadingAccount;
+    private bool _submitting;
+    private string? _error;
+
+    private Guid? _orgId;
+    private OrgAccountDto? _account;
+
+    private decimal _amount;
+    private string _paymentDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
+    private string _paymentMethod = "BankTransfer";
+    private string? _reference;
+    private string? _notes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loadingOrgs = true;
+        try
+        {
+            _orgs = await OrgSvc.GetOrganisationsAsync();
+        }
+        catch
+        {
+            _error = "Failed to load organisations.";
+        }
+        finally
+        {
+            _loadingOrgs = false;
+        }
+    }
+
+    private async Task OnOrgChanged(Guid? orgId)
+    {
+        _orgId = orgId;
+        _account = null;
+        if (orgId is null) return;
+
+        _loadingAccount = true;
+        try
+        {
+            _account = await OrgSvc.GetAccountAsync(orgId.Value);
+        }
+        catch
+        {
+            _account = null;
+        }
+        finally
+        {
+            _loadingAccount = false;
+        }
+    }
+
+    private void OnDateChanged(ChangeEventArgs e) =>
+        _paymentDateText = e.Value?.ToString() ?? string.Empty;
+
+    private async Task SubmitAsync()
+    {
+        _error = null;
+
+        if (_orgId is null)
+        {
+            _error = "Select an organisation.";
+            return;
+        }
+
+        if (_amount <= 0)
+        {
+            _error = "Amount must be greater than zero.";
+            return;
+        }
+
+        if (!DateOnly.TryParse(_paymentDateText, out var paymentDate))
+        {
+            _error = "Enter a valid payment date.";
+            return;
+        }
+
+        _submitting = true;
+        try
+        {
+            var payment = await OrgSvc.RecordPaymentAsync(
+                _orgId.Value,
+                new RecordPaymentRequest(
+                    _amount,
+                    paymentDate,
+                    _paymentMethod,
+                    string.IsNullOrWhiteSpace(_reference) ? null : _reference.Trim(),
+                    string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim()));
+
+            Snackbar.Add($"Payment of £{payment.AmountGbp:N2} recorded. Status: Pending verification.", Severity.Success);
+
+            // Refresh account summary to show the new payment
+            _account = await OrgSvc.GetAccountAsync(_orgId.Value);
+
+            // Reset form fields (keep org selected)
+            _amount = 0;
+            _paymentDateText = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
+            _reference = null;
+            _notes = null;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            _error = "Invalid payment details. Please check the form and try again.";
+        }
+        catch
+        {
+            _error = "Failed to record payment. Please try again.";
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private static string BalanceColour(decimal balance) =>
+        balance > 0 ? "var(--mud-palette-error)" : "var(--mud-palette-success)";
+
+    private static Color AccountStatusColour(string status) => status switch
+    {
+        "Active"    => Color.Success,
+        "Suspended" => Color.Warning,
+        "Closed"    => Color.Error,
+        _           => Color.Default,
+    };
+
+    private static Color PaymentStatusColour(string status) => status switch
+    {
+        "Verified" => Color.Success,
+        "Pending"  => Color.Warning,
+        "Voided"   => Color.Error,
+        _          => Color.Default,
+    };
+}

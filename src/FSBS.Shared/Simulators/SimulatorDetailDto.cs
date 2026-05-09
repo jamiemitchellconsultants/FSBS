@@ -4,6 +4,9 @@ public record SimulatorDetailDto(
     Guid UnitId,
     string Name,
     string FstdLevel,
+    string? Manufacturer,
+    string? Location,
+    int DefaultReconfigMins,
     bool IsActive,
     IReadOnlyList<SimulatorBayDto> Bays,
     IReadOnlyList<SimulatorConfigurationDto> Configurations);
@@ -16,7 +19,9 @@ public record SimulatorBayDto(
 public record SimulatorConfigurationDto(
     Guid ConfigurationId,
     string Name,
-    string AircraftType,
+    Guid AircraftTypeId,
+    string AircraftTypeIcaoCode,
+    string AircraftTypeName,
     string ConfigMode,
     IReadOnlyList<string> SupportedTrainingTypes,
     int MaxCapacityFlightDeck,

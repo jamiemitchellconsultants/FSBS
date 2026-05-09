@@ -1,0 +1,125 @@
+@inject SimulatorService SimulatorSvc
+@inject ISnackbar Snackbar
+@using FSBS.Shared.Simulators
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name"
+                          Label="Name"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Required="true"
+                          RequiredError="Name is required." />
+
+            <MudTextField @bind-Value="_fstdLevel"
+                          Label="FSTD Level"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Placeholder="e.g. FFS Level D"
+                          Required="true"
+                          RequiredError="FSTD Level is required." />
+
+            <MudTextField @bind-Value="_manufacturer"
+                          Label="Manufacturer"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Placeholder="e.g. CAE" />
+
+            <MudTextField @bind-Value="_location"
+                          Label="Location"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Placeholder="e.g. Bay A, Building 3" />
+
+            <MudNumericField @bind-Value="_defaultReconfigMins"
+                             Label="Default Reconfig Time (mins)"
+                             Variant="Variant.Outlined"
+                             Margin="Margin.Dense"
+                             Min="1"
+                             Max="480" />
+
+            @if (Unit is not null)
+            {
+                <MudSwitch @bind-Value="_isActive"
+                           Label="Active"
+                           Color="Color.Primary" />
+            }
+
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_saving">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_saving">
+            @(_saving ? "Saving…" : (Unit is null ? "Create" : "Save"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public SimulatorDetailDto? Unit { get; set; }
+
+    private string _name = string.Empty;
+    private string _fstdLevel = string.Empty;
+    private string? _manufacturer;
+    private string? _location;
+    private int _defaultReconfigMins = 60;
+    private bool _isActive = true;
+    private bool _saving;
+    private string? _error;
+
+    protected override void OnParametersSet()
+    {
+        if (Unit is null) return;
+        _name = Unit.Name;
+        _fstdLevel = Unit.FstdLevel;
+        _manufacturer = Unit.Manufacturer;
+        _location = Unit.Location;
+        _defaultReconfigMins = Unit.DefaultReconfigMins;
+        _isActive = Unit.IsActive;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_fstdLevel))
+        {
+            _error = "Name and FSTD Level are required.";
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        try
+        {
+            SimulatorDetailDto result;
+            if (Unit is null)
+            {
+                result = await SimulatorSvc.CreateUnitAsync(new CreateSimulatorUnitRequest(
+                    _name.Trim(), _fstdLevel.Trim(), _manufacturer?.Trim(), _location?.Trim(), _defaultReconfigMins));
+                Snackbar.Add($"Simulator '{result.Name}' created.", Severity.Success);
+            }
+            else
+            {
+                result = await SimulatorSvc.UpdateUnitAsync(Unit.UnitId, new UpdateSimulatorUnitRequest(
+                    _name.Trim(), _fstdLevel.Trim(), _manufacturer?.Trim(), _location?.Trim(), _defaultReconfigMins, _isActive));
+                Snackbar.Add($"Simulator '{result.Name}' updated.", Severity.Success);
+            }
+            MudDialog.Close(DialogResult.Ok(result));
+        }
+        catch
+        {
+            _error = "Failed to save. Please try again.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

@@ -1,0 +1,398 @@
+@page "/staff/simulators"
+@layout MainLayout
+@attribute [Authorize(Roles = "ScheduleAdmin,SystemAdmin")]
+@inject SimulatorService SimulatorSvc
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@using FSBS.Shared.Simulators
+
+<PageTitle>Simulators — FSBS</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5" Style="flex:1">Simulators</MudText>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateUnitDialog">
+        Add Simulator
+    </MudButton>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+}
+
+@foreach (var unit in _units)
+{
+    <MudPaper Elevation="2" Class="mb-4">
+        <MudExpansionPanels Elevation="0">
+            <MudExpansionPanel>
+                <TitleContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Style="width:100%">
+                        <MudIcon Icon="@Icons.Material.Filled.Flight"
+                                 Color="@(unit.IsActive ? Color.Primary : Color.Default)" />
+                        <MudText Typo="Typo.subtitle1" Style="flex:1;font-weight:600">@unit.Name</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-2">@unit.FstdLevel</MudText>
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="@(unit.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Outlined">
+                            @(unit.IsActive ? "Active" : "Inactive")
+                        </MudChip>
+                        <span @onclick:stopPropagation="true">
+                            <MudTooltip Text="Edit simulator">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => OpenEditUnitDialog(unit))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Delete simulator">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => ConfirmDeleteUnit(unit))" />
+                            </MudTooltip>
+                        </span>
+                    </MudStack>
+                </TitleContent>
+                <ChildContent>
+                    <MudGrid Spacing="3" Class="pa-2">
+
+                        @* ── Bays ── *@
+                        <MudItem xs="12" md="5">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                                <MudText Typo="Typo.subtitle2" Style="flex:1">Bays</MudText>
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Add"
+                                           OnClick="@(() => OpenCreateBayDialog(unit))">
+                                    Add Bay
+                                </MudButton>
+                            </MudStack>
+
+                            @if (unit.Bays.Count == 0)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">No bays configured.</MudText>
+                            }
+                            else
+                            {
+                                <MudTable Items="@unit.Bays" Dense="true" Hover="true" Elevation="0" Outlined="true">
+                                    <HeaderContent>
+                                        <MudTh>Code</MudTh>
+                                        <MudTh>Status</MudTh>
+                                        <MudTh Style="width:80px" />
+                                    </HeaderContent>
+                                    <RowTemplate>
+                                        <MudTd>
+                                            <MudText Typo="Typo.body2" Style="font-weight:600">@context.BayCode</MudText>
+                                        </MudTd>
+                                        <MudTd>
+                                            <MudChip T="string" Size="Size.Small"
+                                                     Color="@BayStatusColour(context.Status)"
+                                                     Variant="Variant.Outlined">
+                                                @context.Status
+                                            </MudChip>
+                                        </MudTd>
+                                        <MudTd Style="text-align:right">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                           Size="Size.Small"
+                                                           Color="Color.Primary"
+                                                           OnClick="@(() => OpenEditBayDialog(unit, context))" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                           Size="Size.Small"
+                                                           Color="Color.Error"
+                                                           OnClick="@(() => ConfirmDeleteBay(unit, context))" />
+                                        </MudTd>
+                                    </RowTemplate>
+                                </MudTable>
+                            }
+                        </MudItem>
+
+                        @* ── Configurations ── *@
+                        <MudItem xs="12" md="7">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                                <MudText Typo="Typo.subtitle2" Style="flex:1">Configurations</MudText>
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Add"
+                                           OnClick="@(() => OpenCreateConfigDialog(unit))">
+                                    Add Config
+                                </MudButton>
+                            </MudStack>
+
+                            @if (unit.Configurations.Count == 0)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">No configurations defined.</MudText>
+                            }
+                            else
+                            {
+                                <MudTable Items="@unit.Configurations" Dense="true" Hover="true" Elevation="0" Outlined="true">
+                                    <HeaderContent>
+                                        <MudTh>Name</MudTh>
+                                        <MudTh>Aircraft</MudTh>
+                                        <MudTh>Mode</MudTh>
+                                        <MudTh>Training</MudTh>
+                                        <MudTh Style="width:80px" />
+                                    </HeaderContent>
+                                    <RowTemplate>
+                                        <MudTd>
+                                            <MudStack Spacing="0">
+                                                <MudText Typo="Typo.body2" Style="font-weight:600">@context.Name</MudText>
+                                                @if (!context.IsActive)
+                                                {
+                                                    <MudText Typo="Typo.caption" Color="Color.Error">Inactive</MudText>
+                                                }
+                                            </MudStack>
+                                        </MudTd>
+                                        <MudTd><MudText Typo="Typo.body2">@context.AircraftTypeIcaoCode</MudText></MudTd>
+                                        <MudTd><MudText Typo="Typo.caption">@context.ConfigMode</MudText></MudTd>
+                                        <MudTd>
+                                            @foreach (var t in context.SupportedTrainingTypes)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Info">@t</MudChip>
+                                            }
+                                        </MudTd>
+                                        <MudTd Style="text-align:right">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                           Size="Size.Small"
+                                                           Color="Color.Primary"
+                                                           OnClick="@(() => OpenEditConfigDialog(unit, context))" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                           Size="Size.Small"
+                                                           Color="Color.Error"
+                                                           OnClick="@(() => ConfirmDeleteConfig(unit, context))" />
+                                        </MudTd>
+                                    </RowTemplate>
+                                </MudTable>
+                            }
+                        </MudItem>
+
+                    </MudGrid>
+                </ChildContent>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </MudPaper>
+}
+
+@code {
+    private List<SimulatorDetailDto> _units = [];
+    private bool _loading;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _units = (await SimulatorSvc.GetSimulatorDetailsAsync()).ToList();
+        }
+        catch
+        {
+            _error = "Failed to load simulators. Please try again.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    // ── SimulatorUnit dialogs ─────────────────────────────────────────────────
+
+    private async Task OpenCreateUnitDialog()
+    {
+        var parameters = new DialogParameters<SimulatorUnitDialog>
+        {
+            { d => d.Unit, null }
+        };
+        var dialog = await DialogService.ShowAsync<SimulatorUnitDialog>("Add Simulator", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: SimulatorDetailDto created })
+        {
+            _units.Add(created);
+        }
+    }
+
+    private async Task OpenEditUnitDialog(SimulatorDetailDto unit)
+    {
+        var parameters = new DialogParameters<SimulatorUnitDialog>
+        {
+            { d => d.Unit, unit }
+        };
+        var dialog = await DialogService.ShowAsync<SimulatorUnitDialog>("Edit Simulator", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: SimulatorDetailDto updated })
+        {
+            var idx = _units.FindIndex(u => u.UnitId == updated.UnitId);
+            if (idx >= 0) _units[idx] = updated;
+        }
+    }
+
+    private async Task ConfirmDeleteUnit(SimulatorDetailDto unit)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Simulator",
+            $"Delete '{unit.Name}'? This cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            await SimulatorSvc.DeleteUnitAsync(unit.UnitId);
+            _units.RemoveAll(u => u.UnitId == unit.UnitId);
+            Snackbar.Add($"'{unit.Name}' deleted.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to delete simulator.", Severity.Error);
+        }
+    }
+
+    // ── Bay dialogs ───────────────────────────────────────────────────────────
+
+    private async Task OpenCreateBayDialog(SimulatorDetailDto unit)
+    {
+        var parameters = new DialogParameters<SimulatorBayDialog>
+        {
+            { d => d.UnitId, unit.UnitId },
+            { d => d.Bay, null }
+        };
+        var dialog = await DialogService.ShowAsync<SimulatorBayDialog>("Add Bay", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: SimulatorBayDto created })
+        {
+            ReplaceUnit(unit with { Bays = [..unit.Bays, created] });
+        }
+    }
+
+    private async Task OpenEditBayDialog(SimulatorDetailDto unit, SimulatorBayDto bay)
+    {
+        var parameters = new DialogParameters<SimulatorBayDialog>
+        {
+            { d => d.UnitId, unit.UnitId },
+            { d => d.Bay, bay }
+        };
+        var dialog = await DialogService.ShowAsync<SimulatorBayDialog>("Edit Bay", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: SimulatorBayDto updated })
+        {
+            ReplaceUnit(unit with { Bays = unit.Bays.Select(b => b.BayId == updated.BayId ? updated : b).ToList() });
+        }
+    }
+
+    private async Task ConfirmDeleteBay(SimulatorDetailDto unit, SimulatorBayDto bay)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Bay",
+            $"Delete Bay '{bay.BayCode}'?",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            await SimulatorSvc.DeleteBayAsync(unit.UnitId, bay.BayId);
+            ReplaceUnit(unit with { Bays = unit.Bays.Where(b => b.BayId != bay.BayId).ToList() });
+            Snackbar.Add($"Bay '{bay.BayCode}' deleted.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to delete bay.", Severity.Error);
+        }
+    }
+
+    // ── Configuration dialogs ─────────────────────────────────────────────────
+
+    private async Task OpenCreateConfigDialog(SimulatorDetailDto unit)
+    {
+        var parameters = new DialogParameters<SimulatorConfigDialog>
+        {
+            { d => d.UnitId, unit.UnitId },
+            { d => d.Config, null }
+        };
+        var dialog = await DialogService.ShowAsync<SimulatorConfigDialog>("Add Configuration", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: SimulatorConfigurationDto created })
+        {
+            ReplaceUnit(unit with { Configurations = [..unit.Configurations, created] });
+        }
+    }
+
+    private async Task OpenEditConfigDialog(SimulatorDetailDto unit, SimulatorConfigurationDto config)
+    {
+        var parameters = new DialogParameters<SimulatorConfigDialog>
+        {
+            { d => d.UnitId, unit.UnitId },
+            { d => d.Config, config }
+        };
+        var dialog = await DialogService.ShowAsync<SimulatorConfigDialog>("Edit Configuration", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: SimulatorConfigurationDto updated })
+        {
+            ReplaceUnit(unit with
+            {
+                Configurations = unit.Configurations
+                    .Select(c => c.ConfigurationId == updated.ConfigurationId ? updated : c)
+                    .ToList()
+            });
+        }
+    }
+
+    private async Task ConfirmDeleteConfig(SimulatorDetailDto unit, SimulatorConfigurationDto config)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Configuration",
+            $"Delete configuration '{config.Name}'?",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            await SimulatorSvc.DeleteConfigurationAsync(unit.UnitId, config.ConfigurationId);
+            ReplaceUnit(unit with
+            {
+                Configurations = unit.Configurations
+                    .Where(c => c.ConfigurationId != config.ConfigurationId)
+                    .ToList()
+            });
+            Snackbar.Add($"Configuration '{config.Name}' deleted.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to delete configuration.", Severity.Error);
+        }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private void ReplaceUnit(SimulatorDetailDto updated)
+    {
+        var idx = _units.FindIndex(u => u.UnitId == updated.UnitId);
+        if (idx >= 0) _units[idx] = updated;
+    }
+
+    private static Color BayStatusColour(string status) => status switch
+    {
+        "Operational"    => Color.Success,
+        "Maintenance"    => Color.Warning,
+        "Decommissioned" => Color.Error,
+        _                => Color.Default,
+    };
+}

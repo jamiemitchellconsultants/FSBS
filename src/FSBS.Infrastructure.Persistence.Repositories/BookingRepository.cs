@@ -29,7 +29,7 @@ internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
                 b.BookerRole,
                 b.StudentCount,
                 b.NetPriceGbp,
-                AircraftType = b.Configuration.AircraftType,
+                AircraftType = b.Configuration.AircraftType.IcaoCode,
                 SimulatorUnitName = b.Configuration.SimulatorUnit.Name,
                 FirstSlotStartAt = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.StartAt).FirstOrDefault(),
                 FirstSlotEndAt   = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.EndAt).FirstOrDefault(),
@@ -103,7 +103,7 @@ internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
                 b.BookerRole,
                 b.StudentCount,
                 b.NetPriceGbp,
-                AircraftType = b.Configuration.AircraftType,
+                AircraftType = b.Configuration.AircraftType.IcaoCode,
                 SimulatorUnitName = b.Configuration.SimulatorUnit.Name,
                 FirstSlotStartAt = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.StartAt).FirstOrDefault(),
                 FirstSlotEndAt   = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.EndAt).FirstOrDefault(),
@@ -148,6 +148,7 @@ internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
     {
         var booking = await db.Bookings
             .Include(b => b.Configuration).ThenInclude(c => c.SimulatorUnit)
+            .Include(b => b.Configuration).ThenInclude(c => c.AircraftType)
             .Include(b => b.Slots.OrderBy(s => s.StartAt))
                 .ThenInclude(s => s.Bay).ThenInclude(bay => bay.SimulatorUnit)
             .Include(b => b.Slots)
@@ -188,7 +189,7 @@ internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
             booking.Id,
             booking.Status.ToString(),
             booking.TrainingType.ToString(),
-            booking.Configuration.AircraftType,
+            booking.Configuration.AircraftType.IcaoCode,
             booking.Configuration.ConfigMode.ToString(),
             booking.Configuration.SimulatorUnit.Name,
             booking.StudentCount,
@@ -217,7 +218,12 @@ internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
                 b.BookerRole,
                 b.StudentCount,
                 b.NetPriceGbp,
-                AircraftType = b.Configuration.AircraftType,
+                b.DepartmentName,
+                b.BudgetCode,
+                b.CreatedAt,
+                b.BookedBy,
+                AircraftType = b.Configuration.AircraftType.IcaoCode,
+                SimulatorUnitId = b.Configuration.SimulatorUnit.Id,
                 SimulatorUnitName = b.Configuration.SimulatorUnit.Name,
                 FirstSlotStartAt = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.StartAt).FirstOrDefault(),
                 FirstSlotEndAt   = b.Slots.OrderBy(s => s.StartAt).Select(s => (DateTimeOffset?)s.EndAt).FirstOrDefault(),
@@ -253,7 +259,12 @@ internal sealed class BookingRepository(FsbsDbContext db) : IBookingRepository
                 ? $"{x.InstructorFirstName} {x.InstructorLastName}"
                 : null,
             x.NetPriceGbp,
-            x.BookerRole.ToString()
+            x.BookerRole.ToString(),
+            BookerUserId: x.BookedBy,
+            SimulatorUnitId: x.SimulatorUnitId,
+            DepartmentName: x.DepartmentName,
+            BudgetCode: x.BudgetCode,
+            SubmittedAt: x.CreatedAt
         )).ToList();
     }
 

@@ -99,6 +99,9 @@ public class FsbsDbContext(DbContextOptions<FsbsDbContext> options, ICurrentUser
     /// <summary>Physical simulator devices, each with a current active configuration and one or more bays.</summary>
     public DbSet<SimulatorUnit> SimulatorUnits => Set<SimulatorUnit>();
 
+    /// <summary>Reference data for aircraft types that can be simulated (e.g. B737-800, A320).</summary>
+    public DbSet<AircraftType> AircraftTypes => Set<AircraftType>();
+
     /// <summary>
     /// Aircraft-type and cabin-layout setups for a simulator unit. Drives pricing tier
     /// selection and enforces FlightDeck (max 4) and CabinCrew (max 10) capacity hard caps.
@@ -323,6 +326,7 @@ public class FsbsDbContext(DbContextOptions<FsbsDbContext> options, ICurrentUser
         mb.Entity<OrgMembership>().HasQueryFilter(e => !e.IsDeleted);
         mb.Entity<AccountPayment>().HasQueryFilter(e => !e.IsDeleted);
         mb.Entity<SimulatorUnit>().HasQueryFilter(e => !e.IsDeleted);
+        mb.Entity<AircraftType>().HasQueryFilter(e => !e.IsDeleted);
         mb.Entity<SimulatorConfiguration>().HasQueryFilter(e => !e.IsDeleted);
         mb.Entity<SimulatorBay>().HasQueryFilter(e => !e.IsDeleted);
         mb.Entity<MaintenanceWindow>().HasQueryFilter(e => !e.IsDeleted);

@@ -1,0 +1,137 @@
+@page "/staff/aircraft-types"
+@layout MainLayout
+@attribute [Authorize(Roles = "ScheduleAdmin,SystemAdmin")]
+@inject AircraftTypeService AircraftTypeSvc
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@using FSBS.Shared.Simulators
+
+<PageTitle>Aircraft Types — FSBS</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5" Style="flex:1">Aircraft Types</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog">
+        Add Aircraft Type
+    </MudButton>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+}
+
+<MudPaper Elevation="2">
+    <MudTable Items="@_types" Hover="true" Dense="true" Elevation="0"
+              Loading="@_loading" Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>ICAO Code</MudTh>
+            <MudTh>Name</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh Style="width:80px" />
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudText Typo="Typo.body2" Style="font-weight:600;font-family:monospace">
+                    @context.IcaoCode
+                </MudText>
+            </MudTd>
+            <MudTd><MudText Typo="Typo.body2">@context.Name</MudText></MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(context.IsActive ? Color.Success : Color.Default)"
+                         Variant="Variant.Outlined">
+                    @(context.IsActive ? "Active" : "Inactive")
+                </MudChip>
+            </MudTd>
+            <MudTd Style="text-align:right">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                               Size="Size.Small" Color="Color.Primary"
+                               OnClick="@(() => OpenEditDialog(context))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small" Color="Color.Error"
+                               OnClick="@(() => ConfirmDelete(context))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-6 text-center">
+                No aircraft types defined yet.
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private List<AircraftTypeDto> _types = [];
+    private bool _loading;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _types = (await AircraftTypeSvc.GetAircraftTypesAsync()).ToList();
+        }
+        catch
+        {
+            _error = "Failed to load aircraft types. Please try again.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await DialogService.ShowAsync<AircraftTypeDialog>("Add Aircraft Type",
+            new DialogParameters<AircraftTypeDialog> { { d => d.AircraftType, null } },
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: AircraftTypeDto created })
+            _types.Add(created);
+    }
+
+    private async Task OpenEditDialog(AircraftTypeDto at)
+    {
+        var dialog = await DialogService.ShowAsync<AircraftTypeDialog>("Edit Aircraft Type",
+            new DialogParameters<AircraftTypeDialog> { { d => d.AircraftType, at } },
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: AircraftTypeDto updated })
+        {
+            var idx = _types.FindIndex(t => t.AircraftTypeId == updated.AircraftTypeId);
+            if (idx >= 0) _types[idx] = updated;
+        }
+    }
+
+    private async Task ConfirmDelete(AircraftTypeDto at)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Aircraft Type",
+            $"Delete '{at.IcaoCode} — {at.Name}'? Configurations using this type will be affected.",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            await AircraftTypeSvc.DeleteAsync(at.AircraftTypeId);
+            _types.RemoveAll(t => t.AircraftTypeId == at.AircraftTypeId);
+            Snackbar.Add($"'{at.IcaoCode}' deleted.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to delete aircraft type.", Severity.Error);
+        }
+    }
+}

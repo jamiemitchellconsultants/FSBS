@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using FSBS.Shared.Payments;
 
 namespace FSBS.Web.Services;
 
@@ -10,20 +11,27 @@ public sealed class OrganisationService(HttpClient http)
         return response?.Items ?? [];
     }
 
-    public Task<object?> GetOrganisationAsync(Guid orgId, CancellationToken ct = default) =>
-        Task.FromResult<object?>(null);
+    public async Task<OrgAccountDto?> GetAccountAsync(Guid orgId, CancellationToken ct = default)
+    {
+        try
+        {
+            return await http.GetFromJsonAsync<OrgAccountDto>($"v1/organisations/{orgId}/account", ct);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
 
-    public Task<object?> GetAccountAsync(Guid orgId, CancellationToken ct = default) =>
-        Task.FromResult<object?>(null);
-
-    public Task RecordPaymentAsync(Guid orgId, decimal amountGbp, string method, string reference, CancellationToken ct = default) =>
-        Task.CompletedTask;
-
-    public Task VerifyPaymentAsync(Guid orgId, Guid paymentId, CancellationToken ct = default) =>
-        Task.CompletedTask;
-
-    public Task VoidPaymentAsync(Guid orgId, Guid paymentId, string reason, CancellationToken ct = default) =>
-        Task.CompletedTask;
+    public async Task<PaymentDto> RecordPaymentAsync(
+        Guid orgId,
+        RecordPaymentRequest request,
+        CancellationToken ct = default)
+    {
+        var response = await http.PostAsJsonAsync($"v1/organisations/{orgId}/payments", request, ct);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<PaymentDto>(ct))!;
+    }
 
     private record OrganisationListResponse(IReadOnlyList<OrganisationSummaryDto> Items);
 }

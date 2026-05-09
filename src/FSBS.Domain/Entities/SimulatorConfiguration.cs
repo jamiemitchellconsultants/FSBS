@@ -28,11 +28,12 @@ public class SimulatorConfiguration : AuditableEntity, ISoftDeletable
     public Guid SimulatorUnitId { get; set; }
     /// <summary>Human-readable name for this configuration (e.g. "B737-800 Full Flight").</summary>
     public string Name { get; set; } = string.Empty;
-    /// <summary>
-    /// ICAO or common designation of the aircraft type this configuration
-    /// simulates (e.g. "B737-800", "A320").
-    /// </summary>
-    public string AircraftType { get; set; } = string.Empty;
+
+    /// <summary>FK to the <see cref="AircraftType"/> this configuration simulates.</summary>
+    public Guid AircraftTypeId { get; set; }
+
+    /// <summary>Navigation to the aircraft type.</summary>
+    public AircraftType AircraftType { get; set; } = null!;
 
     /// <summary>
     /// Physical layout of the simulated cabin. <c>CockpitOnly</c> means the

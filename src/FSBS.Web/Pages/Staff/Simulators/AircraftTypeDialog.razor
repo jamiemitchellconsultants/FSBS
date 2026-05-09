@@ -1,0 +1,98 @@
+@inject AircraftTypeService AircraftTypeSvc
+@inject ISnackbar Snackbar
+@using FSBS.Shared.Simulators
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_icaoCode"
+                          Label="ICAO Code"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Placeholder="e.g. B737-800"
+                          Required="true"
+                          RequiredError="ICAO Code is required." />
+
+            <MudTextField @bind-Value="_name"
+                          Label="Display Name"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Placeholder="e.g. Boeing 737-800"
+                          Required="true"
+                          RequiredError="Name is required." />
+
+            @if (AircraftType is not null)
+            {
+                <MudSwitch @bind-Value="_isActive" Label="Active" Color="Color.Primary" />
+            }
+
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_saving">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_saving">
+            @(_saving ? "Saving…" : (AircraftType is null ? "Create" : "Save"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public AircraftTypeDto? AircraftType { get; set; }
+
+    private string _icaoCode = string.Empty;
+    private string _name = string.Empty;
+    private bool _isActive = true;
+    private bool _saving;
+    private string? _error;
+
+    protected override void OnParametersSet()
+    {
+        if (AircraftType is null) return;
+        _icaoCode = AircraftType.IcaoCode;
+        _name = AircraftType.Name;
+        _isActive = AircraftType.IsActive;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_icaoCode) || string.IsNullOrWhiteSpace(_name))
+        {
+            _error = "ICAO Code and Name are required.";
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        try
+        {
+            AircraftTypeDto result;
+            if (AircraftType is null)
+            {
+                result = await AircraftTypeSvc.CreateAsync(_icaoCode.Trim(), _name.Trim());
+                Snackbar.Add($"'{result.IcaoCode}' created.", Severity.Success);
+            }
+            else
+            {
+                result = await AircraftTypeSvc.UpdateAsync(AircraftType.AircraftTypeId,
+                    _icaoCode.Trim(), _name.Trim(), _isActive);
+                Snackbar.Add($"'{result.IcaoCode}' updated.", Severity.Success);
+            }
+            MudDialog.Close(DialogResult.Ok(result));
+        }
+        catch
+        {
+            _error = "Failed to save. Please try again.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

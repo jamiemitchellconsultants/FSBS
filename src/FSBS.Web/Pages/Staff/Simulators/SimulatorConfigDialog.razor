@@ -1,0 +1,313 @@
+@inject SimulatorService SimulatorSvc
+@inject AircraftTypeService AircraftTypeSvc
+@inject ISnackbar Snackbar
+@using FSBS.Shared.Simulators
+
+<MudDialog>
+    <DialogContent>
+        @if (_loadingAircraftTypes)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
+        }
+
+        <MudStack Spacing="3">
+
+            @* ── Copy from another simulator (create mode only) ── *@
+            @if (Config is null)
+            {
+                <MudExpansionPanels Elevation="0" Class="mb-1" Style="border:1px solid var(--mud-palette-lines-default);border-radius:4px">
+                    <MudExpansionPanel Text="Copy from another simulator" Icon="@Icons.Material.Filled.ContentCopy"
+                                       Dense="true">
+                        <MudStack Spacing="2" Class="pt-1">
+                            <MudSelect T="Guid?"
+                                       Label="Source Simulator"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Value="_copySourceUnitId"
+                                       ValueChanged="OnCopySourceUnitChanged"
+                                       Disabled="_loadingSimulators">
+                                @foreach (var u in _otherUnits)
+                                {
+                                    <MudSelectItem T="Guid?" Value="@u.UnitId">@u.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+
+                            @if (_copySourceConfigs.Count > 0)
+                            {
+                                <MudSelect T="Guid?"
+                                           Label="Configuration to Copy"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense"
+                                           @bind-Value="_copySourceConfigId">
+                                    @foreach (var c in _copySourceConfigs)
+                                    {
+                                        <MudSelectItem T="Guid?" Value="@c.ConfigurationId">
+                                            @c.Name (@c.AircraftTypeIcaoCode)
+                                        </MudSelectItem>
+                                    }
+                                </MudSelect>
+
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Secondary"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.ContentCopy"
+                                           OnClick="ApplyCopy"
+                                           Disabled="@(_copySourceConfigId is null)">
+                                    Apply
+                                </MudButton>
+                            }
+                            else if (_copySourceUnitId.HasValue && !_loadingSimulators)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    No configurations on that simulator.
+                                </MudText>
+                            }
+                        </MudStack>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+            }
+
+            @* ── Form fields ── *@
+            <MudTextField @bind-Value="_name"
+                          Label="Configuration Name"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Placeholder="e.g. B737-800 Full Flight"
+                          Required="true"
+                          RequiredError="Name is required." />
+
+            <MudSelect @bind-Value="_aircraftTypeId"
+                       Label="Aircraft Type"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Disabled="_loadingAircraftTypes"
+                       Required="true"
+                       RequiredError="Aircraft Type is required.">
+                @foreach (var at in _aircraftTypes)
+                {
+                    <MudSelectItem Value="@at.AircraftTypeId">@at.IcaoCode — @at.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect @bind-Value="_configMode"
+                       Label="Configuration Mode"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense">
+                <MudSelectItem Value="@("CockpitOnly")">Cockpit Only</MudSelectItem>
+                <MudSelectItem Value="@("CockpitAndCabin")">Cockpit and Cabin</MudSelectItem>
+            </MudSelect>
+
+            <div>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">Supported Training Types</MudText>
+                <MudCheckBox @bind-Value="_supportsFlightDeck" Label="Flight Deck" Color="Color.Primary" />
+                <MudCheckBox @bind-Value="_supportsCabinCrew" Label="Cabin Crew" Color="Color.Primary" />
+            </div>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudNumericField @bind-Value="_maxFd"
+                                     Label="Max Flight Deck Students"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Min="1" Max="4" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudNumericField @bind-Value="_maxCc"
+                                     Label="Max Cabin Crew Students"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Min="1" Max="10" />
+                </MudItem>
+            </MudGrid>
+
+            @if (Config is not null)
+            {
+                <MudSwitch @bind-Value="_isActive" Label="Active" Color="Color.Primary" />
+            }
+
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_saving">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync"
+                   Disabled="_saving || _loadingAircraftTypes">
+            @(_saving ? "Saving…" : (Config is null ? "Create" : "Save"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Guid UnitId { get; set; }
+    [Parameter] public SimulatorConfigurationDto? Config { get; set; }
+
+    // ── Aircraft types ────────────────────────────────────────────────────────
+    private IReadOnlyList<AircraftTypeDto> _aircraftTypes = [];
+    private bool _loadingAircraftTypes;
+
+    // ── Copy-from state ───────────────────────────────────────────────────────
+    private IReadOnlyList<SimulatorDetailDto> _otherUnits = [];
+    private IReadOnlyList<SimulatorConfigurationDto> _copySourceConfigs = [];
+    private Guid? _copySourceUnitId;
+    private Guid? _copySourceConfigId;
+    private bool _loadingSimulators;
+
+    // ── Form fields ───────────────────────────────────────────────────────────
+    private string _name = string.Empty;
+    private Guid _aircraftTypeId;
+    private string _configMode = "CockpitOnly";
+    private bool _supportsFlightDeck = true;
+    private bool _supportsCabinCrew;
+    private int _maxFd = 4;
+    private int _maxCc = 10;
+    private bool _isActive = true;
+    private bool _saving;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var aircraftTask = LoadAircraftTypesAsync();
+        var simulatorsTask = Config is null ? LoadOtherSimulatorsAsync() : Task.CompletedTask;
+        await Task.WhenAll(aircraftTask, simulatorsTask);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Config is null) return;
+        _name = Config.Name;
+        _aircraftTypeId = Config.AircraftTypeId;
+        _configMode = Config.ConfigMode;
+        _supportsFlightDeck = Config.SupportedTrainingTypes.Contains("FlightDeck");
+        _supportsCabinCrew = Config.SupportedTrainingTypes.Contains("CabinCrew");
+        _maxFd = Config.MaxCapacityFlightDeck;
+        _maxCc = Config.MaxCapacityCabinCrew;
+        _isActive = Config.IsActive;
+    }
+
+    private async Task LoadAircraftTypesAsync()
+    {
+        _loadingAircraftTypes = true;
+        try
+        {
+            _aircraftTypes = (await AircraftTypeSvc.GetAircraftTypesAsync())
+                .Where(a => a.IsActive || (Config is not null && a.AircraftTypeId == Config.AircraftTypeId))
+                .OrderBy(a => a.IcaoCode)
+                .ToList();
+        }
+        catch
+        {
+            _error = "Failed to load aircraft types.";
+        }
+        finally
+        {
+            _loadingAircraftTypes = false;
+        }
+    }
+
+    private async Task LoadOtherSimulatorsAsync()
+    {
+        _loadingSimulators = true;
+        try
+        {
+            var all = await SimulatorSvc.GetSimulatorDetailsAsync();
+            _otherUnits = all.Where(u => u.UnitId != UnitId).OrderBy(u => u.Name).ToList();
+        }
+        catch
+        {
+            // Non-fatal — copy feature just won't be populated
+        }
+        finally
+        {
+            _loadingSimulators = false;
+        }
+    }
+
+    private void OnCopySourceUnitChanged(Guid? unitId)
+    {
+        _copySourceUnitId = unitId;
+        _copySourceConfigId = null;
+        _copySourceConfigs = unitId.HasValue
+            ? (_otherUnits.FirstOrDefault(u => u.UnitId == unitId)?.Configurations ?? [])
+            : [];
+    }
+
+    private void ApplyCopy()
+    {
+        if (_copySourceConfigId is null) return;
+
+        var source = _copySourceConfigs.FirstOrDefault(c => c.ConfigurationId == _copySourceConfigId);
+        if (source is null) return;
+
+        _aircraftTypeId = source.AircraftTypeId;
+        _configMode = source.ConfigMode;
+        _supportsFlightDeck = source.SupportedTrainingTypes.Contains("FlightDeck");
+        _supportsCabinCrew = source.SupportedTrainingTypes.Contains("CabinCrew");
+        _maxFd = source.MaxCapacityFlightDeck;
+        _maxCc = source.MaxCapacityCabinCrew;
+
+        Snackbar.Add($"Fields copied from '{source.Name}'. Update the name before saving.", Severity.Info);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _error = "Name is required.";
+            return;
+        }
+
+        if (_aircraftTypeId == Guid.Empty)
+        {
+            _error = "Select an aircraft type.";
+            return;
+        }
+
+        var trainingTypes = new List<string>();
+        if (_supportsFlightDeck) trainingTypes.Add("FlightDeck");
+        if (_supportsCabinCrew) trainingTypes.Add("CabinCrew");
+
+        if (trainingTypes.Count == 0)
+        {
+            _error = "Select at least one supported training type.";
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        try
+        {
+            SimulatorConfigurationDto result;
+            if (Config is null)
+            {
+                result = await SimulatorSvc.CreateConfigurationAsync(UnitId,
+                    new CreateSimulatorConfigurationRequest(
+                        _name.Trim(), _aircraftTypeId, _configMode,
+                        trainingTypes, _maxFd, _maxCc));
+                Snackbar.Add($"Configuration '{result.Name}' created.", Severity.Success);
+            }
+            else
+            {
+                result = await SimulatorSvc.UpdateConfigurationAsync(UnitId, Config.ConfigurationId,
+                    new UpdateSimulatorConfigurationRequest(
+                        _name.Trim(), _aircraftTypeId, _configMode,
+                        trainingTypes, _maxFd, _maxCc, _isActive));
+                Snackbar.Add($"Configuration '{result.Name}' updated.", Severity.Success);
+            }
+            MudDialog.Close(DialogResult.Ok(result));
+        }
+        catch
+        {
+            _error = "Failed to save. Please try again.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

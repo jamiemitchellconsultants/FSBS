@@ -1,0 +1,269 @@
+@page "/staff/bookings/pending"
+@layout MainLayout
+@attribute [Authorize(Roles = "SalesStaff,SystemAdmin")]
+@inherits FluxorComponent
+@inject IState<PendingApprovalsState> State
+@inject IDispatcher Dispatcher
+@inject BookingService BookingSvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Pending Approvals — FSBS</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5" Style="flex:1">Pending Approvals</MudText>
+    <MudChip T="string" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small">
+        @State.Value.Items.Count pending
+    </MudChip>
+    <MudTooltip Text="Refresh">
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                       Color="Color.Default"
+                       Size="Size.Small"
+                       OnClick="LoadAsync"
+                       Disabled="State.Value.IsLoading" />
+    </MudTooltip>
+</MudStack>
+
+@if (State.Value.IsLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+
+@if (State.Value.Error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@State.Value.Error</MudAlert>
+}
+
+@if (!State.Value.IsLoading && State.Value.Items.Count == 0 && State.Value.Error is null)
+{
+    <MudPaper Elevation="1" Class="pa-8 d-flex flex-column align-center">
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircleOutline"
+                 Color="Color.Success" Style="font-size:4rem" Class="mb-3" />
+        <MudText Typo="Typo.h6">All clear</MudText>
+        <MudText Color="Color.Secondary">No bookings are awaiting approval.</MudText>
+    </MudPaper>
+}
+else if (State.Value.Items.Count > 0)
+{
+    @foreach (var booking in State.Value.Items)
+    {
+        var isActing = _actingOn == booking.Id;
+        var isRejecting = _rejectingId == booking.Id;
+
+        <MudPaper Elevation="2" Class="mb-3 pa-0">
+            <MudGrid Spacing="0">
+
+                @* ── Left: booking details ── *@
+                <MudItem xs="12" md="8">
+                    <div class="pa-4">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2" Wrap="Wrap.Wrap">
+                            <MudText Typo="Typo.subtitle2" Style="font-weight:700">
+                                @booking.AircraftType · @booking.SimulatorUnitName
+                            </MudText>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                                @booking.TrainingType
+                            </MudChip>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @booking.StartAt.LocalDateTime.ToString("ddd d MMM yyyy, HH:mm") –
+                                @booking.EndAt.LocalDateTime.ToString("HH:mm")
+                                (@FormatDuration(booking.DurationMins))
+                            </MudText>
+                        </MudStack>
+
+                        <MudGrid Spacing="2">
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Department</MudText>
+                                <MudText Typo="Typo.body2">@(booking.DepartmentName ?? "—")</MudText>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Budget Code</MudText>
+                                <MudText Typo="Typo.body2" Style="font-family:monospace">
+                                    @(booking.BudgetCode ?? "—")
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Students</MudText>
+                                <MudText Typo="Typo.body2">@booking.StudentCount</MudText>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Submitted</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @(booking.SubmittedAt?.LocalDateTime.ToString("d MMM yyyy HH:mm") ?? "—")
+                                </MudText>
+                            </MudItem>
+                        </MudGrid>
+
+                        @* ── Reject reason input (inline, shown when rejecting) ── *@
+                        @if (isRejecting)
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-3">
+                                <MudTextField @bind-Value="_rejectReason"
+                                              Label="Rejection reason (min 10 characters)"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense"
+                                              Style="flex:1"
+                                              Immediate="true"
+                                              Error="@(_rejectReasonError is not null)"
+                                              ErrorText="@_rejectReasonError" />
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           Disabled="isActing"
+                                           OnClick="@(() => ConfirmRejectAsync(booking))">
+                                    @(isActing ? "Rejecting…" : "Confirm Reject")
+                                </MudButton>
+                                <MudButton Variant="Variant.Text"
+                                           Size="Size.Small"
+                                           Disabled="isActing"
+                                           OnClick="CancelReject">
+                                    Cancel
+                                </MudButton>
+                            </MudStack>
+                        }
+                    </div>
+                </MudItem>
+
+                @* ── Right: action buttons ── *@
+                <MudItem xs="12" md="4">
+                    <div class="pa-4 d-flex flex-column justify-center align-end"
+                         style="height:100%;gap:8px">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   StartIcon="@Icons.Material.Filled.CheckCircle"
+                                   FullWidth="true"
+                                   Disabled="@(isActing || isRejecting)"
+                                   OnClick="@(() => ApproveAsync(booking))">
+                            @(isActing && _rejectingId != booking.Id ? "Approving…" : "Approve")
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Cancel"
+                                   FullWidth="true"
+                                   Disabled="@(isActing)"
+                                   OnClick="@(() => StartReject(booking.Id))">
+                            Reject
+                        </MudButton>
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Default"
+                                   Size="Size.Small"
+                                   FullWidth="true"
+                                   Href="@($"/bookings/{booking.Id}?from=pending")">
+                            View Details
+                        </MudButton>
+                    </div>
+                </MudItem>
+
+            </MudGrid>
+        </MudPaper>
+    }
+}
+
+@code {
+    private Guid? _actingOn;
+    private Guid? _rejectingId;
+    private string _rejectReason = string.Empty;
+    private string? _rejectReasonError;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        Dispatcher.Dispatch(new LoadPendingApprovalsAction());
+        try
+        {
+            var items = await BookingSvc.GetPendingApprovalsAsync();
+            Dispatcher.Dispatch(new PendingApprovalsLoadedAction(items));
+        }
+        catch
+        {
+            Dispatcher.Dispatch(new PendingApprovalsLoadErrorAction("Failed to load pending approvals. Please try again."));
+        }
+    }
+
+    private async Task ApproveAsync(BookingSummaryDto booking)
+    {
+        if (booking.SimulatorUnitId is null)
+        {
+            Snackbar.Add("Cannot approve: simulator ID is missing.", Severity.Error);
+            return;
+        }
+
+        _actingOn = booking.Id;
+        try
+        {
+            await BookingSvc.ApproveBookingAsync(booking.Id, booking.SimulatorUnitId.Value);
+            Dispatcher.Dispatch(new PendingApprovalApprovedAction(booking.Id));
+            Snackbar.Add("Booking approved.", Severity.Success);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            Snackbar.Add("You cannot approve your own booking.", Severity.Warning);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to approve booking. Please try again.", Severity.Error);
+        }
+        finally
+        {
+            _actingOn = null;
+        }
+    }
+
+    private void StartReject(Guid bookingId)
+    {
+        _rejectingId = bookingId;
+        _rejectReason = string.Empty;
+        _rejectReasonError = null;
+    }
+
+    private void CancelReject()
+    {
+        _rejectingId = null;
+        _rejectReason = string.Empty;
+        _rejectReasonError = null;
+    }
+
+    private async Task ConfirmRejectAsync(BookingSummaryDto booking)
+    {
+        _rejectReasonError = null;
+
+        if (_rejectReason.Trim().Length < 10)
+        {
+            _rejectReasonError = "Reason must be at least 10 characters.";
+            return;
+        }
+
+        if (booking.SimulatorUnitId is null)
+        {
+            Snackbar.Add("Cannot reject: simulator ID is missing.", Severity.Error);
+            return;
+        }
+
+        _actingOn = booking.Id;
+        try
+        {
+            await BookingSvc.RejectBookingAsync(booking.Id, booking.SimulatorUnitId.Value, _rejectReason.Trim());
+            Dispatcher.Dispatch(new PendingApprovalRejectedAction(booking.Id));
+            Snackbar.Add("Booking rejected.", Severity.Success);
+            CancelReject();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            Snackbar.Add("You cannot reject your own booking.", Severity.Warning);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to reject booking. Please try again.", Severity.Error);
+        }
+        finally
+        {
+            _actingOn = null;
+        }
+    }
+
+    private static string FormatDuration(int mins)
+    {
+        var h = mins / 60;
+        var m = mins % 60;
+        return m == 0 ? $"{h}h" : $"{h}h {m}m";
+    }
+}
