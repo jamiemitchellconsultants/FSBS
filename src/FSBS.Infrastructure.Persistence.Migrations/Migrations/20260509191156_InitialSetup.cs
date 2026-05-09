@@ -20,6 +20,27 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                 .Annotation("Npgsql:Enum:fsbs.training_type", "flight_deck,cabin_crew");
 
             migrationBuilder.CreateTable(
+                name: "aircraft_types",
+                schema: "fsbs",
+                columns: table => new
+                {
+                    aircraft_type_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    icao_code = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_aircraft_types", x => x.aircraft_type_id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "app_users",
                 schema: "fsbs",
                 columns: table => new
@@ -1059,7 +1080,7 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     config_id = table.Column<Guid>(type: "uuid", nullable: false),
                     simulator_unit_id = table.Column<Guid>(type: "uuid", nullable: false),
                     name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    aircraft_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    aircraft_type_id = table.Column<Guid>(type: "uuid", nullable: false),
                     config_mode = table.Column<string>(type: "text", nullable: false),
                     supported_training_types = table.Column<List<TrainingType>>(type: "fsbs.training_type[]", nullable: false),
                     max_capacity_flight_deck = table.Column<int>(type: "integer", nullable: false),
@@ -1078,6 +1099,13 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     table.CheckConstraint("ck_simulator_config_cc_capacity", "max_capacity_cabin_crew > 0 AND max_capacity_cabin_crew <= 10");
                     table.CheckConstraint("ck_simulator_config_fd_capacity", "max_capacity_flight_deck > 0 AND max_capacity_flight_deck <= 4");
                     table.CheckConstraint("ck_simulator_config_training_types", "array_length(supported_training_types, 1) >= 1");
+                    table.ForeignKey(
+                        name: "fk_simulator_configurations_aircraft_types_aircraft_type_id",
+                        column: x => x.aircraft_type_id,
+                        principalSchema: "fsbs",
+                        principalTable: "aircraft_types",
+                        principalColumn: "aircraft_type_id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -1141,6 +1169,14 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                 schema: "fsbs",
                 table: "account_statements",
                 column: "org_id");
+
+            migrationBuilder.CreateIndex(
+                name: "uq_aircraft_types_icao_code",
+                schema: "fsbs",
+                table: "aircraft_types",
+                column: "icao_code",
+                unique: true,
+                filter: "is_deleted = false");
 
             migrationBuilder.CreateIndex(
                 name: "uq_app_users_cognito_sub",
@@ -1474,6 +1510,12 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_simulator_configurations_aircraft_type_id",
+                schema: "fsbs",
+                table: "simulator_configurations",
+                column: "aircraft_type_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_simulator_configurations_simulator_unit_id",
                 schema: "fsbs",
                 table: "simulator_configurations",
@@ -1794,6 +1836,10 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
             migrationBuilder.DropTable(
                 name: "simulator_configurations",
+                schema: "fsbs");
+
+            migrationBuilder.DropTable(
+                name: "aircraft_types",
                 schema: "fsbs");
 
             migrationBuilder.DropTable(

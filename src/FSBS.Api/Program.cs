@@ -11,10 +11,43 @@ using FSBS.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, ct) =>
+    {
+        document.Info = new()
+        {
+            Title   = "FSBS API",
+            Version = "v1",
+            Description = "Flight Simulator Booking System — internal API. " +
+                          "In Development use POST /dev/auth/token to obtain a Bearer token, " +
+                          "then click Authenticate.",
+        };
+
+        // Add Bearer JWT security scheme
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+        {
+            Type         = SecuritySchemeType.Http,
+            Scheme       = "bearer",
+            BearerFormat = "JWT",
+            Description  = "Paste a token from POST /dev/auth/token",
+        };
+
+        // Require Bearer on every operation by default
+        document.Security.Add(new OpenApiSecurityRequirement
+        {
+            [new OpenApiSecuritySchemeReference("Bearer", document)] = [],
+        });
+
+        return Task.CompletedTask;
+    });
+});
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddPersistence(builder.Configuration);
@@ -133,6 +166,16 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.Title           = "FSBS API";
+        options.Theme           = ScalarTheme.Purple;
+        options.DefaultHttpClient = new(ScalarTarget.Http, ScalarClient.HttpClient);
+        options.Authentication  = new ScalarAuthenticationOptions
+        {
+            PreferredSecurityScheme = "Bearer",
+        };
+    });
     app.MapDevEndpoints(builder.Configuration);
 }
 

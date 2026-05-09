@@ -14,7 +14,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 {
     [DbContext(typeof(FsbsDbContext))]
-    [Migration("20260509052350_InitialSetup")]
+    [Migration("20260509191156_InitialSetup")]
     partial class InitialSetup
     {
         /// <inheritdoc />
@@ -191,6 +191,68 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .HasDatabaseName("ix_account_statements_org_id");
 
                     b.ToTable("account_statements", "fsbs");
+                });
+
+            modelBuilder.Entity("FSBS.Domain.Entities.AircraftType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("aircraft_type_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("IcaoCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("icao_code");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_aircraft_types");
+
+                    b.HasIndex("IcaoCode")
+                        .IsUnique()
+                        .HasDatabaseName("uq_aircraft_types_icao_code")
+                        .HasFilter("is_deleted = false");
+
+                    b.ToTable("aircraft_types", "fsbs");
                 });
 
             modelBuilder.Entity("FSBS.Domain.Entities.AppUser", b =>
@@ -2313,11 +2375,9 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("config_id");
 
-                    b.Property<string>("AircraftType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("aircraft_type");
+                    b.Property<Guid>("AircraftTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("aircraft_type_id");
 
                     b.Property<string>("ConfigMode")
                         .IsRequired()
@@ -2381,6 +2441,9 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_simulator_configurations");
+
+                    b.HasIndex("AircraftTypeId")
+                        .HasDatabaseName("ix_simulator_configurations_aircraft_type_id");
 
                     b.HasIndex("SimulatorUnitId")
                         .HasDatabaseName("ix_simulator_configurations_simulator_unit_id");
@@ -3037,12 +3100,21 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
             modelBuilder.Entity("FSBS.Domain.Entities.SimulatorConfiguration", b =>
                 {
+                    b.HasOne("FSBS.Domain.Entities.AircraftType", "AircraftType")
+                        .WithMany("Configurations")
+                        .HasForeignKey("AircraftTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_simulator_configurations_aircraft_types_aircraft_type_id");
+
                     b.HasOne("FSBS.Domain.Entities.SimulatorUnit", "SimulatorUnit")
                         .WithMany("Configurations")
                         .HasForeignKey("SimulatorUnitId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_simulator_configurations_simulator_units_simulator_unit_id");
+
+                    b.Navigation("AircraftType");
 
                     b.Navigation("SimulatorUnit");
                 });
@@ -3072,6 +3144,11 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
             modelBuilder.Entity("FSBS.Domain.Entities.AccountPayment", b =>
                 {
                     b.Navigation("Allocations");
+                });
+
+            modelBuilder.Entity("FSBS.Domain.Entities.AircraftType", b =>
+                {
+                    b.Navigation("Configurations");
                 });
 
             modelBuilder.Entity("FSBS.Domain.Entities.AppUser", b =>
