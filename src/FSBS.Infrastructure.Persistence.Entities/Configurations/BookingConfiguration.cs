@@ -30,9 +30,9 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .HasDatabaseName("uq_bookings_idempotency_key");
 
         builder.HasCheckConstraint("ck_bookings_fd_capacity",
-            "training_type != 'FlightDeck' OR student_count <= 4");
+            "training_type != 'flight_deck' OR student_count <= 4");
         builder.HasCheckConstraint("ck_bookings_cc_capacity",
-            "training_type != 'CabinCrew' OR student_count <= 10");
+            "training_type != 'cabin_crew' OR student_count <= 10");
         builder.HasCheckConstraint("ck_bookings_student_count",
             "student_count >= 1");
         builder.HasCheckConstraint("ck_bookings_discount_pct",

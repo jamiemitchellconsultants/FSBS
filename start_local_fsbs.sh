@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # --- Configuration ---
-API_PORT=5001
-WEB_PORT=7001
+API_PORT=7177
+WEB_PORT=7071
 MAILPIT_WEB_PORT=8025
 POSTGRES_PORT=5432
 
@@ -42,13 +42,31 @@ wait_for_url() {
   local timeout=$2
   local interval=5
   log_info "Waiting for $url to be available (timeout: ${timeout}s)..."
+
   for ((i=0; i<timeout; i+=interval)); do
-    if curl -s -k -o /dev/null "$url"; then
+    local response
+    local status_code
+
+    # Capture body and status code so failed probes are visible in logs.
+    response=$(curl -sS -k -w "\n%{http_code}" "$url")
+    status_code=$(printf '%s\n' "$response" | tail -n 1)
+    response=$(printf '%s\n' "$response" | sed '$d')
+
+    log_info "curl status for $url: HTTP ${status_code}"
+    if [[ -n "$response" ]]; then
+      echo "$response"
+    else
+      log_info "curl response body is empty"
+    fi
+
+    if [[ "$status_code" -ge 200 && "$status_code" -lt 400 ]]; then
       log_info "$url is up!"
       return 0
     fi
+
     sleep "$interval"
   done
+
   log_error "$url did not become available within ${timeout}s."
 }
 
@@ -86,7 +104,7 @@ docker compose up -d || log_error "Failed to start Docker Compose services."
 # Wait for PostgreSQL to be healthy
 log_info "Waiting for PostgreSQL to be healthy..."
 for i in {1..10}; do # Max 10 attempts, 5 seconds each = 50 seconds
-  PG_STATUS=$(docker compose ps postgres | grep postgres | awk '{print $NF}')
+  PG_STATUS=$(docker compose ps postgres | grep postgres | awk '/\(healthy\)/ {print "(healthy)"}' ) #'{print $NF}'
   if [[ "$PG_STATUS" == "(healthy)" ]]; then
     log_info "PostgreSQL is healthy."
     break
@@ -109,14 +127,14 @@ log_info "Database migrations applied successfully."
 
 # 4. Run the API
 log_info "Starting FSBS API (logs to api.log)..."
-ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/FSBS.Api > api.log 2>&1 &
+ASPNETCORE_ENVIRONMENT=Development dotnet run --launch-profile "https" --project src/FSBS.Api > api.log 2>&1 &
 API_PID=$!
 log_info "API process ID: $API_PID"
 wait_for_url "${API_URL}/health" 60 # Wait up to 60 seconds for API health endpoint
 
 # 5. Run the Blazor frontend
 log_info "Starting FSBS Web frontend (logs to web.log)..."
-ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/FSBS.Web > web.log 2>&1 &
+ASPNETCORE_ENVIRONMENT=Development dotnet run --launch-profile "https" --project src/FSBS.Web > web.log 2>&1 &
 WEB_PID=$!
 log_info "Web frontend process ID: $WEB_PID"
 wait_for_url "${WEB_URL}" 60 # Wait up to 60 seconds for Web app to respond

@@ -140,6 +140,7 @@ app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapAuthEndpoints();
 app.MapInvitationEndpoints();
 app.MapOrganisationEndpoints();
