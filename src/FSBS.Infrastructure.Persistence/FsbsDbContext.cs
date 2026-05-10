@@ -179,6 +179,19 @@ public class FsbsDbContext(DbContextOptions<FsbsDbContext> options, ICurrentUser
     /// <summary>Declared availability and leave windows used to filter eligible instructors during scheduling.</summary>
     public DbSet<InstructorAvailability> InstructorAvailabilities => Set<InstructorAvailability>();
 
+    /// <summary>
+    /// Recurring weekly working-hours patterns declared by instructors. Acts as
+    /// the baseline from which the schedule resolver projects effective availability.
+    /// At most one open (non-superseded) pattern exists per instructor.
+    /// </summary>
+    public DbSet<InstructorWeeklyPattern> InstructorWeeklyPatterns => Set<InstructorWeeklyPattern>();
+
+    /// <summary>
+    /// Individual 30-minute-aligned working slots that make up a
+    /// <see cref="InstructorWeeklyPattern"/>. Cascade-deleted with the pattern.
+    /// </summary>
+    public DbSet<InstructorWeeklyPatternSlot> InstructorWeeklyPatternSlots => Set<InstructorWeeklyPatternSlot>();
+
     // -------------------------------------------------------------------------
     // Bookings
     // -------------------------------------------------------------------------
@@ -360,6 +373,7 @@ public class FsbsDbContext(DbContextOptions<FsbsDbContext> options, ICurrentUser
         mb.Entity<ProgressRecord>().HasQueryFilter(e => !e.IsDeleted);
         mb.Entity<Instructor>().HasQueryFilter(e => !e.IsDeleted);
         mb.Entity<InstructorAvailability>().HasQueryFilter(e => !e.IsDeleted);
+        mb.Entity<InstructorWeeklyPattern>().HasQueryFilter(e => !e.IsDeleted);
         mb.Entity<Booking>().HasQueryFilter(e => !e.IsDeleted);
         mb.Entity<BookingSlot>().HasQueryFilter(e => !e.IsDeleted);
         mb.Entity<BookingNote>().HasQueryFilter(e => !e.IsDeleted);

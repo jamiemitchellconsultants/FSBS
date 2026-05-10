@@ -1,0 +1,11 @@
+@page "/staff/reference-data/customer-classes"
+@layout MainLayout
+@attribute [Authorize(Roles = "SystemAdmin,Management")]
+@inject ReferenceDataService RefDataSvc
+@using FSBS.Shared.ReferenceData
+
+<PageTitle>Customer Classes — FSBS</PageTitle>
+
+<ReferenceItemList Title="Customer Classes"
+                   LoadItems="() => RefDataSvc.GetCustomerClassesAsync()"
+                   SaveItem="@(r => RefDataSvc.UpsertCustomerClassAsync(r))" />

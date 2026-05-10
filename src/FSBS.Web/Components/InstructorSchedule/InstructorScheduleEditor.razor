@@ -1,0 +1,61 @@
+@inherits FluxorComponent
+@inject IState<InstructorScheduleState> ScheduleState
+@inject IDispatcher Dispatcher
+
+<MudStack>
+    <ScheduleNavigationBar />
+
+    @if (ScheduleState.Value.IsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2" />
+    }
+
+    @if (ScheduleState.Value.Error is { Length: > 0 } err)
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">@err</MudAlert>
+    }
+
+    @if (!HasPattern && ScheduleState.Value.Schedule is not null)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+            No standard week set yet. Use <b>Set standard week…</b> to declare your usual hours.
+        </MudAlert>
+    }
+
+    @if (ScheduleState.Value.View == ScheduleViewMode.Week)
+    {
+        <ScheduleWeekView />
+    }
+    else
+    {
+        <ScheduleMonthView />
+    }
+
+    <MudPaper Elevation="0" Class="pa-3 mt-3" Style="background:var(--mud-palette-surface)">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Wrap="Wrap.Wrap">
+            <Legend Color="rgba(76,175,80,0.18)" Label="Standard week" />
+            <Legend Color="rgba(76,175,80,0.55)" Label="Extra hours (override)" />
+            <Legend Color="repeating-linear-gradient(45deg,rgba(244,67,54,0.45),rgba(244,67,54,0.45) 4px,rgba(244,67,54,0.25) 4px,rgba(244,67,54,0.25) 8px)" Label="Leave" />
+            <Legend Color="rgba(158,158,158,0.4)" Label="Other commitment" />
+            <Legend Color="repeating-linear-gradient(45deg,rgba(255,193,7,0.25),rgba(255,193,7,0.25) 4px,transparent 4px,transparent 8px)" Label="Pattern clipped by leave" />
+        </MudStack>
+    </MudPaper>
+</MudStack>
+
+@code {
+    [Parameter] public Guid? InstructorId { get; set; }
+
+    private bool HasPattern => ScheduleState.Value.Schedule?.Pattern?.Slots.Count > 0;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Dispatcher.Dispatch(new SetScheduleInstructorAction(InstructorId));
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (InstructorId != ScheduleState.Value.InstructorId)
+            Dispatcher.Dispatch(new SetScheduleInstructorAction(InstructorId));
+    }
+}

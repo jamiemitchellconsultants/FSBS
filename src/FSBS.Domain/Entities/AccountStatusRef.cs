@@ -11,6 +11,9 @@ public class AccountStatusRef
     /// <summary>Human-readable display label.</summary>
     public string Label { get; set; } = string.Empty;
 
+    /// <summary>Whether this status is available for selection.</summary>
+    public bool IsActive { get; set; } = true;
+
     /// <summary>Whether accounts in this status can place new bookings.</summary>
     public bool AllowsBooking { get; set; } = true;
 }

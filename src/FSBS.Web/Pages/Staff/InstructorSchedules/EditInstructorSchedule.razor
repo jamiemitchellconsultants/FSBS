@@ -1,0 +1,15 @@
+@page "/staff/instructors/{InstructorId:guid}/schedule"
+@attribute [Authorize(Roles = "ScheduleAdmin,SystemAdmin,Instructor")]
+
+<PageTitle>Instructor Working Times</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="/staff/instructors/schedules" Size="Size.Small" />
+    <MudText Typo="Typo.h5">Instructor Working Times</MudText>
+</MudStack>
+
+<InstructorScheduleEditor InstructorId="InstructorId" />
+
+@code {
+    [Parameter] public Guid InstructorId { get; set; }
+}

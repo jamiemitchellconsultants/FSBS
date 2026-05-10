@@ -1,0 +1,97 @@
+@inject ISnackbar Snackbar
+@using FSBS.Shared.ReferenceData
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_code"
+                          Label="Code"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Required="true"
+                          Disabled="IsEdit"
+                          HelperText="@(IsEdit ? "Code cannot be changed after creation." : "Unique identifier used as the stored value.")" />
+
+            <MudTextField @bind-Value="_label"
+                          Label="Display Label"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Required="true" />
+
+            <MudSwitch @bind-Value="_isActive" Label="Active" Color="Color.Primary" />
+
+            <MudStack Spacing="1">
+                <MudSwitch @bind-Value="_allowsBooking" Label="Allows Booking" Color="Color.Warning" />
+                @if (!_allowsBooking)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        Organisations with this status will be blocked from making new bookings.
+                    </MudAlert>
+                }
+            </MudStack>
+
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_saving">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_saving">
+            @(_saving ? "Saving…" : (IsEdit ? "Save" : "Create"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public AccountStatusDto? Item { get; set; }
+    [Parameter] public Func<UpsertAccountStatusRequest, Task<AccountStatusDto>>? OnSave { get; set; }
+
+    private string _code          = string.Empty;
+    private string _label         = string.Empty;
+    private bool   _isActive      = true;
+    private bool   _allowsBooking = true;
+    private bool   _saving;
+    private string? _error;
+
+    private bool IsEdit => Item is not null;
+
+    protected override void OnParametersSet()
+    {
+        if (Item is null) return;
+        _code          = Item.Code;
+        _label         = Item.Label;
+        _isActive      = Item.IsActive;
+        _allowsBooking = Item.AllowsBooking;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_code) || string.IsNullOrWhiteSpace(_label))
+        {
+            _error = "Code and Label are required.";
+            return;
+        }
+
+        _saving = true;
+        _error  = null;
+        try
+        {
+            var result = await OnSave!(new UpsertAccountStatusRequest(_code.Trim(), _label.Trim(), _isActive, _allowsBooking));
+            Snackbar.Add($"'{result.Code}' saved.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(result));
+        }
+        catch
+        {
+            _error = "Failed to save. Please try again.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

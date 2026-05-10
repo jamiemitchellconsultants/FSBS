@@ -5,6 +5,7 @@ using FSBS.Domain.Enums;
 using FSBS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -13,9 +14,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 {
     [DbContext(typeof(FsbsDbContext))]
-    partial class FsbsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260510184159_AddAccountStatusIsActive")]
+    partial class AddAccountStatusIsActive
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1281,123 +1284,6 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     b.ToTable("instructor_availabilities", "fsbs", t =>
                         {
                             t.HasCheckConstraint("ck_instructor_availability_range", "end_at > start_at");
-                        });
-                });
-
-            modelBuilder.Entity("FSBS.Domain.Entities.InstructorWeeklyPattern", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("pattern_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateOnly>("EffectiveFrom")
-                        .HasColumnType("date")
-                        .HasColumnName("effective_from");
-
-                    b.Property<DateOnly?>("EffectiveTo")
-                        .HasColumnType("date")
-                        .HasColumnName("effective_to");
-
-                    b.Property<Guid>("InstructorId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("instructor_id");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.Property<uint>("xmin")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.HasKey("Id")
-                        .HasName("pk_instructor_weekly_patterns");
-
-                    b.HasIndex("InstructorId")
-                        .IsUnique()
-                        .HasDatabaseName("uq_instructor_open_pattern")
-                        .HasFilter("effective_to IS NULL AND is_deleted = false");
-
-                    b.ToTable("instructor_weekly_patterns", "fsbs");
-                });
-
-            modelBuilder.Entity("FSBS.Domain.Entities.InstructorWeeklyPatternSlot", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("slot_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<short>("DayOfWeek")
-                        .HasColumnType("smallint")
-                        .HasColumnName("day_of_week");
-
-                    b.Property<TimeOnly>("EndTime")
-                        .HasColumnType("time")
-                        .HasColumnName("end_time");
-
-                    b.Property<Guid>("PatternId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("pattern_id");
-
-                    b.Property<TimeOnly>("StartTime")
-                        .HasColumnType("time")
-                        .HasColumnName("start_time");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.Property<uint>("xmin")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.HasKey("Id")
-                        .HasName("pk_instructor_weekly_pattern_slots");
-
-                    b.HasIndex("PatternId")
-                        .HasDatabaseName("ix_instructor_weekly_pattern_slots_pattern");
-
-                    b.ToTable("instructor_weekly_pattern_slots", "fsbs", t =>
-                        {
-                            t.HasCheckConstraint("ck_pattern_slot_day", "day_of_week BETWEEN 0 AND 6");
-
-                            t.HasCheckConstraint("ck_pattern_slot_half_hour_aligned", "extract(minute from start_time) IN (0, 30) AND extract(second from start_time) = 0 AND extract(minute from end_time) IN (0, 30) AND extract(second from end_time) = 0");
-
-                            t.HasCheckConstraint("ck_pattern_slot_range", "end_time > start_time");
                         });
                 });
 
@@ -3232,30 +3118,6 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     b.Navigation("Instructor");
                 });
 
-            modelBuilder.Entity("FSBS.Domain.Entities.InstructorWeeklyPattern", b =>
-                {
-                    b.HasOne("FSBS.Domain.Entities.Instructor", "Instructor")
-                        .WithMany()
-                        .HasForeignKey("InstructorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_instructor_weekly_patterns_instructors_instructor_id");
-
-                    b.Navigation("Instructor");
-                });
-
-            modelBuilder.Entity("FSBS.Domain.Entities.InstructorWeeklyPatternSlot", b =>
-                {
-                    b.HasOne("FSBS.Domain.Entities.InstructorWeeklyPattern", "Pattern")
-                        .WithMany("Slots")
-                        .HasForeignKey("PatternId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_instructor_weekly_pattern_slots_instructor_weekly_patterns_");
-
-                    b.Navigation("Pattern");
-                });
-
             modelBuilder.Entity("FSBS.Domain.Entities.Invitation", b =>
                 {
                     b.HasOne("FSBS.Domain.Entities.AppUser", null)
@@ -3685,11 +3547,6 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     b.Navigation("Availabilities");
 
                     b.Navigation("BookingSlots");
-                });
-
-            modelBuilder.Entity("FSBS.Domain.Entities.InstructorWeeklyPattern", b =>
-                {
-                    b.Navigation("Slots");
                 });
 
             modelBuilder.Entity("FSBS.Domain.Entities.Invoice", b =>

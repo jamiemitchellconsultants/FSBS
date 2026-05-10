@@ -1,0 +1,192 @@
+@inject IState<InstructorScheduleState> ScheduleState
+@inject IDispatcher Dispatcher
+
+@code {
+    // 30-min cells from 06:00 to 22:00 = 32 rows. Outside this band is unlikely
+    // for working hours and keeps the grid readable.
+    private const int StartHour = 6;
+    private const int EndHour = 22;
+    private const int RowsPerHour = 2;
+    private const int TotalRows = (EndHour - StartHour) * RowsPerHour;
+}
+
+@{
+    var s = ScheduleState.Value;
+    var (weekStart, _) = InstructorScheduleEffects.ComputeWindow(s.AnchorDate, ScheduleViewMode.Week);
+    var localTz = InstructorScheduleEffects_TimeZone;
+    var byCell = BuildCellMap(s.Schedule, weekStart, localTz);
+}
+
+<MudPaper Elevation="1" Class="pa-0" Style="overflow:auto">
+    <div style="display:grid;grid-template-columns:60px repeat(7,1fr);min-width:760px">
+        <div style="border-bottom:2px solid var(--mud-palette-primary);padding:6px;text-align:center">
+            <MudText Typo="Typo.caption" Style="font-weight:600">Time</MudText>
+        </div>
+        @for (var d = 0; d < 7; d++)
+        {
+            var date = weekStart.AddDays(d);
+            var isToday = date == DateOnly.FromDateTime(DateTime.Today);
+            <div style="border-bottom:2px solid var(--mud-palette-primary);padding:6px;text-align:center;@(isToday ? "background:var(--mud-palette-primary-hover)" : "")">
+                <MudText Typo="Typo.caption" Style="font-weight:600">@date.ToString("ddd dd")</MudText>
+            </div>
+        }
+
+        @for (var row = 0; row < TotalRows; row++)
+        {
+            var hour = StartHour + row / RowsPerHour;
+            var minute = (row % RowsPerHour) * 30;
+            var label = $"{hour:00}:{minute:00}";
+
+            <div style="border-right:1px solid var(--mud-palette-lines-default);padding:2px 4px;text-align:right;background:var(--mud-palette-surface)">
+                @if (minute == 0)
+                {
+                    <MudText Typo="Typo.caption">@label</MudText>
+                }
+            </div>
+
+            @for (var d = 0; d < 7; d++)
+            {
+                var key = (d, row);
+                var cell = byCell.GetValueOrDefault(key);
+                var bg = CellBackground(cell);
+                var title = CellTooltip(cell);
+                var localD = d;
+                var localRow = row;
+                <MudTooltip Text="@title" Disabled="@string.IsNullOrEmpty(title)">
+                    <div style="border:1px solid var(--mud-palette-lines-default);min-height:20px;background:@bg;cursor:pointer"
+                         @onclick="@(e => OnCellClick(weekStart, localD, localRow, e.ShiftKey))"></div>
+                </MudTooltip>
+            }
+        }
+    </div>
+</MudPaper>
+
+<MudText Typo="Typo.caption" Class="mt-2" Style="display:block">
+    Click an empty cell to add 30 min of working time. Shift-click to mark Leave. Click an existing override to remove it.
+</MudText>
+
+@code {
+    private static readonly TimeZoneInfo InstructorScheduleEffects_TimeZone =
+        TimeZoneInfo.FindSystemTimeZoneById("Europe/London");
+
+    /// <summary>
+    /// Maps (dayColumn, rowIndex) -> the dominating effective interval/override
+    /// that occupies that cell, if any. The dominator priority is:
+    /// LeaveOrOther override > Available override > Pattern.
+    /// </summary>
+    private record CellInfo(string Source, string Type, Guid? OverrideId, DateTimeOffset Start, DateTimeOffset End);
+
+    private Dictionary<(int Day, int Row), CellInfo> BuildCellMap(InstructorScheduleDto? schedule, DateOnly weekStart, TimeZoneInfo tz)
+    {
+        var map = new Dictionary<(int Day, int Row), CellInfo>();
+        if (schedule is null) return map;
+
+        foreach (var iv in schedule.EffectiveIntervals)
+        {
+            ApplyToCells(map, weekStart, tz, iv.StartAt, iv.EndAt,
+                new CellInfo(iv.Source.ToString(), iv.Type, null, iv.StartAt, iv.EndAt),
+                priority: iv.Source == EffectiveIntervalSource.Override ? 2 : 1);
+        }
+
+        foreach (var ov in schedule.Overrides.Where(o => o.Type is "Leave" or "Other"))
+        {
+            ApplyToCells(map, weekStart, tz, ov.StartAt, ov.EndAt,
+                new CellInfo("OverrideBlock", ov.Type, ov.Id, ov.StartAt, ov.EndAt),
+                priority: 3);
+        }
+
+        // Tag Available overrides too (so click can delete them)
+        foreach (var ov in schedule.Overrides.Where(o => o.Type == "Available"))
+        {
+            ApplyToCells(map, weekStart, tz, ov.StartAt, ov.EndAt,
+                new CellInfo("Override", ov.Type, ov.Id, ov.StartAt, ov.EndAt),
+                priority: 2);
+        }
+
+        return map;
+    }
+
+    private static readonly Dictionary<string, int> Priority = new()
+    {
+        ["Pattern"] = 1, ["PatternClipped"] = 1, ["Override"] = 2, ["OverrideBlock"] = 3
+    };
+
+    private void ApplyToCells(
+        Dictionary<(int Day, int Row), CellInfo> map,
+        DateOnly weekStart,
+        TimeZoneInfo tz,
+        DateTimeOffset startUtc,
+        DateTimeOffset endUtc,
+        CellInfo info,
+        int priority)
+    {
+        var localStart = TimeZoneInfo.ConvertTime(startUtc, tz);
+        var localEnd = TimeZoneInfo.ConvertTime(endUtc, tz);
+
+        for (var t = localStart; t < localEnd; t = t.AddMinutes(30))
+        {
+            var date = DateOnly.FromDateTime(t.DateTime);
+            var dayDelta = date.DayNumber - weekStart.DayNumber;
+            if (dayDelta is < 0 or > 6) continue;
+
+            var minutesFromMidnight = t.Hour * 60 + t.Minute;
+            var startMinutes = StartHour * 60;
+            if (minutesFromMidnight < startMinutes) continue;
+
+            var row = (minutesFromMidnight - startMinutes) / 30;
+            if (row >= TotalRows) continue;
+
+            if (map.TryGetValue((dayDelta, row), out var existing) && Priority[existing.Source] >= priority)
+                continue;
+
+            map[(dayDelta, row)] = info;
+        }
+    }
+
+    private static string CellBackground(CellInfo? c) => c?.Source switch
+    {
+        "Pattern" => "rgba(76,175,80,0.18)",
+        "PatternClipped" => "repeating-linear-gradient(45deg,rgba(255,193,7,0.25),rgba(255,193,7,0.25) 4px,transparent 4px,transparent 8px)",
+        "Override" => "rgba(76,175,80,0.55)",
+        "OverrideBlock" when c.Type == "Leave" => "repeating-linear-gradient(45deg,rgba(244,67,54,0.45),rgba(244,67,54,0.45) 4px,rgba(244,67,54,0.25) 4px,rgba(244,67,54,0.25) 8px)",
+        "OverrideBlock" => "rgba(158,158,158,0.4)",
+        _ => "transparent",
+    };
+
+    private static string CellTooltip(CellInfo? c) => c?.Source switch
+    {
+        "Pattern" => "Working time (from standard week)",
+        "PatternClipped" => "Pattern clipped by leave/commitment",
+        "Override" when c.Type == "Available" => "Extra working time — click to remove",
+        "OverrideBlock" when c.Type == "Leave" => "Leave — click to remove",
+        "OverrideBlock" => "Other commitment — click to remove",
+        _ => string.Empty,
+    };
+
+    private void OnCellClick(DateOnly weekStart, int dayCol, int row, bool shift)
+    {
+        var s = ScheduleState.Value;
+        var byCell = BuildCellMap(s.Schedule, weekStart, InstructorScheduleEffects_TimeZone);
+        var existing = byCell.GetValueOrDefault((dayCol, row));
+        if (existing?.OverrideId is { } id)
+        {
+            Dispatcher.Dispatch(new DeleteOverrideAction(id));
+            return;
+        }
+
+        var date = weekStart.AddDays(dayCol);
+        var minutes = StartHour * 60 + row * 30;
+        var startLocal = date.ToDateTime(new TimeOnly(minutes / 60, minutes % 60));
+        var endLocal = startLocal.AddMinutes(30);
+
+        var startUtc = TimeZoneInfo.ConvertTimeToUtc(startLocal, InstructorScheduleEffects_TimeZone);
+        var endUtc = TimeZoneInfo.ConvertTimeToUtc(endLocal, InstructorScheduleEffects_TimeZone);
+
+        var type = shift ? "Leave" : "Available";
+
+        Dispatcher.Dispatch(new CreateOverrideAction(
+            new DateTimeOffset(startUtc, TimeSpan.Zero),
+            new DateTimeOffset(endUtc, TimeSpan.Zero),
+            type));
+    }
+}

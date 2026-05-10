@@ -99,6 +99,15 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                     Status = StatusCodes.Status404NotFound,
                 }),
 
+            ForbiddenException fex => (
+                StatusCodes.Status403Forbidden,
+                new ProblemDetails
+                {
+                    Title  = "Forbidden",
+                    Detail = fex.Message,
+                    Status = StatusCodes.Status403Forbidden,
+                }),
+
             InvalidConfirmationCodeException or ConfirmationCodeExpiredException => (
                 StatusCodes.Status400BadRequest,
                 new ProblemDetails

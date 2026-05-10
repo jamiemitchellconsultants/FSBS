@@ -47,6 +47,7 @@
                                 <MudNavLink Href="/staff/reconfig-templates">Reconfig Templates</MudNavLink>
                                 <MudNavLink Href="/staff/schedule-templates">Schedule Templates</MudNavLink>
                             </MudNavGroup>
+                            <MudNavLink Href="/staff/instructors/schedules" Icon="@Icons.Material.Filled.EditCalendar">Instructor Schedules</MudNavLink>
                         </Authorized>
                     </AuthorizeView>
 
@@ -77,7 +78,7 @@
                     <AuthorizeView Roles="Instructor" Context="__">
                         <Authorized>
                             <MudNavLink Href="/staff/my-schedule" Icon="@Icons.Material.Filled.EventNote">My Schedule</MudNavLink>
-                            <MudNavLink Href="/staff/availability" Icon="@Icons.Material.Filled.EditCalendar">My Availability</MudNavLink>
+                            <MudNavLink Href="/instructor/schedule" Icon="@Icons.Material.Filled.EditCalendar">My Working Times</MudNavLink>
                         </Authorized>
                     </AuthorizeView>
 
@@ -86,6 +87,12 @@
                             <MudNavGroup Title="Reporting" Icon="@Icons.Material.Filled.BarChart" Expanded="false">
                                 <MudNavLink Href="/staff/reports">Reports</MudNavLink>
                                 <MudNavLink Href="/staff/analytics">Analytics</MudNavLink>
+                            </MudNavGroup>
+                            <MudNavGroup Title="Reference Data" Icon="@Icons.Material.Filled.TableChart" Expanded="false">
+                                <MudNavLink Href="/staff/reference-data/customer-classes">Customer Classes</MudNavLink>
+                                <MudNavLink Href="/staff/reference-data/discount-types">Discount Types</MudNavLink>
+                                <MudNavLink Href="/staff/reference-data/payment-methods">Payment Methods</MudNavLink>
+                                <MudNavLink Href="/staff/reference-data/account-statuses">Account Statuses</MudNavLink>
                             </MudNavGroup>
                         </Authorized>
                     </AuthorizeView>

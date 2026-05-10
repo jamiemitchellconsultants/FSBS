@@ -1,0 +1,70 @@
+@page "/staff/instructors/schedules"
+@attribute [Authorize(Roles = "ScheduleAdmin,SystemAdmin")]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Instructor Schedules</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-3">Instructor Schedules</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+}
+else if (_instructors.Count == 0)
+{
+    <MudAlert Severity="Severity.Info" Dense="true">No instructors found.</MudAlert>
+}
+else
+{
+    <MudTable Items="_instructors" Dense="true" Hover="true" Striped="true">
+        <HeaderContent>
+            <MudTh>Employee #</MudTh>
+            <MudTh>Name</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.EmployeeNumber</MudTd>
+            <MudTd>@context.FullName</MudTd>
+            <MudTd>@context.Email</MudTd>
+            <MudTd Style="text-align:right">
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.EditCalendar"
+                           OnClick="@(() => Navigation.NavigateTo($"/staff/instructors/{context.InstructorId}/schedule"))">
+                    Schedule
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private List<InstructorRow> _instructors = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Tries the existing instructors listing endpoint; falls back to empty.
+            // The ScheduleAdmin can also navigate directly via /staff/instructors/{id}/schedule.
+            var rows = await Http.GetFromJsonAsync<List<InstructorRow>>("v1/instructors");
+            _instructors = rows ?? new();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not load instructors: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    public sealed record InstructorRow(Guid InstructorId, string EmployeeNumber, string FullName, string Email);
+}

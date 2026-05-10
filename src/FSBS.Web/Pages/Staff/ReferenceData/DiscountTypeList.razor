@@ -1,0 +1,11 @@
+@page "/staff/reference-data/discount-types"
+@layout MainLayout
+@attribute [Authorize(Roles = "SystemAdmin,Management")]
+@inject ReferenceDataService RefDataSvc
+@using FSBS.Shared.ReferenceData
+
+<PageTitle>Discount Types — FSBS</PageTitle>
+
+<ReferenceItemList Title="Discount Types"
+                   LoadItems="() => RefDataSvc.GetDiscountTypesAsync()"
+                   SaveItem="@(r => RefDataSvc.UpsertDiscountTypeAsync(r))" />

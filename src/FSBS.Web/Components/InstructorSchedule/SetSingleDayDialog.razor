@@ -1,0 +1,66 @@
+@inject IDialogService DialogService
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.subtitle1" Class="mb-2">@Date.ToString("dddd, dd MMM yyyy")</MudText>
+        <MudText Typo="Typo.body2" Class="mb-3">
+            Replaces the working hours for just this day. Pattern coverage and leave windows are untouched.
+        </MudText>
+
+        <MudStack Spacing="1">
+            @foreach (var (range, idx) in _ranges.Select((r, i) => (r, i)))
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudTimePicker Time="range.StartTime.ToTimeSpan()" TimeChanged="v => UpdateStart(idx, v)" MinuteSelectionStep="30" Margin="Margin.Dense" Style="max-width:130px" />
+                    <MudText Typo="Typo.body2">to</MudText>
+                    <MudTimePicker Time="range.EndTime.ToTimeSpan()" TimeChanged="v => UpdateEnd(idx, v)" MinuteSelectionStep="30" Margin="Margin.Dense" Style="max-width:130px" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="() => RemoveRange(idx)" />
+                </MudStack>
+            }
+        </MudStack>
+        <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="AddRange" Class="mt-2">Add range</MudButton>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public DateOnly Date { get; set; }
+    [Parameter] public IReadOnlyList<TimeRangeDto>? Initial { get; set; }
+
+    private List<TimeRangeDto> _ranges = new();
+
+    protected override void OnParametersSet()
+    {
+        _ranges = Initial?.ToList() ?? new();
+    }
+
+    private void AddRange() => _ranges.Add(new TimeRangeDto(new TimeOnly(9, 0), new TimeOnly(17, 0)));
+    private void RemoveRange(int idx) => _ranges.RemoveAt(idx);
+
+    private void UpdateStart(int idx, TimeSpan? t)
+    {
+        if (t is null) return;
+        _ranges[idx] = _ranges[idx] with { StartTime = TimeOnly.FromTimeSpan(SnapToHalfHour(t.Value)) };
+    }
+
+    private void UpdateEnd(int idx, TimeSpan? t)
+    {
+        if (t is null) return;
+        _ranges[idx] = _ranges[idx] with { EndTime = TimeOnly.FromTimeSpan(SnapToHalfHour(t.Value)) };
+    }
+
+    private static TimeSpan SnapToHalfHour(TimeSpan t)
+    {
+        var totalMinutes = (int)t.TotalMinutes;
+        var rounded = (int)Math.Round(totalMinutes / 30.0) * 30;
+        return TimeSpan.FromMinutes(rounded);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+    private void Save() => MudDialog.Close(DialogResult.Ok(_ranges));
+}

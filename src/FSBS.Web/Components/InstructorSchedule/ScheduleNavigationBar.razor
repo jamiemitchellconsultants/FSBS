@@ -1,0 +1,70 @@
+@inject IState<InstructorScheduleState> ScheduleState
+@inject IDispatcher Dispatcher
+@inject IDialogService Dialogs
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap" Class="mb-3">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" OnClick="() => Dispatcher.Dispatch(new NavigateScheduleAction(-1))" />
+        <MudText Typo="Typo.body1" Style="min-width:220px;text-align:center">@HeaderLabel</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" OnClick="() => Dispatcher.Dispatch(new NavigateScheduleAction(1))" />
+        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => Dispatcher.Dispatch(new GoToTodayAction())">Today</MudButton>
+    </MudStack>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+        <MudToggleGroup T="ScheduleViewMode" SelectionMode="SelectionMode.SingleSelection" Value="ScheduleState.Value.View" ValueChanged="OnViewChanged" Size="Size.Small">
+            <MudToggleItem Value="ScheduleViewMode.Week" Text="Week" />
+            <MudToggleItem Value="ScheduleViewMode.Month" Text="Month" />
+        </MudToggleGroup>
+
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.EditCalendar" OnClick="OpenStandardWeekDialog">
+            Set standard week…
+        </MudButton>
+        @if (ScheduleState.Value.View == ScheduleViewMode.Week)
+        {
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.EventNote" OnClick="OpenSetTodayDialog">
+                Set this day…
+            </MudButton>
+        }
+    </MudStack>
+</MudStack>
+
+@code {
+    private string HeaderLabel
+    {
+        get
+        {
+            var s = ScheduleState.Value;
+            if (s.View == ScheduleViewMode.Week)
+            {
+                var (from, to) = InstructorScheduleEffects.ComputeWindow(s.AnchorDate, ScheduleViewMode.Week);
+                return $"{from:dd MMM} – {to:dd MMM yyyy}";
+            }
+            return s.AnchorDate.ToString("MMMM yyyy");
+        }
+    }
+
+    private void OnViewChanged(ScheduleViewMode m) =>
+        Dispatcher.Dispatch(new SetScheduleViewAction(m));
+
+    private async Task OpenStandardWeekDialog()
+    {
+        var initial = ScheduleState.Value.Schedule?.Pattern?.Slots;
+        var parameters = new DialogParameters { ["Initial"] = initial };
+        var dialog = await Dialogs.ShowAsync<SetStandardWeekDialog>("Set standard week", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: List<WeeklyPatternSlotDto> slots })
+            Dispatcher.Dispatch(new UpsertWeeklyPatternAction(slots));
+    }
+
+    private async Task OpenSetTodayDialog()
+    {
+        var anchor = ScheduleState.Value.AnchorDate;
+        var parameters = new DialogParameters { ["Date"] = anchor };
+        var dialog = await Dialogs.ShowAsync<SetSingleDayDialog>($"Set hours for {anchor:ddd dd MMM}", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: List<TimeRangeDto> ranges })
+            Dispatcher.Dispatch(new SetSingleDayAction(anchor, ranges));
+    }
+}

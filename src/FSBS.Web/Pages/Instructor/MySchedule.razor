@@ -1,0 +1,8 @@
+@page "/instructor/schedule"
+@attribute [Authorize(Roles = "Instructor,ScheduleAdmin,SystemAdmin")]
+
+<PageTitle>My Working Times</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-3">My Working Times</MudText>
+
+<InstructorScheduleEditor InstructorId="null" />

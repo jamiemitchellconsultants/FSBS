@@ -1,0 +1,105 @@
+@inject IDialogService DialogService
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">
+            This replaces your standard week. Concrete day-by-day overrides you have already
+            set are not affected.
+        </MudText>
+
+        <MudStack Spacing="1">
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.PlaylistAdd"
+                       OnClick="() => ApplyPreset(Mode.MonFriNineFive)">Mon–Fri 09:00–17:00</MudButton>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.PlaylistAdd"
+                       OnClick="() => ApplyPreset(Mode.TueSatTenSix)">Tue–Sat 10:00–18:00</MudButton>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.PlaylistRemove"
+                       OnClick="() => ApplyPreset(Mode.Clear)">Clear (no working hours)</MudButton>
+        </MudStack>
+
+        <MudDivider Class="my-3" />
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Custom slots</MudText>
+        <MudStack Spacing="1">
+            @foreach (var (slot, idx) in _slots.Select((s, i) => (s, i)))
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudSelect T="DayOfWeek" Value="slot.DayOfWeek" ValueChanged="v => UpdateDay(idx, v)" Dense="true" Margin="Margin.Dense" Style="min-width:120px">
+                        @foreach (var d in DaysMondayFirst)
+                        {
+                            <MudSelectItem Value="d">@d</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudTimePicker Time="slot.StartTime.ToTimeSpan()" TimeChanged="v => UpdateStart(idx, v)" MinuteSelectionStep="30" Margin="Margin.Dense" Style="max-width:120px" />
+                    <MudText Typo="Typo.body2">to</MudText>
+                    <MudTimePicker Time="slot.EndTime.ToTimeSpan()" TimeChanged="v => UpdateEnd(idx, v)" MinuteSelectionStep="30" Margin="Margin.Dense" Style="max-width:120px" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="() => RemoveSlot(idx)" />
+                </MudStack>
+            }
+        </MudStack>
+        <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="AddSlot" Class="mt-2">Add slot</MudButton>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="@(!_slots.Any())">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public IReadOnlyList<WeeklyPatternSlotDto>? Initial { get; set; }
+
+    private static readonly DayOfWeek[] DaysMondayFirst =
+    {
+        DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday,
+        DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday
+    };
+
+    private List<WeeklyPatternSlotDto> _slots = new();
+
+    protected override void OnParametersSet()
+    {
+        _slots = Initial?.ToList() ?? new();
+    }
+
+    private void AddSlot() => _slots.Add(new WeeklyPatternSlotDto(DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(17, 0)));
+    private void RemoveSlot(int idx) => _slots.RemoveAt(idx);
+    private void UpdateDay(int idx, DayOfWeek d) => _slots[idx] = _slots[idx] with { DayOfWeek = d };
+    private void UpdateStart(int idx, TimeSpan? t)
+    {
+        if (t is null) return;
+        _slots[idx] = _slots[idx] with { StartTime = TimeOnly.FromTimeSpan(SnapToHalfHour(t.Value)) };
+    }
+    private void UpdateEnd(int idx, TimeSpan? t)
+    {
+        if (t is null) return;
+        _slots[idx] = _slots[idx] with { EndTime = TimeOnly.FromTimeSpan(SnapToHalfHour(t.Value)) };
+    }
+
+    private static TimeSpan SnapToHalfHour(TimeSpan t)
+    {
+        var totalMinutes = (int)t.TotalMinutes;
+        var rounded = (int)Math.Round(totalMinutes / 30.0) * 30;
+        return TimeSpan.FromMinutes(rounded);
+    }
+
+    private enum Mode { MonFriNineFive, TueSatTenSix, Clear }
+
+    private void ApplyPreset(Mode m)
+    {
+        _slots = m switch
+        {
+            Mode.MonFriNineFive => Enumerable.Range(0, 5)
+                .Select(i => new WeeklyPatternSlotDto(DayOfWeek.Monday + i, new TimeOnly(9, 0), new TimeOnly(17, 0)))
+                .ToList(),
+            Mode.TueSatTenSix => Enumerable.Range(0, 5)
+                .Select(i => new WeeklyPatternSlotDto((DayOfWeek)(((int)DayOfWeek.Tuesday + i) % 7), new TimeOnly(10, 0), new TimeOnly(18, 0)))
+                .ToList(),
+            _ => new List<WeeklyPatternSlotDto>(),
+        };
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+    private void Save() => MudDialog.Close(DialogResult.Ok(_slots));
+}

@@ -31,6 +31,8 @@ public static class RepositoriesServiceExtensions
         services.AddScoped<Domain.Interfaces.IAircraftTypeRepository, AircraftTypeRepository>();
         services.AddScoped<Application.Common.Interfaces.IAvailabilityReadService, AvailabilityReadService>();
         services.AddScoped<Application.Common.Interfaces.IUserProfileRepository, UserProfileRepository>();
+        services.AddScoped<Application.Common.Interfaces.IReferenceDataRepository, ReferenceDataRepository>();
+        services.AddScoped<Application.Common.Interfaces.IInstructorScheduleRepository, InstructorScheduleRepository>();
 
         return services;
     }

@@ -12,12 +12,13 @@ public class AccountStatusRefConfiguration : IEntityTypeConfiguration<AccountSta
         builder.HasKey(e => e.Code);
         builder.Property(e => e.Code).HasMaxLength(50).IsRequired();
         builder.Property(e => e.Label).HasMaxLength(100).IsRequired();
+        builder.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
         builder.Property(e => e.AllowsBooking).IsRequired().HasDefaultValue(true);
 
         builder.HasData(
-            new AccountStatusRef { Code = "Active",    Label = "Active",    AllowsBooking = true  },
-            new AccountStatusRef { Code = "Suspended", Label = "Suspended", AllowsBooking = false },
-            new AccountStatusRef { Code = "Closed",    Label = "Closed",    AllowsBooking = false }
+            new AccountStatusRef { Code = "Active",    Label = "Active",    IsActive = true,  AllowsBooking = true  },
+            new AccountStatusRef { Code = "Suspended", Label = "Suspended", IsActive = true,  AllowsBooking = false },
+            new AccountStatusRef { Code = "Closed",    Label = "Closed",    IsActive = true,  AllowsBooking = false }
         );
     }
 }

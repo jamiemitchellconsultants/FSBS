@@ -1,0 +1,108 @@
+@using FSBS.Shared.ReferenceData
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+}
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5" Style="flex:1">@Title</MudText>
+    <AuthorizeView Roles="SystemAdmin">
+        <Authorized>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreateDialog">
+                Add
+            </MudButton>
+        </Authorized>
+    </AuthorizeView>
+</MudStack>
+
+<MudPaper Elevation="2">
+    <MudTable Items="@_items" Hover="true" Dense="true" Elevation="0" Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>Code</MudTh>
+            <MudTh>Label</MudTh>
+            <MudTh>Status</MudTh>
+            <AuthorizeView Roles="SystemAdmin">
+                <Authorized>
+                    <MudTh Style="width:60px" />
+                </Authorized>
+            </AuthorizeView>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudText Typo="Typo.body2" Style="font-weight:600;font-family:monospace">@context.Code</MudText>
+            </MudTd>
+            <MudTd><MudText Typo="Typo.body2">@context.Label</MudText></MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(context.IsActive ? Color.Success : Color.Default)"
+                         Variant="Variant.Outlined">
+                    @(context.IsActive ? "Active" : "Inactive")
+                </MudChip>
+            </MudTd>
+            <AuthorizeView Roles="SystemAdmin" Context="_auth">
+                <Authorized>
+                    <MudTd Style="text-align:right">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small" Color="Color.Primary"
+                                       OnClick="@(() => OpenEditDialog(context))" />
+                    </MudTd>
+                </Authorized>
+            </AuthorizeView>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-6 text-center">No items defined yet.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public Func<Task<IReadOnlyList<ReferenceItemDto>>>? LoadItems { get; set; }
+    [Parameter, EditorRequired] public Func<UpsertReferenceItemRequest, Task<ReferenceItemDto>>? SaveItem { get; set; }
+
+    private List<ReferenceItemDto> _items = [];
+    private bool    _loading;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error   = null;
+        try   { _items = (await LoadItems!()).ToList(); }
+        catch { _error = $"Failed to load {Title}. Please try again."; }
+        finally { _loading = false; }
+    }
+
+    private Task OpenCreateDialog() => OpenDialog(null);
+    private Task OpenEditDialog(ReferenceItemDto item) => OpenDialog(item);
+
+    private async Task OpenDialog(ReferenceItemDto? item)
+    {
+        var title = item is null ? $"Add {Title.TrimEnd('s')}" : $"Edit {item.Code}";
+        var parameters = new DialogParameters<ReferenceItemDialog>
+        {
+            { d => d.Item,   item },
+            { d => d.OnSave, SaveItem }
+        };
+        var dialog = await DialogService.ShowAsync<ReferenceItemDialog>(title, parameters,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: ReferenceItemDto saved })
+        {
+            var idx = _items.FindIndex(x => x.Code == saved.Code);
+            if (idx >= 0) _items[idx] = saved;
+            else _items.Add(saved);
+        }
+    }
+}

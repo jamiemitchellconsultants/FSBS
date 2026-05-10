@@ -281,18 +281,29 @@ run_sql "
 " || log_warn "PricingPolicy seed failed (may already exist)."
 
 # ── 5. Demo users (via API) ───────────────────────────────────────────────────
+log_info "Obtaining dev JWT (SystemAdmin) for API seeding calls..."
+TOKEN_RESP=$(curl -sf -X POST "${API_URL}/dev/auth/token?email=bootstrap@fsbs.local&role=SystemAdmin" -k) \
+  || log_error "Failed to call ${API_URL}/dev/auth/token."
+DEV_TOKEN=$(printf '%s' "$TOKEN_RESP" | jq -r '.token')
+if [[ -z "$DEV_TOKEN" || "$DEV_TOKEN" == "null" ]]; then
+  log_error "Dev JWT response did not contain a token: ${TOKEN_RESP}"
+fi
+log_info "Dev JWT obtained."
+
 log_info "Seeding demo users via API..."
 
 DEMO_STAFF_ROLES=("SystemAdmin" "ScheduleAdmin" "CourseDirector" "Instructor" "Management" "SalesStaff" "InternalStudent")
 for ROLE in "${DEMO_STAFF_ROLES[@]}"; do
   EMAIL="$(to_lower "$ROLE")@fsbs.local"
   log_info "  Seeding ${EMAIL} (${ROLE})..."
-  curl -sf -X POST "${API_URL}/dev/users/seed?email=${EMAIL}&role=${ROLE}" -k > /dev/null \
+  curl -sf -X POST "${API_URL}/dev/users/seed?email=${EMAIL}&role=${ROLE}" \
+    -H "Authorization: Bearer ${DEV_TOKEN}" -k > /dev/null \
     || log_warn "  Failed to seed ${EMAIL} (may already exist)."
 done
 
 # Private customer
-curl -sf -X POST "${API_URL}/dev/users/seed?email=privatecustomer@fsbs.local&role=PrivateCustomer" -k > /dev/null \
+curl -sf -X POST "${API_URL}/dev/users/seed?email=privatecustomer@fsbs.local&role=PrivateCustomer" \
+  -H "Authorization: Bearer ${DEV_TOKEN}" -k > /dev/null \
   || log_warn "  Failed to seed privatecustomer@fsbs.local (may already exist)."
 
 # Corporate users — seeded via API then linked to org via SQL
@@ -300,7 +311,8 @@ for ROLE in "CorporateManager" "CorporateStudent"; do
   EMAIL="$(to_lower "$ROLE")@fsbs.local"
   log_info "  Seeding ${EMAIL} (${ROLE})..."
   CORP_USER_ID=""
-  USER_RESP=$(curl -sf -X POST "${API_URL}/dev/users/seed?email=${EMAIL}&role=${ROLE}" -k)
+  USER_RESP=$(curl -sf -X POST "${API_URL}/dev/users/seed?email=${EMAIL}&role=${ROLE}" \
+    -H "Authorization: Bearer ${DEV_TOKEN}" -k)
   if [[ $? -eq 0 ]]; then
     CORP_USER_ID=$(echo "$USER_RESP" | jq -r '.userId')
   else

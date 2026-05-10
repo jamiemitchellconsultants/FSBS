@@ -1,0 +1,103 @@
+@inject IState<InstructorScheduleState> ScheduleState
+@inject IDispatcher Dispatcher
+
+@code {
+    private static readonly TimeZoneInfo SchoolTz = TimeZoneInfo.FindSystemTimeZoneById("Europe/London");
+}
+
+@{
+    var s = ScheduleState.Value;
+    var (gridStart, gridEnd) = InstructorScheduleEffects.ComputeWindow(s.AnchorDate, ScheduleViewMode.Month);
+    var firstOfMonth = new DateOnly(s.AnchorDate.Year, s.AnchorDate.Month, 1);
+    var workingMinutesByDate = BuildDailyMinutes(s.Schedule, gridStart, gridEnd);
+    var hasLeaveByDate = BuildLeaveDates(s.Schedule);
+    var rowCount = (gridEnd.DayNumber - gridStart.DayNumber + 1) / 7;
+}
+
+<MudPaper Elevation="2" Class="pa-0" Style="overflow:hidden">
+    <div style="display:grid;grid-template-columns:repeat(7,1fr)">
+        @foreach (var dayName in new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" })
+        {
+            <div style="padding:8px 4px;text-align:center;border-bottom:2px solid var(--mud-palette-primary);background:var(--mud-palette-surface)">
+                <MudText Typo="Typo.caption" Style="font-weight:600">@dayName</MudText>
+            </div>
+        }
+        @for (var weekIdx = 0; weekIdx < rowCount; weekIdx++)
+        {
+            var rowMonday = gridStart.AddDays(weekIdx * 7);
+            for (var d = 0; d < 7; d++)
+            {
+                var date = rowMonday.AddDays(d);
+                var inMonth = date.Month == firstOfMonth.Month;
+                var isToday = date == DateOnly.FromDateTime(DateTime.Today);
+                var minutes = workingMinutesByDate.GetValueOrDefault(date);
+                var hours = minutes / 60.0;
+                var hasLeave = hasLeaveByDate.Contains(date);
+                var local = date;
+
+                <div style="position:relative;border:1px solid var(--mud-palette-lines-default);min-height:88px;padding:6px;cursor:pointer;background:@(isToday ? "var(--mud-palette-primary-hover)" : (inMonth ? "transparent" : "var(--mud-palette-surface)"))"
+                     @onclick="() => JumpToWeek(local)">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <MudText Typo="Typo.caption" Style="@($"font-weight:{(isToday ? "700" : "400")};color:{(inMonth ? "inherit" : "var(--mud-palette-text-secondary)")}")">@date.Day</MudText>
+                        @if (hasLeave)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Small" Color="Color.Error" />
+                        }
+                    </div>
+                    @if (minutes > 0)
+                    {
+                        <div style="margin-top:6px">
+                            <MudText Typo="Typo.body2" Style="font-weight:600">@hours.ToString("0.0")h</MudText>
+                            <MudText Typo="Typo.caption">working</MudText>
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</MudPaper>
+
+<MudText Typo="Typo.caption" Class="mt-2" Style="display:block">
+    Click any day to switch to the week view for that week.
+</MudText>
+
+@code {
+    private static Dictionary<DateOnly, int> BuildDailyMinutes(InstructorScheduleDto? schedule, DateOnly gridStart, DateOnly gridEnd)
+    {
+        var result = new Dictionary<DateOnly, int>();
+        if (schedule is null) return result;
+
+        foreach (var iv in schedule.EffectiveIntervals)
+        {
+            var localStart = TimeZoneInfo.ConvertTime(iv.StartAt, SchoolTz);
+            var localEnd = TimeZoneInfo.ConvertTime(iv.EndAt, SchoolTz);
+            for (var t = localStart; t < localEnd; t = t.AddMinutes(30))
+            {
+                var date = DateOnly.FromDateTime(t.DateTime);
+                if (date < gridStart || date > gridEnd) continue;
+                result[date] = result.GetValueOrDefault(date) + 30;
+            }
+        }
+        return result;
+    }
+
+    private static HashSet<DateOnly> BuildLeaveDates(InstructorScheduleDto? schedule)
+    {
+        var set = new HashSet<DateOnly>();
+        if (schedule is null) return set;
+        foreach (var ov in schedule.Overrides.Where(o => o.Type is "Leave" or "Other"))
+        {
+            var localStart = TimeZoneInfo.ConvertTime(ov.StartAt, SchoolTz);
+            var localEnd = TimeZoneInfo.ConvertTime(ov.EndAt, SchoolTz);
+            for (var d = DateOnly.FromDateTime(localStart.DateTime); d <= DateOnly.FromDateTime(localEnd.DateTime); d = d.AddDays(1))
+            {
+                if (localStart < d.AddDays(1).ToDateTime(TimeOnly.MinValue) && localEnd > d.ToDateTime(TimeOnly.MinValue))
+                    set.Add(d);
+            }
+        }
+        return set;
+    }
+
+    private void JumpToWeek(DateOnly date) =>
+        Dispatcher.Dispatch(new JumpToDateAction(date, ScheduleViewMode.Week));
+}

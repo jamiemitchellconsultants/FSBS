@@ -13,8 +13,14 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext());
 
 builder.Services.AddOpenApi(options =>
 {
@@ -31,6 +37,7 @@ builder.Services.AddOpenApi(options =>
 
         // Add Bearer JWT security scheme
         document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
         document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
         {
             Type         = SecuritySchemeType.Http,
@@ -40,6 +47,7 @@ builder.Services.AddOpenApi(options =>
         };
 
         // Require Bearer on every operation by default
+        document.Security ??= [];
         document.Security.Add(new OpenApiSecurityRequirement
         {
             [new OpenApiSecuritySchemeReference("Bearer", document)] = [],
@@ -55,6 +63,7 @@ builder.Services.AddRepositories();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<ICurrentUser, CurrentUserService>();
+builder.Services.AddScoped<FSBS.Api.Endpoints.MeInstructorIdResolver>();
 builder.Services.AddSingleton<IClaimsTransformation, FsbsClaimsTransformation>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -177,9 +186,12 @@ if (app.Environment.IsDevelopment())
         };
     });
     app.MapDevEndpoints(builder.Configuration);
+    app.MapGet("/", () => Results.Redirect("/scalar/v1"))
+        .ExcludeFromDescription();
 }
 
 app.UseExceptionHandler();
+app.UseSerilogRequestLogging();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -192,6 +204,8 @@ app.MapSimulatorEndpoints();
 app.MapAircraftTypeEndpoints();
 app.MapPricingEndpoints();
 app.MapUserProfileEndpoints();
+app.MapReferenceDataEndpoints();
+app.MapInstructorScheduleEndpoints();
 app.MapHub<AvailabilityHub>("/hubs/availability");
 
 app.Run();

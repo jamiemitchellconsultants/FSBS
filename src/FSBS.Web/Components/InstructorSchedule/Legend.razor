@@ -1,0 +1,9 @@
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+    <div style="width:18px;height:18px;border:1px solid var(--mud-palette-lines-default);background:@Color"></div>
+    <MudText Typo="Typo.caption">@Label</MudText>
+</MudStack>
+
+@code {
+    [Parameter] public string Color { get; set; } = "transparent";
+    [Parameter] public string Label { get; set; } = "";
+}

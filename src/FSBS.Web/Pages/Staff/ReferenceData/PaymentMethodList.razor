@@ -1,0 +1,11 @@
+@page "/staff/reference-data/payment-methods"
+@layout MainLayout
+@attribute [Authorize(Roles = "SystemAdmin,Management")]
+@inject ReferenceDataService RefDataSvc
+@using FSBS.Shared.ReferenceData
+
+<PageTitle>Payment Methods — FSBS</PageTitle>
+
+<ReferenceItemList Title="Payment Methods"
+                   LoadItems="() => RefDataSvc.GetPaymentMethodsAsync()"
+                   SaveItem="@(r => RefDataSvc.UpsertPaymentMethodAsync(r))" />
