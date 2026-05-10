@@ -118,7 +118,7 @@ public class ApproveBookingHandlerTests : HandlerFixtureBase
         StubBooking(booking);
         var ruleId = Guid.NewGuid();
         StubPricing(Pricing(1000m, 100m, 900m,
-            new AppliedDiscount(ruleId, DiscountType.VolumeAdvanceBlock, 10m, new Money(100m))));
+            new AppliedDiscount(ruleId, DiscountType.VolumeAdvanceBlock.ToString(), 10m, new Money(100m))));
         CurrentUser = FakeCurrentUser.SalesStaff();
 
         await Build().Handle(new ApproveBookingCommand(booking.Id), CancellationToken.None);
@@ -126,7 +126,7 @@ public class ApproveBookingHandlerTests : HandlerFixtureBase
         booking.Discounts.Should().ContainSingle();
         var d = booking.Discounts.Single();
         d.DiscountRuleId.Should().Be(ruleId);
-        d.DiscountType.Should().Be(DiscountType.VolumeAdvanceBlock);
+        d.DiscountType.Should().Be(DiscountType.VolumeAdvanceBlock.ToString());
         d.DiscountPct.Should().Be(10m);
         d.AmountGbp.Should().Be(100m);
     }

@@ -191,6 +191,7 @@ app.MapBookingEndpoints();
 app.MapSimulatorEndpoints();
 app.MapAircraftTypeEndpoints();
 app.MapPricingEndpoints();
+app.MapUserProfileEndpoints();
 app.MapHub<AvailabilityHub>("/hubs/availability");
 
 app.Run();

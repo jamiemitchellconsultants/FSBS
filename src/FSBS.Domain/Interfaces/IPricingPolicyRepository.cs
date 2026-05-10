@@ -17,7 +17,7 @@ public interface IPricingPolicyRepository
     Task<PricingPolicy?> FindApplicableAsync(
         Guid configurationId,
         TrainingType trainingType,
-        CustomerClass customerClass,
+        string customerClass,
         DateTimeOffset effectiveDate,
         CancellationToken ct = default);
 

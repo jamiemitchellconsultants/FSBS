@@ -12,7 +12,8 @@ public class OrganisationConfiguration : IEntityTypeConfiguration<Organisation>
         builder.Property(e => e.Id).HasColumnName("org_id");
 
         builder.Property(e => e.Name).IsRequired().HasMaxLength(200);
-        builder.Property(e => e.CustomerClass).HasConversion<string>().IsRequired();
+        builder.Property(e => e.CustomerClass).HasMaxLength(50).IsRequired();
+        builder.HasOne<CustomerClassRef>().WithMany().HasForeignKey(e => e.CustomerClass).OnDelete(DeleteBehavior.Restrict);
         builder.Property(e => e.TenantId).IsRequired();
         builder.Property(e => e.ContractType).HasMaxLength(50);
         builder.Property(e => e.CreditLimitGbp).HasPrecision(12, 2).IsRequired();

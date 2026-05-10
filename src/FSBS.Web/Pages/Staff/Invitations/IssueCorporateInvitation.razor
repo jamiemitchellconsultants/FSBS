@@ -49,6 +49,14 @@
                                   Disabled="_isSubmitting"
                                   For="@(() => _model.Email)" />
 
+                    <MudTextField @bind-Value="_model.PersonalNote"
+                                  Label="Personal Note (optional)"
+                                  Placeholder="Add a personal message to include in the invitation email…"
+                                  Variant="Variant.Outlined"
+                                  Lines="3"
+                                  Class="mb-4"
+                                  Disabled="_isSubmitting" />
+
                     @if (_errorMessage is not null)
                     {
                         <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@_errorMessage</MudAlert>
@@ -121,9 +129,10 @@
 
         try
         {
-            _result      = await InvitationSvc.IssueInvitationAsync(_model.Email, _model.OrgId.Value, "CorporateManager");
+            _result      = await InvitationSvc.IssueInvitationAsync(_model.Email, _model.OrgId.Value, "CorporateManager", _model.PersonalNote);
             _model.Email = "";
             _model.OrgId = null;
+            _model.PersonalNote = null;
         }
         catch (InvalidOperationException ex)
         {
@@ -147,5 +156,8 @@
         [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Invitee email is required.")]
         [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Enter a valid email address.")]
         public string Email { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.MaxLength(1000)]
+        public string? PersonalNote { get; set; }
     }
 }

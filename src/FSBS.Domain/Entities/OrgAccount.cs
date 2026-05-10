@@ -49,7 +49,7 @@ public class OrgAccount : AuditableEntity
     /// Lifecycle status of the account. A <c>Suspended</c> or <c>Closed</c>
     /// account blocks new bookings for the organisation.
     /// </summary>
-    public AccountStatus Status { get; set; }
+    public string Status { get; set; } = string.Empty;
     /// <summary>
     /// Number of days after invoice issue date that payment is due.
     /// Defaults to 30. Used when calculating invoice due dates.

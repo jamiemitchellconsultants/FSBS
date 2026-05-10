@@ -39,7 +39,7 @@ public class BookingDiscount : EntityBase
     /// Category of the discount at the time of application. Snapshotted so
     /// that reports remain accurate if the rule's type is later changed.
     /// </summary>
-    public DiscountType DiscountType { get; set; }
+    public string DiscountType { get; set; } = string.Empty;
 
     /// <summary>
     /// Percentage reduction that was applied (0–100), snapshotted from the

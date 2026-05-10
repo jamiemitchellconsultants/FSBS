@@ -59,6 +59,18 @@ public class Invitation : AggregateRoot
     public DateTimeOffset ExpiresAt { get; set; }
 
     /// <summary>
+    /// <see cref="AppUser.Id"/> of the staff or CorporateManager user who issued
+    /// this invitation.
+    /// </summary>
+    public Guid IssuedBy { get; set; }
+
+    /// <summary>UTC timestamp at which the invitation was issued.</summary>
+    public DateTimeOffset IssuedAt { get; set; }
+
+    /// <summary>Optional personal message included in the invitation email.</summary>
+    public string? PersonalNote { get; set; }
+
+    /// <summary>
     /// <see cref="AppUser.Id"/> of the newly registered user who claimed this
     /// invitation. Populated only when <see cref="Status"/> is <c>Claimed</c>.
     /// </summary>

@@ -103,10 +103,10 @@ public sealed class ApproveBookingHandler(
         approval.ReviewedAt = DateTimeOffset.UtcNow;
     }
 
-    private static CustomerClass DeriveCustomerClass(AppRole role) => role switch
+    private static string DeriveCustomerClass(AppRole role) => role switch
     {
-        AppRole.InternalStudent => CustomerClass.Staff,
-        AppRole.CorporateManager or AppRole.CorporateStudent => CustomerClass.Corporate,
-        _ => CustomerClass.Standard,
+        AppRole.InternalStudent => "Staff",
+        AppRole.CorporateManager or AppRole.CorporateStudent => "Corporate",
+        _ => "Standard",
     };
 }

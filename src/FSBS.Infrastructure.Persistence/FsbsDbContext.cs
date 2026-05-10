@@ -241,6 +241,22 @@ public class FsbsDbContext(DbContextOptions<FsbsDbContext> options, ICurrentUser
     public DbSet<PaymentAllocation> PaymentAllocations => Set<PaymentAllocation>();
 
     // -------------------------------------------------------------------------
+    // Reference tables
+    // -------------------------------------------------------------------------
+
+    /// <summary>Customer classification tiers used to select pricing policies.</summary>
+    public DbSet<CustomerClassRef> CustomerClasses => Set<CustomerClassRef>();
+
+    /// <summary>Discount type definitions used in pricing rules and booking discount snapshots.</summary>
+    public DbSet<DiscountTypeRef> DiscountTypes => Set<DiscountTypeRef>();
+
+    /// <summary>Payment methods accepted for account payments.</summary>
+    public DbSet<PaymentMethodRef> PaymentMethods => Set<PaymentMethodRef>();
+
+    /// <summary>Lifecycle statuses for organisation accounts.</summary>
+    public DbSet<AccountStatusRef> AccountStatuses => Set<AccountStatusRef>();
+
+    // -------------------------------------------------------------------------
     // Reporting
     // -------------------------------------------------------------------------
 
@@ -277,6 +293,11 @@ public class FsbsDbContext(DbContextOptions<FsbsDbContext> options, ICurrentUser
     {
         modelBuilder.HasDefaultSchema("fsbs");
         modelBuilder.HasPostgresEnum<TrainingType>("fsbs", "training_type");
+        modelBuilder.HasPostgresEnum<InvitationStatus>("fsbs", "invitation_status");
+        modelBuilder.HasPostgresEnum<InviteeRole>("fsbs", "invitee_role");
+        modelBuilder.HasPostgresEnum<AvailabilityType>("fsbs", "availability_type");
+        modelBuilder.HasPostgresEnum<BayStatus>("fsbs", "bay_status");
+        modelBuilder.HasPostgresEnum<OrgRole>("fsbs", "org_role");
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(BookingConfiguration).Assembly);
         ApplyGlobalQueryFilters(modelBuilder);

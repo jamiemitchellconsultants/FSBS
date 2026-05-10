@@ -28,6 +28,9 @@ public class ReconfigurationTemplate : AuditableEntity
     /// </summary>
     public int DurationMins { get; set; }
 
+    /// <summary>Optional free-text notes about this reconfiguration (e.g. special equipment requirements).</summary>
+    public string? Notes { get; set; }
+
     /// <summary>The configuration being transitioned from.</summary>
     public SimulatorConfiguration FromConfiguration { get; set; } = null!;
 

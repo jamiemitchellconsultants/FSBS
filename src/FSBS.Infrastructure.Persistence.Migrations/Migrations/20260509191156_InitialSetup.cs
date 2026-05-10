@@ -50,6 +50,7 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     cognito_sub = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                     email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
                     app_role = table.Column<string>(type: "text", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -224,6 +225,10 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     first_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     last_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     phone_number = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: true),
+                    date_of_birth = table.Column<DateOnly>(type: "date", nullable: true),
+                    licence_number = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    licence_expiry = table.Column<DateOnly>(type: "date", nullable: true),
+                    photo_s3_key = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -250,6 +255,7 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     module_id = table.Column<Guid>(type: "uuid", nullable: false),
                     course_id = table.Column<Guid>(type: "uuid", nullable: false),
                     title = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
+                    description = table.Column<string>(type: "text", nullable: true),
                     sequence_order = table.Column<int>(type: "integer", nullable: false),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
@@ -328,6 +334,9 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     token_hash = table.Column<string>(type: "character(64)", fixedLength: true, maxLength: 64, nullable: false),
                     status = table.Column<string>(type: "text", nullable: false),
                     expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    issued_by = table.Column<Guid>(type: "uuid", nullable: false),
+                    issued_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    personal_note = table.Column<string>(type: "text", nullable: true),
                     claimed_by = table.Column<Guid>(type: "uuid", nullable: true),
                     claimed_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     revoked_by = table.Column<Guid>(type: "uuid", nullable: true),
@@ -350,6 +359,27 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         principalTable: "organisations",
                         principalColumn: "org_id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_invitations_issued_by",
+                        column: x => x.issued_by,
+                        principalSchema: "fsbs",
+                        principalTable: "app_users",
+                        principalColumn: "user_id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_invitations_claimed_by",
+                        column: x => x.claimed_by,
+                        principalSchema: "fsbs",
+                        principalTable: "app_users",
+                        principalColumn: "user_id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_invitations_revoked_by",
+                        column: x => x.revoked_by,
+                        principalSchema: "fsbs",
+                        principalTable: "app_users",
+                        principalColumn: "user_id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -1012,6 +1042,7 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     from_config_id = table.Column<Guid>(type: "uuid", nullable: false),
                     to_config_id = table.Column<Guid>(type: "uuid", nullable: false),
                     duration_mins = table.Column<int>(type: "integer", nullable: false),
+                    notes = table.Column<string>(type: "text", nullable: true),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),

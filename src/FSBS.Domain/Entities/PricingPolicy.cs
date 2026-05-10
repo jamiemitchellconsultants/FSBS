@@ -35,7 +35,7 @@ public class PricingPolicy : AuditableEntity, ISoftDeletable
     /// Customer segment this rate applies to. Standard, Staff, and Corporate
     /// customers each have their own rate ladder.
     /// </summary>
-    public CustomerClass CustomerClass { get; set; }
+    public string CustomerClass { get; set; } = string.Empty;
 
     /// <summary>Base rate in GBP per hour before any discounts are applied.</summary>
     public decimal HourlyRateGbp { get; set; }

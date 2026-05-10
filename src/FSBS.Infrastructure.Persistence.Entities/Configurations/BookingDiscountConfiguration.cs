@@ -12,7 +12,8 @@ public class BookingDiscountConfiguration : IEntityTypeConfiguration<BookingDisc
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).HasColumnName("discount_id");
 
-        builder.Property(e => e.DiscountType).HasConversion<string>().IsRequired();
+        builder.Property(e => e.DiscountType).HasMaxLength(50).IsRequired();
+        builder.HasOne<DiscountTypeRef>().WithMany().HasForeignKey(e => e.DiscountType).OnDelete(DeleteBehavior.Restrict);
         builder.Property(e => e.DiscountPct).HasPrecision(5, 2).IsRequired();
         builder.Property(e => e.AmountGbp).HasPrecision(12, 2).IsRequired();
         builder.Property(e => e.CreatedAt).IsRequired();

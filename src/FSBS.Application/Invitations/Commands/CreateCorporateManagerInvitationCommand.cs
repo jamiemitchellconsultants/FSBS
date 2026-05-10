@@ -9,4 +9,5 @@ namespace FSBS.Application.Invitations.Commands;
 /// </summary>
 public record CreateCorporateManagerInvitationCommand(
     string InviteeEmail,
-    Guid OrgId) : IRequest<CreateCorporateManagerInvitationResult>;
+    Guid OrgId,
+    string? PersonalNote = null) : IRequest<CreateCorporateManagerInvitationResult>;

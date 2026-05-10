@@ -14,6 +14,7 @@ public class ReconfigurationTemplateConfiguration : IEntityTypeConfiguration<Rec
         builder.Property(e => e.FromConfigId).IsRequired();
         builder.Property(e => e.ToConfigId).IsRequired();
         builder.Property(e => e.DurationMins).IsRequired();
+        builder.Property(e => e.Notes).HasColumnName("notes");
 
         builder.HasIndex(e => new { e.FromConfigId, e.ToConfigId })
             .IsUnique()

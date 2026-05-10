@@ -10,6 +10,6 @@ namespace FSBS.Application.Pricing.Services;
 /// </summary>
 public record AppliedDiscount(
     Guid DiscountRuleId,
-    DiscountType DiscountType,
+    string DiscountType,
     decimal DiscountPct,
     Money DiscountAmount);

@@ -10,6 +10,7 @@ using MediatR;
 namespace FSBS.Application.Invitations.Commands;
 
 public sealed class CreateCorporateManagerInvitationHandler(
+    ICurrentUser currentUser,
     IInvitationRepository invitations,
     IOrganisationRepository organisations,
     ISqsPublisher sqs)
@@ -42,6 +43,9 @@ public sealed class CreateCorporateManagerInvitationHandler(
             TokenHash    = tokenHash,
             Status       = InvitationStatus.Pending,
             ExpiresAt    = DateTimeOffset.UtcNow.AddDays(ExpiryDays),
+            IssuedBy     = currentUser.UserId,
+            IssuedAt     = DateTimeOffset.UtcNow,
+            PersonalNote = command.PersonalNote,
         };
 
         await invitations.CreateAsync(invitation, ct);

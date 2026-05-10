@@ -5,7 +5,7 @@ namespace FSBS.Application.Common.Exceptions;
 public sealed class PricingPolicyNotFoundException(
     Guid configurationId,
     TrainingType trainingType,
-    CustomerClass customerClass)
+    string customerClass)
     : Exception(
         $"No pricing policy found for configuration {configurationId}, " +
         $"training type {trainingType}, customer class {customerClass}.");

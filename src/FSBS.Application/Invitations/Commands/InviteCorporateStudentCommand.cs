@@ -7,5 +7,5 @@ namespace FSBS.Application.Invitations.Commands;
 /// own organisation. The handler derives the OrgId from the caller's JWT rather
 /// than accepting it from the client, preventing cross-org invitation forgery.
 /// </summary>
-public record InviteCorporateStudentCommand(string InviteeEmail)
+public record InviteCorporateStudentCommand(string InviteeEmail, string? PersonalNote = null)
     : IRequest<CreateCorporateManagerInvitationResult>;

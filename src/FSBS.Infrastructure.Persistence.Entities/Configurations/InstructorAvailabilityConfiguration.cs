@@ -13,7 +13,7 @@ public class InstructorAvailabilityConfiguration : IEntityTypeConfiguration<Inst
 
         builder.Property(e => e.StartAt).IsRequired();
         builder.Property(e => e.EndAt).IsRequired();
-        builder.Property(e => e.AvailabilityType).HasColumnName("avail_type").HasConversion<string>().IsRequired();
+        builder.Property(e => e.AvailabilityType).HasColumnName("avail_type").HasColumnType("fsbs.availability_type").IsRequired();
         builder.Property(e => e.Notes).HasColumnType("text");
         builder.HasCheckConstraint("ck_instructor_availability_range", "end_at > start_at");
 

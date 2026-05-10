@@ -77,7 +77,7 @@ public static class OrganisationEndpoints
                 detail: "Amount must be greater than zero.",
                 statusCode: StatusCodes.Status400BadRequest);
 
-        if (!Enum.TryParse<PaymentMethod>(body.PaymentMethod, out var method))
+        if (!new[] { "BankTransfer", "Cheque", "Cash", "CreditNote", "Adjustment" }.Contains(body.PaymentMethod))
             return Results.Problem(
                 detail: $"Invalid payment method '{body.PaymentMethod}'.",
                 statusCode: StatusCodes.Status400BadRequest);
@@ -95,7 +95,7 @@ public static class OrganisationEndpoints
             AmountGbp = body.AmountGbp,
             PaymentDate = body.PaymentDate,
             RecordedBy = currentUser.UserId,
-            PaymentMethod = method,
+            PaymentMethod = body.PaymentMethod,
             Status = PaymentStatus.Pending,
             Reference = body.Reference?.Trim(),
             Notes = body.Notes?.Trim(),

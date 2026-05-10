@@ -25,6 +25,18 @@ public class UserProfile : AuditableEntity
     /// </summary>
     public string? PhoneNumber { get; set; }
 
+    /// <summary>Date of birth. Used for identity verification purposes.</summary>
+    public DateOnly? DateOfBirth { get; set; }
+
+    /// <summary>Pilot or cabin-crew licence number issued by the regulatory authority.</summary>
+    public string? LicenceNumber { get; set; }
+
+    /// <summary>Expiry date of the licence. Null if the licence does not expire or is not yet recorded.</summary>
+    public DateOnly? LicenceExpiry { get; set; }
+
+    /// <summary>S3 object key for the user's profile photo. Null until a photo has been uploaded.</summary>
+    public string? PhotoS3Key { get; set; }
+
     /// <summary>The <see cref="AppUser"/> this profile belongs to.</summary>
     public AppUser User { get; set; } = null!;
 }

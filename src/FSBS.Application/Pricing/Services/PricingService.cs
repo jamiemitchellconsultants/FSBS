@@ -12,7 +12,7 @@ public sealed class PricingService(IPricingPolicyRepository pricingPolicyReposit
     public async Task<PricingResult> CalculateAsync(PricingRequest request, CancellationToken ct = default)
     {
         var effectiveCustomerClass = request.BookerRole == AppRole.InternalStudent
-            ? CustomerClass.Staff
+            ? "Staff"
             : request.CustomerClass;
 
         var policy = await pricingPolicyRepository.FindApplicableAsync(
@@ -90,13 +90,13 @@ public sealed class PricingService(IPricingPolicyRepository pricingPolicyReposit
     private static bool IsEligible(DiscountRule rule, PricingRequest request) =>
         rule.DiscountType switch
         {
-            DiscountType.AdvanceBooking => CheckAdvanceBooking(rule, request),
-            DiscountType.VolumeOrgSession => CheckVolumeOrgSession(rule, request),
-            DiscountType.VolumeAdvanceBlock => CheckAdvanceBooking(rule, request),
-            DiscountType.CorporateNegotiated => request.CustomerClass == CustomerClass.Corporate,
-            DiscountType.Promotional => false,
-            DiscountType.StaffRate => false,
-            _ => false
+            "AdvanceBooking"      => CheckAdvanceBooking(rule, request),
+            "VolumeOrgSession"    => CheckVolumeOrgSession(rule, request),
+            "VolumeAdvanceBlock"  => CheckAdvanceBooking(rule, request),
+            "CorporateNegotiated" => request.CustomerClass == "Corporate",
+            "Promotional"         => false,
+            "StaffRate"           => false,
+            _                     => false
         };
 
     private static bool CheckAdvanceBooking(DiscountRule rule, PricingRequest request)

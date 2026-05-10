@@ -13,7 +13,7 @@ public class SimulatorBayConfiguration : IEntityTypeConfiguration<SimulatorBay>
 
         builder.Property(e => e.BayCode).IsRequired().HasMaxLength(20);
         builder.Property(e => e.Description).HasColumnType("text");
-        builder.Property(e => e.Status).HasConversion<string>().IsRequired();
+        builder.Property(e => e.Status).HasColumnType("fsbs.bay_status").IsRequired();
 
         builder.HasIndex(e => new { e.SimulatorUnitId, e.BayCode })
             .IsUnique()

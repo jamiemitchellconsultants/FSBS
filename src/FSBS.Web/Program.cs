@@ -34,6 +34,7 @@ builder.Services.AddScoped<SimulatorService>();
 builder.Services.AddScoped<AircraftTypeService>();
 builder.Services.AddScoped<CourseService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<UserProfileService>();
 builder.Services.AddScoped<AvailabilityHubClient>();
 
 await builder.Build().RunAsync();

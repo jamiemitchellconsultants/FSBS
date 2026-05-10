@@ -47,6 +47,13 @@ public class AppUser : AuditableEntity, ISoftDeletable, ITenantScoped
     /// </summary>
     public AppRole AppRole { get; set; }
 
+    /// <summary>
+    /// Indicates whether this user is active. Inactive users cannot authenticate
+    /// or perform any actions within the system, but their record is retained for
+    /// audit purposes. Defaults to <c>true</c> on creation.
+    /// </summary>
+    public bool IsActive { get; set; } = true;
+
     /// <inheritdoc/>
     public bool IsDeleted { get; set; }
 

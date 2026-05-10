@@ -33,7 +33,7 @@ public class Organisation : AuditableEntity, ISoftDeletable, ITenantScoped
     /// Corporate organisations typically receive negotiated rates configured
     /// on the relevant <see cref="DiscountRule"/> rows.
     /// </summary>
-    public CustomerClass CustomerClass { get; set; }
+    public string CustomerClass { get; set; } = string.Empty;
 
     /// <summary>
     /// Optional contract type descriptor (e.g. "Annual", "Ad-hoc").

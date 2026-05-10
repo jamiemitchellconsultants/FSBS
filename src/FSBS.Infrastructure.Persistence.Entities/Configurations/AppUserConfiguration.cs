@@ -16,6 +16,7 @@ public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
         builder.Property(e => e.Email).IsRequired().HasMaxLength(256);
         builder.Property(e => e.AppRole).HasConversion<string>().IsRequired();
         builder.Property(e => e.TenantId).IsRequired();
+        builder.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
 
         builder.HasIndex(e => e.CognitoSub).IsUnique().HasDatabaseName("uq_app_users_cognito_sub");
         builder.HasIndex(e => e.Email).IsUnique().HasDatabaseName("uq_app_users_email");

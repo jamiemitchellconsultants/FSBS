@@ -11,7 +11,7 @@ public class OrgMembershipConfiguration : IEntityTypeConfiguration<OrgMembership
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).HasColumnName("membership_id");
 
-        builder.Property(e => e.OrgRole).HasConversion<string>().IsRequired();
+        builder.Property(e => e.OrgRole).HasColumnType("fsbs.org_role").IsRequired();
 
         builder.HasIndex(e => new { e.UserId, e.OrgId })
             .IsUnique()

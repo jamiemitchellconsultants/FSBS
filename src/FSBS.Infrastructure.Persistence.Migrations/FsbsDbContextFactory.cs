@@ -18,6 +18,11 @@ public class FsbsDbContextFactory : IDesignTimeDbContextFactory<FsbsDbContext>
                     o.MigrationsHistoryTable("__ef_migrations_history", "fsbs");
                     o.MigrationsAssembly(typeof(FsbsDbContextFactory).Assembly.GetName().Name);
                     o.MapEnum<TrainingType>("training_type", "fsbs");
+                    o.MapEnum<InvitationStatus>("invitation_status", "fsbs");
+                    o.MapEnum<InviteeRole>("invitee_role", "fsbs");
+                    o.MapEnum<AvailabilityType>("availability_type", "fsbs");
+                    o.MapEnum<BayStatus>("bay_status", "fsbs");
+                    o.MapEnum<OrgRole>("org_role", "fsbs");
                 })
             .UseSnakeCaseNamingConvention()
             .Options;

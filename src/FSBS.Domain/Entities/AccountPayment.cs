@@ -33,7 +33,7 @@ public class AccountPayment : AuditableEntity, ISoftDeletable
     /// How the payment was made. Drives the information required at entry
     /// (e.g. bank reference for <c>BankTransfer</c>, cheque number for <c>Cheque</c>).
     /// </summary>
-    public PaymentMethod PaymentMethod { get; set; }
+    public string PaymentMethod { get; set; } = string.Empty;
 
     /// <summary>
     /// Approval state of the payment. Only <c>Verified</c> payments reduce the

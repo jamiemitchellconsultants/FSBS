@@ -47,6 +47,9 @@ public sealed class InviteCorporateStudentHandler(
             TokenHash    = tokenHash,
             Status       = InvitationStatus.Pending,
             ExpiresAt    = DateTimeOffset.UtcNow.AddDays(ExpiryDays),
+            IssuedBy     = currentUser.UserId,
+            IssuedAt     = DateTimeOffset.UtcNow,
+            PersonalNote = command.PersonalNote,
         };
 
         await invitations.CreateAsync(invitation, ct);

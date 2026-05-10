@@ -1,0 +1,261 @@
+@page "/account/profile"
+@layout MainLayout
+@attribute [Authorize]
+@inject UserProfileService ProfileSvc
+@inject ISnackbar Snackbar
+@using FSBS.Shared.UserProfiles
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>My Profile — FSBS</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-6">My Profile</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else
+{
+    <MudGrid>
+        <!-- Photo column -->
+        <MudItem xs="12" sm="3" Class="d-flex flex-column align-center">
+            <MudAvatar Style="width:120px;height:120px;font-size:2.5rem" Color="Color.Primary" Class="mb-3">
+                @if (_photoPreviewUrl is not null)
+                {
+                    <MudImage Src="@_photoPreviewUrl" Alt="Profile photo" ObjectFit="ObjectFit.Cover"
+                              Style="width:120px;height:120px;border-radius:50%" />
+                }
+                else
+                {
+                    @(_model.FirstName.Length > 0 ? _model.FirstName[0].ToString() : "?")
+                }
+            </MudAvatar>
+
+            <InputFile id="photoInput" OnChange="OnPhotoSelectedAsync" accept="image/jpeg,image/png,image/webp"
+                       style="display:none" />
+            <MudButton HtmlTag="label" Variant="Variant.Outlined" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.PhotoCamera"
+                       HtmlAttributes="@(new Dictionary<string,object>{ ["for"] = "photoInput" })">
+                Change Photo
+            </MudButton>
+
+            @if (_photoFile is not null)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                    @_photoFile.Name (@(Math.Round(_photoFile.Size / 1024.0, 1)) KB)
+                </MudText>
+            }
+            @if (_photoError is not null)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error" Class="mt-1">@_photoError</MudText>
+            }
+        </MudItem>
+
+        <!-- Form column -->
+        <MudItem xs="12" sm="9">
+            <MudPaper Elevation="2" Class="pa-6">
+                <EditForm Model="_model" OnValidSubmit="SaveAsync">
+                    <DataAnnotationsValidator />
+
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_model.FirstName" Label="First Name"
+                                          Variant="Variant.Outlined" Required="true"
+                                          For="@(() => _model.FirstName)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_model.LastName" Label="Last Name"
+                                          Variant="Variant.Outlined" Required="true"
+                                          For="@(() => _model.LastName)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_model.PhoneNumber" Label="Phone Number"
+                                          Variant="Variant.Outlined"
+                                          For="@(() => _model.PhoneNumber)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudDatePicker @bind-Date="_dateOfBirth" Label="Date of Birth"
+                                           Variant="Variant.Outlined" Editable="true"
+                                           MaxDate="@DateTime.Today.AddYears(-16)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_model.LicenceNumber" Label="Licence Number"
+                                          Variant="Variant.Outlined"
+                                          For="@(() => _model.LicenceNumber)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudDatePicker @bind-Date="_licenceExpiry" Label="Licence Expiry"
+                                           Variant="Variant.Outlined" Editable="true" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-6">
+                        <MudButton ButtonType="ButtonType.Submit"
+                                   Variant="Variant.Filled" Color="Color.Primary"
+                                   Disabled="_saving"
+                                   StartIcon="@Icons.Material.Filled.Save">
+                            @(_saving ? "Saving…" : "Save Changes")
+                        </MudButton>
+                    </MudStack>
+                </EditForm>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private ProfileFormModel _model = new();
+    private bool _loading = true;
+    private bool _saving;
+
+    private IBrowserFile? _photoFile;
+    private string? _photoPreviewUrl;
+    private string? _photoError;
+    private string? _pendingPhotoS3Key;
+
+    // MudDatePicker binds DateTime? so we bridge to DateOnly?
+    private DateTime? _dateOfBirth
+    {
+        get => _model.DateOfBirth.HasValue
+            ? _model.DateOfBirth.Value.ToDateTime(TimeOnly.MinValue)
+            : null;
+        set => _model.DateOfBirth = value.HasValue
+            ? DateOnly.FromDateTime(value.Value)
+            : null;
+    }
+
+    private DateTime? _licenceExpiry
+    {
+        get => _model.LicenceExpiry.HasValue
+            ? _model.LicenceExpiry.Value.ToDateTime(TimeOnly.MinValue)
+            : null;
+        set => _model.LicenceExpiry = value.HasValue
+            ? DateOnly.FromDateTime(value.Value)
+            : null;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var dto = await ProfileSvc.GetMyProfileAsync();
+            if (dto is not null)
+            {
+                _model.FirstName     = dto.FirstName;
+                _model.LastName      = dto.LastName;
+                _model.PhoneNumber   = dto.PhoneNumber;
+                _model.DateOfBirth   = dto.DateOfBirth;
+                _model.LicenceNumber = dto.LicenceNumber;
+                _model.LicenceExpiry = dto.LicenceExpiry;
+                _model.PhotoS3Key    = dto.PhotoS3Key;
+                _photoPreviewUrl     = dto.PhotoUrl;
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnPhotoSelectedAsync(InputFileChangeEventArgs e)
+    {
+        _photoError = null;
+        _photoFile  = null;
+        _pendingPhotoS3Key = null;
+
+        var file = e.File;
+        var allowed = new[] { "image/jpeg", "image/png", "image/webp" };
+        if (!allowed.Contains(file.ContentType))
+        {
+            _photoError = "Please select a JPEG, PNG, or WebP image.";
+            return;
+        }
+
+        const long maxBytes = 5 * 1024 * 1024; // 5 MB
+        if (file.Size > maxBytes)
+        {
+            _photoError = "Photo must be smaller than 5 MB.";
+            return;
+        }
+
+        _photoFile = file;
+
+        // Show local preview immediately
+        var previewStream = file.OpenReadStream(maxBytes);
+        var buffer = new byte[file.Size];
+        _ = await previewStream.ReadAsync(buffer);
+        var base64 = Convert.ToBase64String(buffer);
+        _photoPreviewUrl = $"data:{file.ContentType};base64,{base64}";
+
+        // Upload directly to S3 via pre-signed URL
+        try
+        {
+            var urlResponse = await ProfileSvc.GetPhotoUploadUrlAsync(file.ContentType);
+            if (urlResponse is null)
+            {
+                _photoError = "Could not obtain upload URL. Please try again.";
+                return;
+            }
+
+            using var uploadStream = file.OpenReadStream(maxBytes);
+            await ProfileSvc.UploadPhotoToS3Async(urlResponse.UploadUrl, uploadStream, file.ContentType);
+            _pendingPhotoS3Key = urlResponse.ObjectKey;
+        }
+        catch
+        {
+            _photoError = "Photo upload failed. Please try again.";
+            _photoPreviewUrl = null;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            var request = new UpdateUserProfileRequest(
+                _model.FirstName,
+                _model.LastName,
+                _model.PhoneNumber,
+                _model.DateOfBirth,
+                _model.LicenceNumber,
+                _model.LicenceExpiry,
+                _pendingPhotoS3Key ?? _model.PhotoS3Key);
+
+            await ProfileSvc.UpdateMyProfileAsync(request);
+            _pendingPhotoS3Key = null;
+            Snackbar.Add("Profile saved.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to save profile. Please try again.", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private sealed class ProfileFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string FirstName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(100)]
+        public string LastName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.MaxLength(30)]
+        public string? PhoneNumber { get; set; }
+
+        public DateOnly? DateOfBirth { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(50)]
+        public string? LicenceNumber { get; set; }
+
+        public DateOnly? LicenceExpiry { get; set; }
+
+        public string? PhotoS3Key { get; set; }
+    }
+}

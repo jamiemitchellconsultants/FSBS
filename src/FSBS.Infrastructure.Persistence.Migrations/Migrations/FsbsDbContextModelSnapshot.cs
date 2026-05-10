@@ -23,6 +23,11 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                 .HasAnnotation("ProductVersion", "10.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "fsbs", "availability_type", new[] { "available", "leave", "other" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "fsbs", "bay_status", new[] { "operational", "maintenance", "decommissioned" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "fsbs", "invitation_status", new[] { "pending", "claimed", "expired", "revoked" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "fsbs", "invitee_role", new[] { "corporate_manager", "corporate_student" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "fsbs", "org_role", new[] { "manager", "student" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "fsbs", "training_type", new[] { "flight_deck", "cabin_crew" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
@@ -69,7 +74,8 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
                     b.Property<string>("PaymentMethod")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("payment_method");
 
                     b.Property<Guid>("RecordedBy")
@@ -83,7 +89,8 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("status");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
@@ -121,6 +128,9 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
                     b.HasIndex("OrgId")
                         .HasDatabaseName("ix_account_payments_org_id");
+
+                    b.HasIndex("PaymentMethod")
+                        .HasDatabaseName("ix_account_payments_payment_method");
 
                     b.HasIndex("RecordedBy")
                         .HasDatabaseName("ix_account_payments_recorded_by");
@@ -188,6 +198,51 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .HasDatabaseName("ix_account_statements_org_id");
 
                     b.ToTable("account_statements", "fsbs");
+                });
+
+            modelBuilder.Entity("FSBS.Domain.Entities.AccountStatusRef", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
+
+                    b.Property<bool>("AllowsBooking")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("allows_booking");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("label");
+
+                    b.HasKey("Code")
+                        .HasName("pk_account_statuses");
+
+                    b.ToTable("account_statuses", "fsbs");
+
+                    b.HasData(
+                        new
+                        {
+                            Code = "Active",
+                            AllowsBooking = true,
+                            Label = "Active"
+                        },
+                        new
+                        {
+                            Code = "Suspended",
+                            AllowsBooking = false,
+                            Label = "Suspended"
+                        },
+                        new
+                        {
+                            Code = "Closed",
+                            AllowsBooking = false,
+                            Label = "Closed"
+                        });
                 });
 
             modelBuilder.Entity("FSBS.Domain.Entities.AircraftType", b =>
@@ -283,6 +338,12 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("email");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
@@ -564,7 +625,8 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
                     b.Property<string>("DiscountType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("discount_type");
 
                     b.HasKey("Id")
@@ -575,6 +637,9 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
                     b.HasIndex("DiscountRuleId")
                         .HasDatabaseName("ix_booking_discounts_discount_rule_id");
+
+                    b.HasIndex("DiscountType")
+                        .HasDatabaseName("ix_booking_discounts_discount_type");
 
                     b.ToTable("booking_discounts", "fsbs", t =>
                         {
@@ -815,6 +880,51 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FSBS.Domain.Entities.CustomerClassRef", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("label");
+
+                    b.HasKey("Code")
+                        .HasName("pk_customer_classes");
+
+                    b.ToTable("customer_classes", "fsbs");
+
+                    b.HasData(
+                        new
+                        {
+                            Code = "Standard",
+                            IsActive = true,
+                            Label = "Standard"
+                        },
+                        new
+                        {
+                            Code = "Staff",
+                            IsActive = true,
+                            Label = "Staff"
+                        },
+                        new
+                        {
+                            Code = "Corporate",
+                            IsActive = true,
+                            Label = "Corporate"
+                        });
+                });
+
             modelBuilder.Entity("FSBS.Domain.Entities.DiscountRule", b =>
                 {
                     b.Property<Guid>("Id")
@@ -837,7 +947,8 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
                     b.Property<string>("DiscountType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("discount_type");
 
                     b.Property<bool>("IsCombinable")
@@ -877,12 +988,78 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     b.HasKey("Id")
                         .HasName("pk_discount_rules");
 
+                    b.HasIndex("DiscountType")
+                        .HasDatabaseName("ix_discount_rules_discount_type");
+
                     b.HasIndex("PricingPolicyId")
                         .HasDatabaseName("ix_discount_rules_pricing_policy_id");
 
                     b.ToTable("discount_rules", "fsbs", t =>
                         {
                             t.HasCheckConstraint("ck_discount_rules_pct", "discount_pct >= 0 AND discount_pct <= 100");
+                        });
+                });
+
+            modelBuilder.Entity("FSBS.Domain.Entities.DiscountTypeRef", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("label");
+
+                    b.HasKey("Code")
+                        .HasName("pk_discount_types");
+
+                    b.ToTable("discount_types", "fsbs");
+
+                    b.HasData(
+                        new
+                        {
+                            Code = "VolumeAdvanceBlock",
+                            IsActive = true,
+                            Label = "Volume Advance Block"
+                        },
+                        new
+                        {
+                            Code = "VolumeOrgSession",
+                            IsActive = true,
+                            Label = "Volume Org Session"
+                        },
+                        new
+                        {
+                            Code = "AdvanceBooking",
+                            IsActive = true,
+                            Label = "Advance Booking"
+                        },
+                        new
+                        {
+                            Code = "CorporateNegotiated",
+                            IsActive = true,
+                            Label = "Corporate Negotiated"
+                        },
+                        new
+                        {
+                            Code = "StaffRate",
+                            IsActive = true,
+                            Label = "Staff Rate"
+                        },
+                        new
+                        {
+                            Code = "Promotional",
+                            IsActive = true,
+                            Label = "Promotional"
                         });
                 });
 
@@ -1040,9 +1217,8 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("avail_id");
 
-                    b.Property<string>("AvailabilityType")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<AvailabilityType>("AvailabilityType")
+                        .HasColumnType("fsbs.availability_type")
                         .HasColumnName("avail_type");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -1132,14 +1308,25 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("invitee_email");
 
-                    b.Property<string>("InviteeRole")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<InviteeRole>("InviteeRole")
+                        .HasColumnType("fsbs.invitee_role")
                         .HasColumnName("invitee_role");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at");
+
+                    b.Property<Guid>("IssuedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issued_by");
 
                     b.Property<Guid>("OrgId")
                         .HasColumnType("uuid")
                         .HasColumnName("org_id");
+
+                    b.Property<string>("PersonalNote")
+                        .HasColumnType("text")
+                        .HasColumnName("personal_note");
 
                     b.Property<DateTimeOffset?>("RevokedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1149,9 +1336,8 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("revoked_by");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<InvitationStatus>("Status")
+                        .HasColumnType("fsbs.invitation_status")
                         .HasColumnName("status");
 
                     b.Property<string>("TokenHash")
@@ -1178,8 +1364,17 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     b.HasKey("Id")
                         .HasName("pk_invitations");
 
+                    b.HasIndex("ClaimedBy")
+                        .HasDatabaseName("ix_invitations_claimed_by");
+
+                    b.HasIndex("IssuedBy")
+                        .HasDatabaseName("ix_invitations_issued_by");
+
                     b.HasIndex("OrgId")
                         .HasDatabaseName("ix_invitations_org_id");
+
+                    b.HasIndex("RevokedBy")
+                        .HasDatabaseName("ix_invitations_revoked_by");
 
                     b.HasIndex("TokenHash")
                         .IsUnique()
@@ -1452,6 +1647,10 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -1531,7 +1730,8 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("status");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
@@ -1554,6 +1754,9 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     b.HasIndex("OrgId")
                         .IsUnique()
                         .HasDatabaseName("ix_org_accounts_org_id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_org_accounts_status");
 
                     b.ToTable("org_accounts", "fsbs", t =>
                         {
@@ -1584,9 +1787,8 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("org_id");
 
-                    b.Property<string>("OrgRole")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<OrgRole>("OrgRole")
+                        .HasColumnType("fsbs.org_role")
                         .HasColumnName("org_role");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
@@ -1653,7 +1855,8 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
                     b.Property<string>("CustomerClass")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("customer_class");
 
                     b.Property<bool>("IsActive")
@@ -1692,6 +1895,9 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_organisations");
+
+                    b.HasIndex("CustomerClass")
+                        .HasDatabaseName("ix_organisations_customer_class");
 
                     b.ToTable("organisations", "fsbs", t =>
                         {
@@ -1753,6 +1959,63 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     b.ToTable("payment_allocations", "fsbs");
                 });
 
+            modelBuilder.Entity("FSBS.Domain.Entities.PaymentMethodRef", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("label");
+
+                    b.HasKey("Code")
+                        .HasName("pk_payment_methods");
+
+                    b.ToTable("payment_methods", "fsbs");
+
+                    b.HasData(
+                        new
+                        {
+                            Code = "BankTransfer",
+                            IsActive = true,
+                            Label = "Bank Transfer"
+                        },
+                        new
+                        {
+                            Code = "Cheque",
+                            IsActive = true,
+                            Label = "Cheque"
+                        },
+                        new
+                        {
+                            Code = "Cash",
+                            IsActive = true,
+                            Label = "Cash"
+                        },
+                        new
+                        {
+                            Code = "CreditNote",
+                            IsActive = true,
+                            Label = "Credit Note"
+                        },
+                        new
+                        {
+                            Code = "Adjustment",
+                            IsActive = true,
+                            Label = "Adjustment"
+                        });
+                });
+
             modelBuilder.Entity("FSBS.Domain.Entities.PricingPolicy", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1774,7 +2037,8 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
                     b.Property<string>("CustomerClass")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("customer_class");
 
                     b.Property<DateOnly>("EffectiveFrom")
@@ -1817,6 +2081,9 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
                     b.HasIndex("ConfigurationId")
                         .HasDatabaseName("ix_pricing_policies_configuration_id");
+
+                    b.HasIndex("CustomerClass")
+                        .HasDatabaseName("ix_pricing_policies_customer_class");
 
                     b.ToTable("pricing_policies", "fsbs");
                 });
@@ -2057,6 +2324,10 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     b.Property<Guid>("FromConfigId")
                         .HasColumnType("uuid")
                         .HasColumnName("from_config_id");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
 
                     b.Property<Guid>("ToConfigId")
                         .HasColumnType("uuid")
@@ -2336,9 +2607,8 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("simulator_unit_id");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<BayStatus>("Status")
+                        .HasColumnType("fsbs.bay_status")
                         .HasColumnName("status");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
@@ -2550,6 +2820,10 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
+                    b.Property<DateOnly?>("DateOfBirth")
+                        .HasColumnType("date")
+                        .HasColumnName("date_of_birth");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -2562,10 +2836,24 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("last_name");
 
+                    b.Property<DateOnly?>("LicenceExpiry")
+                        .HasColumnType("date")
+                        .HasColumnName("licence_expiry");
+
+                    b.Property<string>("LicenceNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("licence_number");
+
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)")
                         .HasColumnName("phone_number");
+
+                    b.Property<string>("PhotoS3Key")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("photo_s3_key");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -2602,6 +2890,13 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_account_payments_organisations_org_id");
+
+                    b.HasOne("FSBS.Domain.Entities.PaymentMethodRef", null)
+                        .WithMany()
+                        .HasForeignKey("PaymentMethod")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_account_payments_payment_methods_payment_method");
 
                     b.HasOne("FSBS.Domain.Entities.AppUser", null)
                         .WithMany()
@@ -2676,6 +2971,13 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_booking_discounts_discount_rules_discount_rule_id");
 
+                    b.HasOne("FSBS.Domain.Entities.DiscountTypeRef", null)
+                        .WithMany()
+                        .HasForeignKey("DiscountType")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_booking_discounts_discount_types_discount_type");
+
                     b.Navigation("Booking");
 
                     b.Navigation("DiscountRule");
@@ -2736,6 +3038,13 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
             modelBuilder.Entity("FSBS.Domain.Entities.DiscountRule", b =>
                 {
+                    b.HasOne("FSBS.Domain.Entities.DiscountTypeRef", null)
+                        .WithMany()
+                        .HasForeignKey("DiscountType")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_discount_rules_discount_types_discount_type");
+
                     b.HasOne("FSBS.Domain.Entities.PricingPolicy", "PricingPolicy")
                         .WithMany("DiscountRules")
                         .HasForeignKey("PricingPolicyId")
@@ -2799,12 +3108,31 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
 
             modelBuilder.Entity("FSBS.Domain.Entities.Invitation", b =>
                 {
+                    b.HasOne("FSBS.Domain.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("ClaimedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_invitations_claimed_by");
+
+                    b.HasOne("FSBS.Domain.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("IssuedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_invitations_issued_by");
+
                     b.HasOne("FSBS.Domain.Entities.Organisation", "Organisation")
                         .WithMany("Invitations")
                         .HasForeignKey("OrgId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_invitations_organisations_org_id");
+
+                    b.HasOne("FSBS.Domain.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("RevokedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_invitations_revoked_by");
 
                     b.Navigation("Organisation");
                 });
@@ -2882,6 +3210,13 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_org_accounts_organisations_org_id");
 
+                    b.HasOne("FSBS.Domain.Entities.AccountStatusRef", null)
+                        .WithMany()
+                        .HasForeignKey("Status")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_org_accounts_account_statuses_status");
+
                     b.Navigation("Organisation");
                 });
 
@@ -2904,6 +3239,16 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     b.Navigation("Organisation");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FSBS.Domain.Entities.Organisation", b =>
+                {
+                    b.HasOne("FSBS.Domain.Entities.CustomerClassRef", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerClass")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organisations_customer_classes_customer_class");
                 });
 
             modelBuilder.Entity("FSBS.Domain.Entities.PaymentAllocation", b =>
@@ -2935,6 +3280,13 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_pricing_policies_simulator_configurations_configuration_id");
+
+                    b.HasOne("FSBS.Domain.Entities.CustomerClassRef", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerClass")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pricing_policies_customer_classes_customer_class");
 
                     b.Navigation("Configuration");
                 });

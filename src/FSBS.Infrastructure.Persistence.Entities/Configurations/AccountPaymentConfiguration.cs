@@ -15,8 +15,9 @@ public class AccountPaymentConfiguration : IEntityTypeConfiguration<AccountPayme
         builder.Property(e => e.AmountGbp).HasPrecision(12, 2).IsRequired();
         builder.Property(e => e.PaymentDate).IsRequired();
         builder.Property(e => e.RecordedBy).IsRequired();
-        builder.Property(e => e.PaymentMethod).HasConversion<string>().IsRequired();
-        builder.Property(e => e.Status).HasConversion<string>().IsRequired();
+        builder.Property(e => e.PaymentMethod).HasMaxLength(50).IsRequired();
+        builder.HasOne<PaymentMethodRef>().WithMany().HasForeignKey(e => e.PaymentMethod).OnDelete(DeleteBehavior.Restrict);
+        builder.Property(e => e.Status).HasConversion<string>().HasMaxLength(50).IsRequired();
         builder.Property(e => e.Reference).HasMaxLength(200);
         builder.Property(e => e.Notes).HasMaxLength(1000);
         builder.Property(e => e.VoidReason).HasMaxLength(500);

@@ -9,15 +9,10 @@ namespace FSBS.Application.Pricing.Services;
 public record PricingRequest(
     Guid ConfigurationId,
     TrainingType TrainingType,
-    CustomerClass CustomerClass,
+    string CustomerClass,
     AppRole BookerRole,
     int DurationMins,
     int StudentCount,
     DateTimeOffset SlotStart,
     Guid? OrgId,
-    /// <summary>
-    /// Number of confirmed sessions already booked by this organisation.
-    /// Used to evaluate VolumeOrgSession discount eligibility.
-    /// Pass 0 for non-corporate bookings.
-    /// </summary>
     int OrgConfirmedSessionCount = 0);

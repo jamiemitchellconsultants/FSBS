@@ -29,7 +29,7 @@ public class DiscountRule : AuditableEntity, ISoftDeletable
     /// negotiated). Determines which threshold fields in <see cref="ThresholdJson"/>
     /// are evaluated.
     /// </summary>
-    public DiscountType DiscountType { get; set; }
+    public string DiscountType { get; set; } = string.Empty;
 
     /// <summary>
     /// Evaluation order when multiple rules match. Higher number wins.

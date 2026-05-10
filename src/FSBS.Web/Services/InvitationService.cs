@@ -19,11 +19,12 @@ public sealed class InvitationService(HttpClient http)
 
     public async Task<IssueInvitationResult> InviteStudentAsync(
         string inviteeEmail,
+        string? personalNote = null,
         CancellationToken ct = default)
     {
         var response = await http.PostAsJsonAsync(
             "v1/invitations/students",
-            new { inviteeEmail },
+            new { inviteeEmail, personalNote },
             ct);
 
         if (response.StatusCode == HttpStatusCode.Conflict)
@@ -40,11 +41,12 @@ public sealed class InvitationService(HttpClient http)
         string inviteeEmail,
         Guid orgId,
         string role,
+        string? personalNote = null,
         CancellationToken ct = default)
     {
         var response = await http.PostAsJsonAsync(
             "v1/invitations",
-            new { inviteeEmail, orgId },
+            new { inviteeEmail, orgId, personalNote },
             ct);
 
         if (response.StatusCode == HttpStatusCode.Conflict)

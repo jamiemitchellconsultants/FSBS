@@ -13,7 +13,8 @@ public class OrgAccountConfiguration : IEntityTypeConfiguration<OrgAccount>
         builder.Property(e => e.Id).HasColumnName("account_id");
 
         builder.Property(e => e.CreditLimitGbp).HasPrecision(12, 2).IsRequired();
-        builder.Property(e => e.Status).HasConversion<string>().IsRequired();
+        builder.Property(e => e.Status).HasMaxLength(50).IsRequired();
+        builder.HasOne<AccountStatusRef>().WithMany().HasForeignKey(e => e.Status).OnDelete(DeleteBehavior.Restrict);
         builder.Property(e => e.PaymentTermsDays).IsRequired().HasDefaultValue(30);
         builder.HasCheckConstraint("ck_org_accounts_payment_terms", "payment_terms_days > 0");
 

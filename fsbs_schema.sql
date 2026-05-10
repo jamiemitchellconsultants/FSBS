@@ -77,24 +77,29 @@ CREATE TYPE enrolment_status AS ENUM (
 );
 
 CREATE TYPE invitation_status AS ENUM (
-    'Pending',
-    'Claimed',
-    'Expired',
-    'Revoked'
+    'pending',
+    'claimed',
+    'expired',
+    'revoked'
 );
 
 CREATE TYPE invitee_role AS ENUM (
-    'CorporateManager',
-    'CorporateStudent'
+    'corporate_manager',
+    'corporate_student'
 );
 
-CREATE TYPE payment_method AS ENUM (
-    'BankTransfer',
-    'Cheque',
-    'Cash',
-    'CreditNote',
-    'Adjustment'
+CREATE TABLE payment_methods (
+    code        varchar(50)     NOT NULL,
+    label       varchar(100)    NOT NULL,
+    is_active   boolean         NOT NULL DEFAULT true,
+    CONSTRAINT pk_payment_methods PRIMARY KEY (code)
 );
+INSERT INTO payment_methods (code, label) VALUES
+    ('BankTransfer', 'Bank Transfer'),
+    ('Cheque',       'Cheque'),
+    ('Cash',         'Cash'),
+    ('CreditNote',   'Credit Note'),
+    ('Adjustment',   'Adjustment');
 
 CREATE TYPE payment_status AS ENUM (
     'Pending',
@@ -102,38 +107,53 @@ CREATE TYPE payment_status AS ENUM (
     'Voided'
 );
 
-CREATE TYPE account_status AS ENUM (
-    'Active',
-    'Suspended',
-    'Closed'
+CREATE TABLE account_statuses (
+    code            varchar(50)     NOT NULL,
+    label           varchar(100)    NOT NULL,
+    allows_booking  boolean         NOT NULL DEFAULT true,
+    CONSTRAINT pk_account_statuses PRIMARY KEY (code)
 );
+INSERT INTO account_statuses (code, label, allows_booking) VALUES
+    ('Active',    'Active',    true),
+    ('Suspended', 'Suspended', false),
+    ('Closed',    'Closed',    false);
 
 CREATE TYPE bay_status AS ENUM (
-    'Operational',
-    'Maintenance',
-    'Decommissioned'
+    'operational',
+    'maintenance',
+    'decommissioned'
 );
 
 CREATE TYPE availability_type AS ENUM (
-    'Available',
-    'Leave',
-    'Other'
+    'available',
+    'leave',
+    'other'
 );
 
-CREATE TYPE discount_type AS ENUM (
-    'VolumeAdvanceBlock',
-    'VolumeOrgSession',
-    'AdvanceBooking',
-    'CorporateNegotiated',
-    'StaffRate',
-    'Promotional'
+CREATE TABLE discount_types (
+    code        varchar(50)     NOT NULL,
+    label       varchar(100)    NOT NULL,
+    is_active   boolean         NOT NULL DEFAULT true,
+    CONSTRAINT pk_discount_types PRIMARY KEY (code)
 );
+INSERT INTO discount_types (code, label) VALUES
+    ('VolumeAdvanceBlock',  'Volume Advance Block'),
+    ('VolumeOrgSession',    'Volume Org Session'),
+    ('AdvanceBooking',      'Advance Booking'),
+    ('CorporateNegotiated', 'Corporate Negotiated'),
+    ('StaffRate',           'Staff Rate'),
+    ('Promotional',         'Promotional');
 
-CREATE TYPE customer_class AS ENUM (
-    'Standard',
-    'Staff',
-    'Corporate'
+CREATE TABLE customer_classes (
+    code        varchar(50)     NOT NULL,
+    label       varchar(100)    NOT NULL,
+    is_active   boolean         NOT NULL DEFAULT true,
+    CONSTRAINT pk_customer_classes PRIMARY KEY (code)
 );
+INSERT INTO customer_classes (code, label) VALUES
+    ('Standard',  'Standard'),
+    ('Staff',     'Staff'),
+    ('Corporate', 'Corporate');
 
 CREATE TYPE approval_decision AS ENUM (
     'Pending',
@@ -157,8 +177,8 @@ CREATE TYPE invoice_status AS ENUM (
 );
 
 CREATE TYPE org_role AS ENUM (
-    'Manager',
-    'Student'
+    'manager',
+    'student'
 );
 
 -- =============================================================================
@@ -242,13 +262,14 @@ CREATE TABLE organisations (
     credit_limit_gbp    numeric(12,2)   NOT NULL DEFAULT 0,
     is_active           boolean         NOT NULL DEFAULT true,
     billing_email       varchar(255)    NOT NULL,
-    customer_class      customer_class  NOT NULL DEFAULT 'Standard',
+    customer_class      varchar(50)     NOT NULL DEFAULT 'Standard',
     is_deleted          boolean         NOT NULL DEFAULT false,
     created_at          timestamptz     NOT NULL DEFAULT now(),
     updated_at          timestamptz     NOT NULL DEFAULT now(),
     created_by          uuid            NULL,
     updated_by          uuid            NULL,
     CONSTRAINT pk_organisations PRIMARY KEY (org_id),
+    CONSTRAINT fk_organisations_customer_class FOREIGN KEY (customer_class) REFERENCES customer_classes (code) ON DELETE RESTRICT,
     CONSTRAINT ck_organisations_credit_limit CHECK (credit_limit_gbp >= 0)
 );
 
@@ -286,12 +307,13 @@ CREATE TABLE org_accounts (
     credit_limit_gbp        numeric(12,2)   NOT NULL DEFAULT 0,
     current_balance_gbp     numeric(12,2)   NOT NULL DEFAULT 0,
     payment_terms_days      integer         NOT NULL DEFAULT 30,
-    status                  account_status  NOT NULL DEFAULT 'Active',
+    status                  varchar(50)     NOT NULL DEFAULT 'Active',
     created_at              timestamptz     NOT NULL DEFAULT now(),
     updated_at              timestamptz     NOT NULL DEFAULT now(),
     created_by              uuid            NULL,
     updated_by              uuid            NULL,
     CONSTRAINT pk_org_accounts PRIMARY KEY (account_id),
+    CONSTRAINT fk_org_accounts_status FOREIGN KEY (status) REFERENCES account_statuses (code) ON DELETE RESTRICT,
     CONSTRAINT fk_org_accounts_org FOREIGN KEY (org_id)
         REFERENCES organisations (org_id) ON DELETE CASCADE,
     CONSTRAINT uq_org_accounts_org_id UNIQUE (org_id),
@@ -304,9 +326,9 @@ CREATE TABLE org_accounts (
 CREATE TABLE account_payments (
     payment_id          uuid            NOT NULL DEFAULT uuid_generate_v4(),
     org_id              uuid            NOT NULL,
-    account_id          uuid            NOT NULL,
+    org_account_id      uuid            NOT NULL,
     amount_gbp          numeric(12,2)   NOT NULL,
-    payment_method      payment_method  NOT NULL,
+    payment_method      varchar(50)     NOT NULL,
     payment_date        date            NOT NULL,
     reference           character varying(200) NULL,
     notes               text            NULL,
@@ -321,9 +343,10 @@ CREATE TABLE account_payments (
     created_by          uuid            NULL,
     updated_by          uuid            NULL,
     CONSTRAINT pk_account_payments PRIMARY KEY (payment_id),
+    CONSTRAINT fk_account_payments_payment_method FOREIGN KEY (payment_method) REFERENCES payment_methods (code) ON DELETE RESTRICT,
     CONSTRAINT fk_account_payments_org FOREIGN KEY (org_id)
         REFERENCES organisations (org_id),
-    CONSTRAINT fk_account_payments_account FOREIGN KEY (account_id)
+    CONSTRAINT fk_account_payments_account FOREIGN KEY (org_account_id)
         REFERENCES org_accounts (account_id),
     CONSTRAINT fk_account_payments_recorded_by FOREIGN KEY (recorded_by)
         REFERENCES app_users (user_id),
@@ -388,19 +411,19 @@ CREATE TABLE invitations (
         REFERENCES app_users (user_id) ON DELETE SET NULL,
     CONSTRAINT uq_invitations_token_hash UNIQUE (token_hash),
     CONSTRAINT ck_invitations_claimed CHECK (
-        (status = 'Claimed' AND claimed_by IS NOT NULL AND claimed_at IS NOT NULL)
-        OR (status != 'Claimed')
+        (status = 'claimed' AND claimed_by IS NOT NULL AND claimed_at IS NOT NULL)
+        OR (status != 'claimed')
     ),
     CONSTRAINT ck_invitations_revoked CHECK (
-        (status = 'Revoked' AND revoked_by IS NOT NULL AND revoked_at IS NOT NULL)
-        OR (status != 'Revoked')
+        (status = 'revoked' AND revoked_by IS NOT NULL AND revoked_at IS NOT NULL)
+        OR (status != 'revoked')
     )
 );
 
 -- Active invitations: prevent duplicate pending invites to same email+org
 CREATE UNIQUE INDEX uq_invitations_pending_email_org
     ON invitations (invitee_email, org_id)
-    WHERE status = 'Pending';
+    WHERE status = 'pending';
 
 CREATE INDEX ix_invitations_org_id ON invitations (org_id);
 CREATE INDEX ix_invitations_status ON invitations (status);
@@ -576,7 +599,7 @@ CREATE TABLE pricing_policies (
     policy_id               uuid            NOT NULL DEFAULT uuid_generate_v4(),
     configuration_id       uuid            NOT NULL,
     training_type           training_type   NOT NULL,
-    customer_class          customer_class  NOT NULL,
+    customer_class          varchar(50)     NOT NULL,
     hourly_rate_gbp         numeric(10,2)   NOT NULL,
     effective_from          date            NOT NULL,
     effective_to            date            NULL,
@@ -586,6 +609,7 @@ CREATE TABLE pricing_policies (
     created_by              uuid            NULL,
     updated_by              uuid            NULL,
     CONSTRAINT pk_pricing_policies PRIMARY KEY (policy_id),
+    CONSTRAINT fk_pricing_policies_customer_class FOREIGN KEY (customer_class) REFERENCES customer_classes (code) ON DELETE RESTRICT,
     CONSTRAINT fk_pricing_policies_config FOREIGN KEY (configuration_id)
         REFERENCES simulator_configurations (config_id),
     CONSTRAINT ck_pricing_policies_rate CHECK (hourly_rate_gbp >= 0),
@@ -600,7 +624,7 @@ CREATE INDEX ix_pricing_policies_config ON pricing_policies (configuration_id, t
 CREATE TABLE discount_rules (
     discount_rule_id    uuid            NOT NULL DEFAULT uuid_generate_v4(),
     pricing_policy_id   uuid            NOT NULL,
-    discount_type       discount_type   NOT NULL,
+    discount_type       varchar(50)     NOT NULL,
     priority            integer         NOT NULL DEFAULT 100,
     discount_pct        numeric(5,2)    NOT NULL,
     is_combinable       boolean         NOT NULL DEFAULT false,
@@ -611,6 +635,7 @@ CREATE TABLE discount_rules (
     created_by          uuid            NULL,
     updated_by          uuid            NULL,
     CONSTRAINT pk_discount_rules PRIMARY KEY (discount_rule_id),
+    CONSTRAINT fk_discount_rules_discount_type FOREIGN KEY (discount_type) REFERENCES discount_types (code) ON DELETE RESTRICT,
     CONSTRAINT fk_discount_rules_policy FOREIGN KEY (pricing_policy_id)
         REFERENCES pricing_policies (policy_id) ON DELETE CASCADE,
     CONSTRAINT ck_discount_rules_pct CHECK (discount_pct >= 0 AND discount_pct <= 100)
@@ -804,7 +829,7 @@ CREATE TABLE bookings (
     budget_code         character varying(100) NULL,
     -- Pricing snapshot (locked at Confirmed; never recalculated after)
     gross_price_gbp     numeric(12,2)   NULL,
-    discount_pct        numeric(5,2)    NOT NULL DEFAULT 0,
+    discount_pct        numeric(5,2)    NULL,
     net_price_gbp       numeric(12,2)   NULL,
     -- Idempotency
     idempotency_key     uuid            NOT NULL,
@@ -826,9 +851,9 @@ CREATE TABLE bookings (
         REFERENCES organisations (org_id) ON DELETE SET NULL,
     CONSTRAINT uq_bookings_idempotency_key UNIQUE (idempotency_key),
     CONSTRAINT ck_bookings_fd_capacity
-        CHECK (training_type != 'FlightDeck' OR student_count <= 4),
+        CHECK (training_type != 'flight_deck' OR student_count <= 4),
     CONSTRAINT ck_bookings_cc_capacity
-        CHECK (training_type != 'CabinCrew' OR student_count <= 10),
+        CHECK (training_type != 'cabin_crew' OR student_count <= 10),
     CONSTRAINT ck_bookings_student_count CHECK (student_count >= 1),
     CONSTRAINT ck_bookings_discount_pct CHECK (discount_pct >= 0 AND discount_pct <= 100),
     CONSTRAINT ck_bookings_price CHECK (
@@ -969,12 +994,13 @@ CREATE TABLE booking_discounts (
     discount_id         uuid            NOT NULL DEFAULT uuid_generate_v4(),
     booking_id          uuid            NOT NULL,
     discount_rule_id    uuid            NULL,  -- NULL for manual/staff-rate discounts
-    discount_type       discount_type   NOT NULL,
+    discount_type       varchar(50)     NOT NULL,
     discount_pct        numeric(5,2)    NOT NULL,
     amount_gbp          numeric(12,2)   NOT NULL,
     created_at          timestamptz     NOT NULL DEFAULT now(),
     -- Immutable: no updated_at, no is_deleted
     CONSTRAINT pk_booking_discounts PRIMARY KEY (discount_id),
+    CONSTRAINT fk_booking_discounts_discount_type FOREIGN KEY (discount_type) REFERENCES discount_types (code) ON DELETE RESTRICT,
     CONSTRAINT fk_booking_discounts_booking FOREIGN KEY (booking_id)
         REFERENCES bookings (booking_id) ON DELETE CASCADE,
     CONSTRAINT fk_booking_discounts_rule FOREIGN KEY (discount_rule_id)

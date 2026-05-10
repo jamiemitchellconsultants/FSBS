@@ -51,9 +51,9 @@ public static class PricingEndpoints
         // Determine customer class from the caller's role.
         var customerClass = currentUser.Role switch
         {
-            AppRole.CorporateManager or AppRole.CorporateStudent => CustomerClass.Corporate,
-            AppRole.InternalStudent                              => CustomerClass.Staff,
-            _                                                    => CustomerClass.Standard,
+            AppRole.CorporateManager or AppRole.CorporateStudent => "Corporate",
+            AppRole.InternalStudent                              => "Staff",
+            _                                                    => "Standard",
         };
 
         var request = new PricingRequest(

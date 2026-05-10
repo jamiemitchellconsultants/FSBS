@@ -11,6 +11,7 @@ using FSBS.Infrastructure.Messaging;
 using FSBS.Infrastructure.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
 namespace FSBS.Infrastructure;
@@ -64,7 +65,22 @@ public static class InfrastructureServiceExtensions
 
         // S3
         services.Configure<S3Settings>(configuration.GetSection("S3"));
-        services.AddSingleton<IAmazonS3>(_ => new AmazonS3Client(region));
+        services.AddSingleton<IAmazonS3>(sp =>
+        {
+            var s3Settings = sp.GetRequiredService<IOptions<S3Settings>>().Value;
+            if (!string.IsNullOrWhiteSpace(s3Settings.ServiceUrl))
+            {
+                return new AmazonS3Client(
+                    "test", "test",
+                    new AmazonS3Config
+                    {
+                        ServiceURL           = s3Settings.ServiceUrl,
+                        ForcePathStyle       = s3Settings.ForcePathStyle,
+                        AuthenticationRegion = configuration["Aws:Region"] ?? "eu-west-1"
+                    });
+            }
+            return new AmazonS3Client(region);
+        });
         services.AddScoped<IS3Service, S3Service>();
 
         // Redis / ElastiCache — singleton multiplexer when configured, scoped

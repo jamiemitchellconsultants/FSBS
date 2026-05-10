@@ -21,6 +21,9 @@ public class Module : AuditableEntity, ISoftDeletable
     /// </summary>
     public int SequenceOrder { get; set; }
 
+    /// <summary>Optional free-text description of the module's content and objectives.</summary>
+    public string? Description { get; set; }
+
     /// <inheritdoc/>
     public bool IsDeleted { get; set; }
 

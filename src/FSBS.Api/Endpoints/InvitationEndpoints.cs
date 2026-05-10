@@ -59,7 +59,7 @@ public static class InvitationEndpoints
         CancellationToken ct)
     {
         var result = await sender.Send(
-            new InviteCorporateStudentCommand(request.InviteeEmail),
+            new InviteCorporateStudentCommand(request.InviteeEmail, request.PersonalNote),
             ct);
 
         var response = new IssueCorporateManagerInvitationResponse(
@@ -77,7 +77,7 @@ public static class InvitationEndpoints
         CancellationToken ct)
     {
         var result = await sender.Send(
-            new CreateCorporateManagerInvitationCommand(request.InviteeEmail, request.OrgId),
+            new CreateCorporateManagerInvitationCommand(request.InviteeEmail, request.OrgId, request.PersonalNote),
             ct);
 
         var response = new IssueCorporateManagerInvitationResponse(
@@ -91,10 +91,10 @@ public static class InvitationEndpoints
 }
 
 /// <summary>Request body for <c>POST /v1/invitations</c> (SalesStaff / SystemAdmin).</summary>
-public record IssueCorporateManagerInvitationRequest(string InviteeEmail, Guid OrgId);
+public record IssueCorporateManagerInvitationRequest(string InviteeEmail, Guid OrgId, string? PersonalNote = null);
 
 /// <summary>Request body for <c>POST /v1/invitations/students</c> (CorporateManager).</summary>
-public record InviteCorporateStudentRequest(string InviteeEmail);
+public record InviteCorporateStudentRequest(string InviteeEmail, string? PersonalNote = null);
 
 /// <summary>Query parameters for <c>GET /v1/invitations/validate</c>.</summary>
 public record ValidateInvitationTokenRequest(string? Token);

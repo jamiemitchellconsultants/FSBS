@@ -25,6 +25,22 @@ services:
       timeout: 5s
       retries: 5
 
+  localstack:
+    image: localstack/localstack:3
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEFAULT_REGION=eu-west-1
+    volumes:
+      - ./localstack-init:/etc/localstack/init/ready.d
+      - localstack_data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   mailpit:
     image: axllent/mailpit:latest
     ports:
@@ -33,3 +49,4 @@ services:
 
 volumes:
   postgres_data:
+  localstack_data:
