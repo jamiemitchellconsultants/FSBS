@@ -165,11 +165,11 @@ CREATE TYPE org_role AS ENUM (
 -- IDENTITY & USERS
 -- =============================================================================
 
-CREATE TABLE users (
+CREATE TABLE app_users (
     user_id             uuid            NOT NULL DEFAULT uuid_generate_v4(),
     cognito_sub         varchar(128)    NOT NULL,
-    email               varchar(255)    NOT NULL,
-    role                app_role        NOT NULL,
+    email               character varying(256) NOT NULL,
+    app_role            app_role        NOT NULL,
     tenant_id           uuid            NOT NULL,
     is_active           boolean         NOT NULL DEFAULT true,
     is_deleted          boolean         NOT NULL DEFAULT false,
@@ -177,13 +177,13 @@ CREATE TABLE users (
     updated_at          timestamptz     NOT NULL DEFAULT now(),
     created_by          uuid            NULL,
     updated_by          uuid            NULL,
-    CONSTRAINT pk_users PRIMARY KEY (user_id),
+    CONSTRAINT pk_app_users PRIMARY KEY (user_id),
     CONSTRAINT uq_users_cognito_sub UNIQUE (cognito_sub),
     CONSTRAINT uq_users_email UNIQUE (email)
 );
 
-CREATE INDEX ix_users_tenant_id ON users (tenant_id) WHERE is_deleted = false;
-CREATE INDEX ix_users_role ON users (role) WHERE is_deleted = false;
+CREATE INDEX ix_app_users_tenant_id ON app_users (tenant_id) WHERE is_deleted = false;
+CREATE INDEX ix_app_users_app_role ON app_users (app_role) WHERE is_deleted = false;
 
 -- ----------------------------------------------------------------------------
 
@@ -191,7 +191,7 @@ CREATE TABLE user_profiles (
     user_id             uuid            NOT NULL,
     first_name          varchar(100)    NOT NULL,
     last_name           varchar(100)    NOT NULL,
-    phone               varchar(30)     NULL,
+    phone_number        varchar(30)     NULL,
     date_of_birth       date            NULL,
     licence_number      varchar(50)     NULL,
     licence_expiry      date            NULL,
@@ -201,8 +201,8 @@ CREATE TABLE user_profiles (
     created_by          uuid            NULL,
     updated_by          uuid            NULL,
     CONSTRAINT pk_user_profiles PRIMARY KEY (user_id),
-    CONSTRAINT fk_user_profiles_users FOREIGN KEY (user_id)
-        REFERENCES users (user_id) ON DELETE CASCADE
+    CONSTRAINT fk_user_profiles_app_users FOREIGN KEY (user_id)
+        REFERENCES app_users (user_id) ON DELETE CASCADE
 );
 
 -- ----------------------------------------------------------------------------
@@ -213,7 +213,7 @@ CREATE TABLE qualifications (
     type                varchar(100)    NOT NULL,
     issued_date         date            NOT NULL,
     expiry_date         date            NULL,
-    document_s3_key     varchar(500)    NULL,
+    document_s3key      varchar(500)    NULL,
     verified_by         uuid            NULL,
     is_deleted          boolean         NOT NULL DEFAULT false,
     created_at          timestamptz     NOT NULL DEFAULT now(),
@@ -221,10 +221,10 @@ CREATE TABLE qualifications (
     created_by          uuid            NULL,
     updated_by          uuid            NULL,
     CONSTRAINT pk_qualifications PRIMARY KEY (qualification_id),
-    CONSTRAINT fk_qualifications_users FOREIGN KEY (user_id)
-        REFERENCES users (user_id) ON DELETE CASCADE,
+    CONSTRAINT fk_qualifications_app_users FOREIGN KEY (user_id)
+        REFERENCES app_users (user_id) ON DELETE CASCADE,
     CONSTRAINT fk_qualifications_verified_by FOREIGN KEY (verified_by)
-        REFERENCES users (user_id) ON DELETE SET NULL
+        REFERENCES app_users (user_id) ON DELETE SET NULL
 );
 
 CREATE INDEX ix_qualifications_user_id ON qualifications (user_id) WHERE is_deleted = false;
@@ -242,6 +242,7 @@ CREATE TABLE organisations (
     credit_limit_gbp    numeric(12,2)   NOT NULL DEFAULT 0,
     is_active           boolean         NOT NULL DEFAULT true,
     billing_email       varchar(255)    NOT NULL,
+    customer_class      customer_class  NOT NULL DEFAULT 'Standard',
     is_deleted          boolean         NOT NULL DEFAULT false,
     created_at          timestamptz     NOT NULL DEFAULT now(),
     updated_at          timestamptz     NOT NULL DEFAULT now(),
@@ -271,7 +272,7 @@ CREATE TABLE org_memberships (
     CONSTRAINT fk_org_memberships_org FOREIGN KEY (org_id)
         REFERENCES organisations (org_id) ON DELETE CASCADE,
     CONSTRAINT fk_org_memberships_user FOREIGN KEY (user_id)
-        REFERENCES users (user_id) ON DELETE CASCADE,
+        REFERENCES app_users (user_id) ON DELETE CASCADE,
     CONSTRAINT uq_org_memberships_org_user UNIQUE (org_id, user_id)
 );
 
@@ -285,7 +286,7 @@ CREATE TABLE org_accounts (
     credit_limit_gbp        numeric(12,2)   NOT NULL DEFAULT 0,
     current_balance_gbp     numeric(12,2)   NOT NULL DEFAULT 0,
     payment_terms_days      integer         NOT NULL DEFAULT 30,
-    account_status          account_status  NOT NULL DEFAULT 'Active',
+    status                  account_status  NOT NULL DEFAULT 'Active',
     created_at              timestamptz     NOT NULL DEFAULT now(),
     updated_at              timestamptz     NOT NULL DEFAULT now(),
     created_by              uuid            NULL,
@@ -307,11 +308,13 @@ CREATE TABLE account_payments (
     amount_gbp          numeric(12,2)   NOT NULL,
     payment_method      payment_method  NOT NULL,
     payment_date        date            NOT NULL,
-    reference           varchar(200)    NOT NULL,
+    reference           character varying(200) NULL,
     notes               text            NULL,
     recorded_by         uuid            NOT NULL,
     verified_by         uuid            NULL,
     status              payment_status  NOT NULL DEFAULT 'Pending',
+    verified_at         timestamptz     NULL,
+    void_reason         character varying(500) NULL,
     is_deleted          boolean         NOT NULL DEFAULT false,
     created_at          timestamptz     NOT NULL DEFAULT now(),
     updated_at          timestamptz     NOT NULL DEFAULT now(),
@@ -323,9 +326,9 @@ CREATE TABLE account_payments (
     CONSTRAINT fk_account_payments_account FOREIGN KEY (account_id)
         REFERENCES org_accounts (account_id),
     CONSTRAINT fk_account_payments_recorded_by FOREIGN KEY (recorded_by)
-        REFERENCES users (user_id),
+        REFERENCES app_users (user_id),
     CONSTRAINT fk_account_payments_verified_by FOREIGN KEY (verified_by)
-        REFERENCES users (user_id) ON DELETE SET NULL,
+        REFERENCES app_users (user_id) ON DELETE SET NULL,
     CONSTRAINT ck_account_payments_amount CHECK (amount_gbp > 0)
 );
 
@@ -338,7 +341,7 @@ CREATE TABLE payment_allocations (
     allocation_id           uuid            NOT NULL DEFAULT uuid_generate_v4(),
     payment_id              uuid            NOT NULL,
     invoice_id              uuid            NOT NULL,  -- FK added after invoices table
-    allocated_amount_gbp    numeric(12,2)   NOT NULL,
+    amount_gbp              numeric(12,2)   NOT NULL,
     created_at              timestamptz     NOT NULL DEFAULT now(),
     updated_at              timestamptz     NOT NULL DEFAULT now(),
     created_by              uuid            NULL,
@@ -346,7 +349,7 @@ CREATE TABLE payment_allocations (
     CONSTRAINT pk_payment_allocations PRIMARY KEY (allocation_id),
     CONSTRAINT fk_payment_allocations_payment FOREIGN KEY (payment_id)
         REFERENCES account_payments (payment_id) ON DELETE CASCADE,
-    CONSTRAINT ck_payment_allocations_amount CHECK (allocated_amount_gbp > 0)
+    CONSTRAINT ck_payment_allocations_amount CHECK (amount_gbp > 0)
 );
 
 CREATE INDEX ix_payment_allocations_payment_id ON payment_allocations (payment_id);
@@ -365,7 +368,7 @@ CREATE TABLE invitations (
     issued_at               timestamptz         NOT NULL DEFAULT now(),
     expires_at              timestamptz         NOT NULL DEFAULT (now() + interval '7 days'),
     status                  invitation_status   NOT NULL DEFAULT 'Pending',
-    claimed_by_user_id      uuid                NULL,
+    claimed_by              uuid                NULL,
     claimed_at              timestamptz         NULL,
     revoked_by              uuid                NULL,
     revoked_at              timestamptz         NULL,
@@ -378,14 +381,14 @@ CREATE TABLE invitations (
     CONSTRAINT fk_invitations_org FOREIGN KEY (org_id)
         REFERENCES organisations (org_id),
     CONSTRAINT fk_invitations_issued_by FOREIGN KEY (issued_by)
-        REFERENCES users (user_id),
-    CONSTRAINT fk_invitations_claimed_by FOREIGN KEY (claimed_by_user_id)
-        REFERENCES users (user_id) ON DELETE SET NULL,
+        REFERENCES app_users (user_id),
+    CONSTRAINT fk_invitations_claimed_by FOREIGN KEY (claimed_by)
+        REFERENCES app_users (user_id) ON DELETE SET NULL,
     CONSTRAINT fk_invitations_revoked_by FOREIGN KEY (revoked_by)
-        REFERENCES users (user_id) ON DELETE SET NULL,
+        REFERENCES app_users (user_id) ON DELETE SET NULL,
     CONSTRAINT uq_invitations_token_hash UNIQUE (token_hash),
     CONSTRAINT ck_invitations_claimed CHECK (
-        (status = 'Claimed' AND claimed_by_user_id IS NOT NULL AND claimed_at IS NOT NULL)
+        (status = 'Claimed' AND claimed_by IS NOT NULL AND claimed_at IS NOT NULL)
         OR (status != 'Claimed')
     ),
     CONSTRAINT ck_invitations_revoked CHECK (
@@ -407,14 +410,30 @@ CREATE INDEX ix_invitations_expires_at ON invitations (expires_at) WHERE status 
 -- SIMULATORS & CONFIGURATIONS
 -- =============================================================================
 
+CREATE TABLE aircraft_types (
+    aircraft_type_id            uuid                NOT NULL DEFAULT uuid_generate_v4(),
+    icao_code                   varchar(20)         NOT NULL,
+    name                        varchar(100)        NOT NULL,
+    is_active                   boolean             NOT NULL DEFAULT true,
+    is_deleted                  boolean             NOT NULL DEFAULT false,
+    created_at                  timestamptz         NOT NULL DEFAULT now(),
+    updated_at                  timestamptz         NOT NULL DEFAULT now(),
+    created_by                  uuid                NULL,
+    updated_by                  uuid                NULL,
+    CONSTRAINT pk_aircraft_types PRIMARY KEY (aircraft_type_id)
+);
+
+CREATE UNIQUE INDEX uq_aircraft_types_icao_code ON aircraft_types (icao_code) WHERE is_deleted = false;
+
 CREATE TABLE simulator_configurations (
     config_id                   uuid                NOT NULL DEFAULT uuid_generate_v4(),
     name                        varchar(200)        NOT NULL,
-    aircraft_type               varchar(100)        NOT NULL,
+    aircraft_type_id            uuid                NOT NULL,
     config_mode                 configuration_mode  NOT NULL,
     supported_training_types    training_type[]     NOT NULL,
-    max_capacity_flight_deck    smallint            NOT NULL DEFAULT 4,
-    max_capacity_cabin_crew     smallint            NOT NULL DEFAULT 10,
+    max_capacity_flight_deck    integer             NOT NULL DEFAULT 4,
+    max_capacity_cabin_crew     integer             NOT NULL DEFAULT 10,
+    simulator_unit_id           uuid                NULL,
     is_active                   boolean             NOT NULL DEFAULT true,
     is_deleted                  boolean             NOT NULL DEFAULT false,
     created_at                  timestamptz         NOT NULL DEFAULT now(),
@@ -424,7 +443,8 @@ CREATE TABLE simulator_configurations (
     CONSTRAINT pk_simulator_configurations PRIMARY KEY (config_id),
     CONSTRAINT ck_simulator_config_fd_capacity CHECK (max_capacity_flight_deck > 0 AND max_capacity_flight_deck <= 4),
     CONSTRAINT ck_simulator_config_cc_capacity CHECK (max_capacity_cabin_crew > 0 AND max_capacity_cabin_crew <= 10),
-    CONSTRAINT ck_simulator_config_training_types CHECK (array_length(supported_training_types, 1) >= 1)
+    CONSTRAINT ck_simulator_config_training_types CHECK (array_length(supported_training_types, 1) >= 1),
+    CONSTRAINT fk_simulator_configurations_aircraft_types FOREIGN KEY (aircraft_type_id) REFERENCES aircraft_types (aircraft_type_id) ON DELETE RESTRICT
 );
 
 -- ----------------------------------------------------------------------------
@@ -457,7 +477,7 @@ CREATE TABLE simulator_units (
     fstd_level              varchar(20)     NOT NULL,
     manufacturer            varchar(100)    NULL,
     location                varchar(200)    NULL,
-    active_config_id        uuid            NULL,
+    active_configuration_id uuid            NULL,
     default_reconfig_mins   integer         NOT NULL DEFAULT 60,
     is_active               boolean         NOT NULL DEFAULT true,
     is_deleted              boolean         NOT NULL DEFAULT false,
@@ -466,16 +486,21 @@ CREATE TABLE simulator_units (
     created_by              uuid            NULL,
     updated_by              uuid            NULL,
     CONSTRAINT pk_simulator_units PRIMARY KEY (unit_id),
-    CONSTRAINT fk_simulator_units_active_config FOREIGN KEY (active_config_id)
+    CONSTRAINT fk_simulator_units_active_config FOREIGN KEY (active_configuration_id)
         REFERENCES simulator_configurations (config_id) ON DELETE SET NULL,
     CONSTRAINT ck_simulator_units_reconfig_mins CHECK (default_reconfig_mins > 0)
 );
+
+-- Deferred FK: simulator_configurations.simulator_unit_id → simulator_units
+ALTER TABLE simulator_configurations
+    ADD CONSTRAINT fk_simulator_configurations_unit FOREIGN KEY (simulator_unit_id)
+        REFERENCES simulator_units (unit_id) ON DELETE SET NULL;
 
 -- ----------------------------------------------------------------------------
 
 CREATE TABLE simulator_bays (
     bay_id              uuid            NOT NULL DEFAULT uuid_generate_v4(),
-    unit_id             uuid            NOT NULL,
+    simulator_unit_id   uuid            NOT NULL,
     bay_code            varchar(20)     NOT NULL,
     status              bay_status      NOT NULL DEFAULT 'Operational',
     description         text            NULL,
@@ -485,15 +510,15 @@ CREATE TABLE simulator_bays (
     created_by          uuid            NULL,
     updated_by          uuid            NULL,
     CONSTRAINT pk_simulator_bays PRIMARY KEY (bay_id),
-    CONSTRAINT fk_simulator_bays_unit FOREIGN KEY (unit_id)
+    CONSTRAINT fk_simulator_bays_unit FOREIGN KEY (simulator_unit_id)
         REFERENCES simulator_units (unit_id) ON DELETE CASCADE,
-    CONSTRAINT uq_simulator_bays_code UNIQUE (unit_id, bay_code)
+    CONSTRAINT uq_simulator_bays_code UNIQUE (simulator_unit_id, bay_code)
 );
 
 -- ----------------------------------------------------------------------------
 
 CREATE TABLE maintenance_windows (
-    window_id           uuid            NOT NULL DEFAULT uuid_generate_v4(),
+    maintenance_window_id uuid            NOT NULL DEFAULT uuid_generate_v4(),
     bay_id              uuid            NOT NULL,
     start_at            timestamptz     NOT NULL,
     end_at              timestamptz     NOT NULL,
@@ -503,7 +528,7 @@ CREATE TABLE maintenance_windows (
     updated_at          timestamptz     NOT NULL DEFAULT now(),
     created_by          uuid            NULL,
     updated_by          uuid            NULL,
-    CONSTRAINT pk_maintenance_windows PRIMARY KEY (window_id),
+    CONSTRAINT pk_maintenance_windows PRIMARY KEY (maintenance_window_id),
     CONSTRAINT fk_maintenance_windows_bay FOREIGN KEY (bay_id)
         REFERENCES simulator_bays (bay_id) ON DELETE CASCADE,
     CONSTRAINT ck_maintenance_windows_range CHECK (end_at > start_at)
@@ -520,7 +545,7 @@ CREATE TABLE schedule_templates (
     schedule_template_id uuid           NOT NULL DEFAULT uuid_generate_v4(),
     bay_id              uuid            NOT NULL,
     config_id           uuid            NOT NULL,
-    day_of_week         smallint        NOT NULL,  -- 0=Sunday ... 6=Saturday
+    day_of_week         integer         NOT NULL,  -- 0=Sunday ... 6=Saturday
     open_time           time            NOT NULL,
     close_time          time            NOT NULL,
     valid_from          date            NOT NULL,
@@ -549,7 +574,7 @@ CREATE INDEX ix_schedule_templates_bay ON schedule_templates (bay_id) WHERE is_d
 
 CREATE TABLE pricing_policies (
     policy_id               uuid            NOT NULL DEFAULT uuid_generate_v4(),
-    config_id               uuid            NOT NULL,
+    configuration_id       uuid            NOT NULL,
     training_type           training_type   NOT NULL,
     customer_class          customer_class  NOT NULL,
     hourly_rate_gbp         numeric(10,2)   NOT NULL,
@@ -561,13 +586,13 @@ CREATE TABLE pricing_policies (
     created_by              uuid            NULL,
     updated_by              uuid            NULL,
     CONSTRAINT pk_pricing_policies PRIMARY KEY (policy_id),
-    CONSTRAINT fk_pricing_policies_config FOREIGN KEY (config_id)
+    CONSTRAINT fk_pricing_policies_config FOREIGN KEY (configuration_id)
         REFERENCES simulator_configurations (config_id),
     CONSTRAINT ck_pricing_policies_rate CHECK (hourly_rate_gbp >= 0),
     CONSTRAINT ck_pricing_policies_dates CHECK (effective_to IS NULL OR effective_to > effective_from)
 );
 
-CREATE INDEX ix_pricing_policies_config ON pricing_policies (config_id, training_type, customer_class)
+CREATE INDEX ix_pricing_policies_config ON pricing_policies (configuration_id, training_type, customer_class)
     WHERE is_deleted = false;
 
 -- ----------------------------------------------------------------------------
@@ -598,6 +623,7 @@ CREATE TABLE discount_rules (
 CREATE TABLE courses (
     course_id               uuid            NOT NULL DEFAULT uuid_generate_v4(),
     title                   varchar(300)    NOT NULL,
+    description             text            NULL,
     training_type           training_type   NOT NULL,
     regulatory_framework    varchar(100)    NULL,
     total_hours             numeric(6,1)    NOT NULL,
@@ -642,7 +668,7 @@ CREATE TABLE lessons (
     sequence_order          integer         NOT NULL,
     title                   varchar(300)    NOT NULL,
     min_duration_mins       integer         NOT NULL,
-    requires_instructor     boolean         NOT NULL DEFAULT false,
+    requires_instructor     boolean         NOT NULL DEFAULT TRUE,
     is_mandatory            boolean         NOT NULL DEFAULT true,
     is_deleted              boolean         NOT NULL DEFAULT false,
     created_at              timestamptz     NOT NULL DEFAULT now(),
@@ -674,7 +700,7 @@ CREATE TABLE enrolments (
     updated_by          uuid                NULL,
     CONSTRAINT pk_enrolments PRIMARY KEY (enrolment_id),
     CONSTRAINT fk_enrolments_user FOREIGN KEY (user_id)
-        REFERENCES users (user_id),
+        REFERENCES app_users (user_id),
     CONSTRAINT fk_enrolments_course FOREIGN KEY (course_id)
         REFERENCES courses (course_id),
     CONSTRAINT fk_enrolments_org FOREIGN KEY (org_id)
@@ -688,7 +714,7 @@ CREATE INDEX ix_enrolments_course ON enrolments (course_id) WHERE is_deleted = f
 -- ----------------------------------------------------------------------------
 
 CREATE TABLE progress_records (
-    progress_id         uuid            NOT NULL DEFAULT uuid_generate_v4(),
+    progress_record_id  uuid            NOT NULL DEFAULT uuid_generate_v4(),
     enrolment_id        uuid            NOT NULL,
     lesson_id           uuid            NOT NULL,
     completed_at        timestamptz     NOT NULL DEFAULT now(),
@@ -700,13 +726,13 @@ CREATE TABLE progress_records (
     updated_at          timestamptz     NOT NULL DEFAULT now(),
     created_by          uuid            NULL,
     updated_by          uuid            NULL,
-    CONSTRAINT pk_progress_records PRIMARY KEY (progress_id),
+    CONSTRAINT pk_progress_records PRIMARY KEY (progress_record_id),
     CONSTRAINT fk_progress_records_enrolment FOREIGN KEY (enrolment_id)
         REFERENCES enrolments (enrolment_id) ON DELETE CASCADE,
     CONSTRAINT fk_progress_records_lesson FOREIGN KEY (lesson_id)
         REFERENCES lessons (lesson_id),
     CONSTRAINT fk_progress_records_instructor FOREIGN KEY (instructor_id)
-        REFERENCES users (user_id) ON DELETE SET NULL
+        REFERENCES app_users (user_id) ON DELETE SET NULL
 );
 
 CREATE INDEX ix_progress_records_enrolment ON progress_records (enrolment_id) WHERE is_deleted = false;
@@ -729,7 +755,7 @@ CREATE TABLE instructors (
     updated_by              uuid            NULL,
     CONSTRAINT pk_instructors PRIMARY KEY (instructor_id),
     CONSTRAINT fk_instructors_user FOREIGN KEY (user_id)
-        REFERENCES users (user_id) ON DELETE CASCADE,
+        REFERENCES app_users (user_id) ON DELETE CASCADE,
     CONSTRAINT uq_instructors_user UNIQUE (user_id),
     CONSTRAINT uq_instructors_employee_number UNIQUE (employee_number),
     CONSTRAINT ck_instructors_hours CHECK (max_hours_per_week > 0 AND max_hours_per_week <= 168),
@@ -738,24 +764,25 @@ CREATE TABLE instructors (
 
 -- ----------------------------------------------------------------------------
 
-CREATE TABLE instructor_availability (
+CREATE TABLE instructor_availabilities (
     avail_id            uuid                NOT NULL DEFAULT uuid_generate_v4(),
     instructor_id       uuid                NOT NULL,
     start_at            timestamptz         NOT NULL,
     end_at              timestamptz         NOT NULL,
     avail_type          availability_type   NOT NULL,
+    notes               text                NULL,
     is_deleted          boolean             NOT NULL DEFAULT false,
     created_at          timestamptz         NOT NULL DEFAULT now(),
     updated_at          timestamptz         NOT NULL DEFAULT now(),
     created_by          uuid                NULL,
     updated_by          uuid                NULL,
-    CONSTRAINT pk_instructor_availability PRIMARY KEY (avail_id),
-    CONSTRAINT fk_instructor_availability_instructor FOREIGN KEY (instructor_id)
+    CONSTRAINT pk_instructor_availabilities PRIMARY KEY (avail_id),
+    CONSTRAINT fk_instructor_availabilities_instructor FOREIGN KEY (instructor_id)
         REFERENCES instructors (instructor_id) ON DELETE CASCADE,
     CONSTRAINT ck_instructor_availability_range CHECK (end_at > start_at)
 );
 
-CREATE INDEX ix_instructor_availability_range ON instructor_availability (instructor_id, start_at, end_at)
+CREATE INDEX ix_instructor_availabilities_range ON instructor_availabilities (instructor_id, start_at, end_at)
     WHERE is_deleted = false;
 
 -- =============================================================================
@@ -765,17 +792,16 @@ CREATE INDEX ix_instructor_availability_range ON instructor_availability (instru
 CREATE TABLE bookings (
     booking_id          uuid            NOT NULL DEFAULT uuid_generate_v4(),
     enrolment_id        uuid            NULL,
-    instructor_id       uuid            NULL,
-    bay_id              uuid            NOT NULL,
     config_id           uuid            NOT NULL,
     training_type       training_type   NOT NULL,
-    student_count       smallint        NOT NULL DEFAULT 1,
+    student_count       integer         NOT NULL DEFAULT 1,
     status              booking_status  NOT NULL DEFAULT 'Provisional',
+    booker_role         app_role        NOT NULL,
     booked_by           uuid            NOT NULL,
     org_id              uuid            NULL,
     -- Internal student fields (required when booked_by role = InternalStudent)
-    department_name     varchar(200)    NULL,
-    budget_code         varchar(100)    NULL,
+    department_name     character varying(200) NULL,
+    budget_code         character varying(100) NULL,
     -- Pricing snapshot (locked at Confirmed; never recalculated after)
     gross_price_gbp     numeric(12,2)   NULL,
     discount_pct        numeric(5,2)    NOT NULL DEFAULT 0,
@@ -792,14 +818,10 @@ CREATE TABLE bookings (
     CONSTRAINT pk_bookings PRIMARY KEY (booking_id),
     CONSTRAINT fk_bookings_enrolment FOREIGN KEY (enrolment_id)
         REFERENCES enrolments (enrolment_id) ON DELETE SET NULL,
-    CONSTRAINT fk_bookings_instructor FOREIGN KEY (instructor_id)
-        REFERENCES instructors (instructor_id) ON DELETE SET NULL,
-    CONSTRAINT fk_bookings_bay FOREIGN KEY (bay_id)
-        REFERENCES simulator_bays (bay_id),
     CONSTRAINT fk_bookings_config FOREIGN KEY (config_id)
         REFERENCES simulator_configurations (config_id),
     CONSTRAINT fk_bookings_booked_by FOREIGN KEY (booked_by)
-        REFERENCES users (user_id),
+        REFERENCES app_users (user_id),
     CONSTRAINT fk_bookings_org FOREIGN KEY (org_id)
         REFERENCES organisations (org_id) ON DELETE SET NULL,
     CONSTRAINT uq_bookings_idempotency_key UNIQUE (idempotency_key),
@@ -821,7 +843,6 @@ COMMENT ON CONSTRAINT ck_bookings_cc_capacity ON bookings
     IS 'Cabin Crew bookings are capped at 10 students per session';
 
 CREATE INDEX ix_bookings_status ON bookings (status) WHERE is_deleted = false;
-CREATE INDEX ix_bookings_bay_id ON bookings (bay_id) WHERE is_deleted = false;
 CREATE INDEX ix_bookings_booked_by ON bookings (booked_by) WHERE is_deleted = false;
 CREATE INDEX ix_bookings_org_id ON bookings (org_id) WHERE is_deleted = false AND org_id IS NOT NULL;
 CREATE INDEX ix_bookings_pending_approval ON bookings (created_at DESC)
@@ -839,8 +860,8 @@ CREATE TABLE booking_approvals (
     decision            approval_decision   NOT NULL DEFAULT 'Pending',
     rejection_reason    text                NULL,
     -- Immutable snapshot of values at submission time
-    department_name     varchar(200)        NOT NULL,
-    budget_code         varchar(100)        NOT NULL,
+    department_name     character varying(200) NULL,
+    budget_code         character varying(100) NULL,
     created_at          timestamptz         NOT NULL DEFAULT now(),
     updated_at          timestamptz         NOT NULL DEFAULT now(),
     created_by          uuid                NULL,
@@ -849,9 +870,9 @@ CREATE TABLE booking_approvals (
     CONSTRAINT fk_booking_approvals_booking FOREIGN KEY (booking_id)
         REFERENCES bookings (booking_id) ON DELETE CASCADE,
     CONSTRAINT fk_booking_approvals_requested_by FOREIGN KEY (requested_by)
-        REFERENCES users (user_id),
+        REFERENCES app_users (user_id),
     CONSTRAINT fk_booking_approvals_reviewed_by FOREIGN KEY (reviewed_by)
-        REFERENCES users (user_id) ON DELETE SET NULL,
+        REFERENCES app_users (user_id) ON DELETE SET NULL,
     CONSTRAINT uq_booking_approvals_booking UNIQUE (booking_id),
     CONSTRAINT ck_booking_approvals_no_self_approval CHECK (requested_by != reviewed_by),
     CONSTRAINT ck_booking_approvals_rejection CHECK (
@@ -878,6 +899,7 @@ CREATE TABLE booking_slots (
     start_at            timestamptz     NOT NULL,
     end_at              timestamptz     NOT NULL,
     duration_mins       integer         NOT NULL,
+    instructor_id       uuid            NULL,
     lesson_id           uuid            NULL,
     slot_status         slot_status     NOT NULL DEFAULT 'Scheduled',
     is_deleted          boolean         NOT NULL DEFAULT false,
@@ -890,6 +912,8 @@ CREATE TABLE booking_slots (
         REFERENCES bookings (booking_id) ON DELETE CASCADE,
     CONSTRAINT fk_booking_slots_bay FOREIGN KEY (bay_id)
         REFERENCES simulator_bays (bay_id),
+    CONSTRAINT fk_booking_slots_instructor FOREIGN KEY (instructor_id)
+        REFERENCES instructors (instructor_id) ON DELETE SET NULL,
     CONSTRAINT fk_booking_slots_lesson FOREIGN KEY (lesson_id)
         REFERENCES lessons (lesson_id) ON DELETE SET NULL,
     CONSTRAINT ck_booking_slots_min_duration
@@ -944,7 +968,7 @@ CREATE INDEX ix_reconfiguration_slots_bay_range ON reconfiguration_slots (bay_id
 CREATE TABLE booking_discounts (
     discount_id         uuid            NOT NULL DEFAULT uuid_generate_v4(),
     booking_id          uuid            NOT NULL,
-    rule_id             uuid            NULL,  -- NULL for manual/staff-rate discounts
+    discount_rule_id    uuid            NULL,  -- NULL for manual/staff-rate discounts
     discount_type       discount_type   NOT NULL,
     discount_pct        numeric(5,2)    NOT NULL,
     amount_gbp          numeric(12,2)   NOT NULL,
@@ -953,7 +977,7 @@ CREATE TABLE booking_discounts (
     CONSTRAINT pk_booking_discounts PRIMARY KEY (discount_id),
     CONSTRAINT fk_booking_discounts_booking FOREIGN KEY (booking_id)
         REFERENCES bookings (booking_id) ON DELETE CASCADE,
-    CONSTRAINT fk_booking_discounts_rule FOREIGN KEY (rule_id)
+    CONSTRAINT fk_booking_discounts_rule FOREIGN KEY (discount_rule_id)
         REFERENCES discount_rules (discount_rule_id) ON DELETE SET NULL,
     CONSTRAINT ck_booking_discounts_pct CHECK (discount_pct >= 0 AND discount_pct <= 100),
     CONSTRAINT ck_booking_discounts_amount CHECK (amount_gbp >= 0)
@@ -969,7 +993,7 @@ CREATE TABLE booking_notes (
     booking_id          uuid            NOT NULL,
     author_id           uuid            NOT NULL,
     content             text            NOT NULL,
-    is_internal         boolean         NOT NULL DEFAULT false,
+    is_internal         boolean         NOT NULL DEFAULT TRUE,
     is_deleted          boolean         NOT NULL DEFAULT false,
     created_at          timestamptz     NOT NULL DEFAULT now(),
     updated_at          timestamptz     NOT NULL DEFAULT now(),
@@ -979,7 +1003,7 @@ CREATE TABLE booking_notes (
     CONSTRAINT fk_booking_notes_booking FOREIGN KEY (booking_id)
         REFERENCES bookings (booking_id) ON DELETE CASCADE,
     CONSTRAINT fk_booking_notes_author FOREIGN KEY (author_id)
-        REFERENCES users (user_id)
+        REFERENCES app_users (user_id)
 );
 
 CREATE INDEX ix_booking_notes_booking_id ON booking_notes (booking_id) WHERE is_deleted = false;
@@ -991,7 +1015,7 @@ CREATE INDEX ix_booking_notes_booking_id ON booking_notes (booking_id) WHERE is_
 CREATE TABLE invoices (
     invoice_id          uuid            NOT NULL DEFAULT uuid_generate_v4(),
     booking_id          uuid            NOT NULL,
-    org_id              uuid            NULL,
+    org_id              uuid            NOT NULL,
     user_id             uuid            NOT NULL,
     issued_date         date            NOT NULL,
     gross_gbp           numeric(12,2)   NOT NULL,
@@ -1011,7 +1035,7 @@ CREATE TABLE invoices (
     CONSTRAINT fk_invoices_org FOREIGN KEY (org_id)
         REFERENCES organisations (org_id) ON DELETE SET NULL,
     CONSTRAINT fk_invoices_user FOREIGN KEY (user_id)
-        REFERENCES users (user_id),
+        REFERENCES app_users (user_id),
     CONSTRAINT uq_invoices_booking UNIQUE (booking_id),
     CONSTRAINT ck_invoices_amounts CHECK (gross_gbp >= 0 AND net_gbp >= 0 AND discount_gbp >= 0),
     CONSTRAINT ck_invoices_net CHECK (net_gbp = gross_gbp - discount_gbp)
@@ -1047,7 +1071,7 @@ CREATE TABLE reports (
     updated_by          uuid            NULL,
     CONSTRAINT pk_reports PRIMARY KEY (report_id),
     CONSTRAINT fk_reports_owner FOREIGN KEY (owner_id)
-        REFERENCES users (user_id)
+        REFERENCES app_users (user_id)
 );
 
 -- ----------------------------------------------------------------------------
@@ -1058,8 +1082,8 @@ CREATE TABLE report_runs (
     status              report_run_status   NOT NULL DEFAULT 'Queued',
     started_at          timestamptz         NULL,
     completed_at        timestamptz         NULL,
-    result_s3_key       varchar(500)        NULL,
-    error_message       text                NULL,
+    result_s3key        varchar(500)        NULL,
+    error_message       character varying(2000) NULL,
     triggered_by        uuid                NOT NULL,
     created_at          timestamptz         NOT NULL DEFAULT now(),
     updated_at          timestamptz         NOT NULL DEFAULT now(),
@@ -1067,10 +1091,53 @@ CREATE TABLE report_runs (
     CONSTRAINT fk_report_runs_report FOREIGN KEY (report_id)
         REFERENCES reports (report_id) ON DELETE CASCADE,
     CONSTRAINT fk_report_runs_triggered_by FOREIGN KEY (triggered_by)
-        REFERENCES users (user_id)
+        REFERENCES app_users (user_id)
 );
 
 CREATE INDEX ix_report_runs_report_id ON report_runs (report_id);
+
+-- =============================================================================
+-- ADDITIONAL UNIQUE INDEXES (aligned with EF-generated schema)
+-- =============================================================================
+
+-- app_users
+CREATE UNIQUE INDEX uq_app_users_cognito_sub ON app_users (cognito_sub);
+CREATE UNIQUE INDEX uq_app_users_email ON app_users (email);
+
+-- bookings
+CREATE UNIQUE INDEX uq_bookings_idempotency_key ON bookings (idempotency_key);
+
+-- booking_approvals (performance — one approval record per booking)
+CREATE UNIQUE INDEX ix_booking_approvals_booking_id ON booking_approvals (booking_id);
+
+-- enrolments
+CREATE UNIQUE INDEX uq_enrolments_user_course ON enrolments (user_id, course_id);
+
+-- instructors
+CREATE UNIQUE INDEX uq_instructors_employee_number ON instructors (employee_number);
+CREATE UNIQUE INDEX uq_instructors_user ON instructors (user_id);
+
+-- invitations
+CREATE UNIQUE INDEX uq_invitations_token_hash ON invitations (token_hash);
+
+-- lessons / modules
+CREATE UNIQUE INDEX uq_lessons_module_sequence ON lessons (module_id, sequence_order);
+CREATE UNIQUE INDEX uq_modules_course_sequence ON modules (course_id, sequence_order);
+
+-- org_accounts (performance — one account per org)
+CREATE UNIQUE INDEX ix_org_accounts_org_id ON org_accounts (org_id);
+
+-- org_memberships
+CREATE UNIQUE INDEX uq_org_memberships_user_org ON org_memberships (user_id, org_id);
+
+-- reconfiguration_slots
+CREATE UNIQUE INDEX uq_reconfig_slots_bay_time ON reconfiguration_slots (bay_id, start_at);
+
+-- reconfiguration_templates
+CREATE UNIQUE INDEX uq_reconfig_templates_pair ON reconfiguration_templates (from_config_id, to_config_id);
+
+-- simulator_bays
+CREATE UNIQUE INDEX uq_simulator_bays_code ON simulator_bays (simulator_unit_id, bay_code);
 
 -- =============================================================================
 -- ACCOUNT BALANCE TRIGGER
@@ -1130,14 +1197,14 @@ CREATE TABLE account_statements (
     period_end          date            NOT NULL,
     opening_balance_gbp numeric(12,2)   NOT NULL,
     closing_balance_gbp numeric(12,2)   NOT NULL,
-    statement_s3_key    varchar(500)    NOT NULL,
+    statement_s3key     varchar(500)    NOT NULL,
     generated_at        timestamptz     NOT NULL DEFAULT now(),
     generated_by        uuid            NOT NULL,
     CONSTRAINT pk_account_statements PRIMARY KEY (statement_id),
     CONSTRAINT fk_account_statements_org FOREIGN KEY (org_id)
         REFERENCES organisations (org_id),
     CONSTRAINT fk_account_statements_generated_by FOREIGN KEY (generated_by)
-        REFERENCES users (user_id),
+        REFERENCES app_users (user_id),
     CONSTRAINT ck_account_statements_period CHECK (period_end >= period_start)
 );
 

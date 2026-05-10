@@ -1,143 +1,127 @@
-# Schema Comparison: `ef_generated_schema.sql` vs `fsbs_schema.sql`
+# Schema Comparison: Outstanding Issues
 
 ---
 
-## 1. Tables Present Only in EF — `aircraft_types`
+## 1. Missing Columns — `fsbs_schema` has columns EF does not
 
-`fsbs_schema.sql` has no `aircraft_types` table. Instead, `simulator_configurations` stores `aircraft_type` as a plain `varchar` column. The EF model promotes this to a proper lookup table with its own UUID PK, `icao_code`, `name`, `is_active`, and soft-delete/audit columns, and `simulator_configurations` then holds a FK `aircraft_type_id` referencing it.
+These columns exist in `fsbs_schema` but not in the EF model. A decision is needed on whether to drop them or add them to the EF model.
 
----
-
-## 2. Table Naming Differences
-
-| `fsbs_schema.sql`        | `ef_generated_schema.sql`      |
-|--------------------------|--------------------------------|
-| `users`                  | `app_users`                    |
-| `instructor_availability`| `instructor_availabilities`    |
-
----
-
-## 3. Column Name Differences (same concept, different name)
-
-| Table                    | `fsbs_schema.sql`       | `ef_generated_schema.sql`  |
-|--------------------------|-------------------------|----------------------------|
-| `account_payments`       | `account_id`            | `org_account_id`           |
-| `account_statements`     | `statement_s3_key`      | `statement_s3key`          |
-| `app_users` / `users`    | `role`                  | `app_role`                 |
-| `booking_discounts`      | `rule_id`               | `discount_rule_id`         |
-| `maintenance_windows`    | `window_id`             | `maintenance_window_id`    |
-| `org_accounts`           | `account_status`        | `status`                   |
-| `payment_allocations`    | `allocated_amount_gbp`  | `amount_gbp`               |
-| `pricing_policies`       | `config_id`             | `configuration_id`         |
-| `progress_records`       | `progress_id`           | `progress_record_id`       |
-| `qualifications`         | `document_s3_key`       | `document_s3key`           |
-| `report_runs`            | `result_s3_key`         | `result_s3key`             |
-| `simulator_bays`         | `unit_id`               | `simulator_unit_id`        |
-| `simulator_units`        | `active_config_id`      | `active_configuration_id`  |
+| Table | Column(s) only in `fsbs_schema` |
+|---|---|
+| `app_users` | `is_active` |
+| `user_profiles` | `date_of_birth`, `licence_number`, `licence_expiry`, `photo_s3_key` |
+| `org_memberships` | `joined_at`, `is_active` |
+| `invitations` | `issued_by`, `issued_at`, `personal_note` |
+| `modules` | `description` |
+| `reconfiguration_templates` | `notes` |
+| `instructor_availabilities` | *(none — aligned)* |
 
 ---
 
-## 4. Columns Present in EF but Missing from `fsbs_schema`
+## 2. Missing Columns — EF has columns `fsbs_schema` does not
 
-| Table                      | Columns only in EF                                          |
-|----------------------------|-------------------------------------------------------------|
-| `account_payments`         | `verified_at`, `void_reason`                                |
-| `bookings`                 | `booker_role`                                               |
-| `courses`                  | `description`                                               |
-| `instructor_availabilities`| `notes`                                                     |
-| `invitations`              | `claimed_by` (renamed from `claimed_by_user_id`)            |
-| `organisations`            | `customer_class`                                            |
-| `simulator_configurations` | `aircraft_type_id` (FK to new table), `simulator_unit_id`  |
+| Table | Column(s) only in EF |
+|---|---|
+| `account_statements` | `org_account_id` (nullable FK to `org_accounts`) |
 
 ---
 
-## 5. Columns Present in `fsbs_schema` but Missing from EF
+## 3. `account_payments` — FK target mismatch
 
-| Table                    | Columns only in `fsbs_schema`                                                              |
-|--------------------------|--------------------------------------------------------------------------------------------|
-| `users` / `app_users`    | `is_active`                                                                                |
-| `bookings`               | `bay_id`, `instructor_id` (moved to `booking_slots` in EF)                                 |
-| `invitations`            | `issued_at`, `issued_by`, `personal_note`, `claimed_by_user_id`                            |
-| `org_memberships`        | `is_active`, `joined_at`                                                                   |
-| `user_profiles`          | `date_of_birth`, `licence_number`, `licence_expiry`, `phone` (vs `phone_number` in EF), `photo_s3_key` |
-| `modules`                | `description`                                                                              |
-| `reconfiguration_templates` | `notes`                                                                                 |
+`fsbs_schema` has `account_id` referencing `org_accounts (account_id)` (the PK).
+EF names the column `org_account_id` but its FK constraint still targets `org_accounts (account_id)` — the PK has not been renamed in EF.
+
+`fsbs_schema` must keep `account_id` as the PK on `org_accounts` (matching EF), but the FK column in `account_payments` was renamed to `org_account_id` in a prior session. This is now inconsistent — `fsbs_schema` has `account_id` as the PK but `org_account_id` as the FK column in `account_payments`.
+
+**Action:** Revert `account_payments.org_account_id` back to `account_id` in `fsbs_schema`, or rename the PK column in `org_accounts` to `org_account_id` to match.
 
 ---
 
-## 6. ENUMs
+## 4. CHECK Constraints — present in `fsbs_schema`, missing from EF
 
-`fsbs_schema.sql` defines **no** PostgreSQL `CREATE TYPE … AS ENUM` statements — it relies on `varchar` columns with `CHECK` constraints or EF-side validation.
+EF will need these added via `migrationBuilder.Sql(...)`:
 
-`ef_generated_schema.sql` creates one native PG enum: `fsbs.training_type AS ENUM ('flight_deck', 'cabin_crew')`, used in `bookings` and `booking_slots`. The guidelines call for native PG enums for all status/type columns — so `fsbs_schema` is under-specified here.
-
----
-
-## 7. CHECK Constraints — Missing from `fsbs_schema`
-
-| Constraint | EF | `fsbs_schema` |
-|---|---|---|
-| `ck_booking_slots_min_duration` — `duration_mins >= 240` | ✅ | ❌ **Missing** |
-| `ck_bookings_fd_capacity` — `training_type != 'flight_deck' OR student_count <= 4` | ✅ | ❌ **Missing** |
-| `ck_bookings_cc_capacity` — `training_type != 'cabin_crew' OR student_count <= 10` | ✅ | ❌ **Missing** |
-| `ck_instructors_hours` — upper bound `<= 168` | ✅ | ❌ Missing upper bound |
-| `ck_modules_sequence` / `ck_lessons_sequence` — `>= 1` | ✅ | ⚠️ `> 0` (equivalent, different style) |
-| `ck_reconfig_templates_duration` | ❌ Missing | ✅ |
-| `ck_pricing_policies_rate` / `ck_pricing_policies_dates` | ❌ Missing | ✅ |
-| `ck_schedule_templates_*` | ❌ Missing | ✅ |
-| `ck_account_statements_period` | ❌ Missing | ✅ |
-
-The three **most critical** gaps in `fsbs_schema` are the 240-minute minimum booking duration and the FlightDeck/CabinCrew capacity caps — explicitly required as DB-level enforcement in the guidelines.
+| Table | Constraint | `fsbs_schema` | EF |
+|---|---|---|---|
+| `reconfiguration_templates` | `ck_reconfig_templates_duration` — `duration_mins > 0` | ✅ | ❌ |
+| `pricing_policies` | `ck_pricing_policies_rate` — `hourly_rate_gbp >= 0` | ✅ | ❌ |
+| `pricing_policies` | `ck_pricing_policies_dates` — `effective_to IS NULL OR effective_to > effective_from` | ✅ | ❌ |
+| `schedule_templates` | `ck_schedule_templates_day`, `ck_schedule_templates_times`, `ck_schedule_templates_dates` | ✅ | ❌ |
+| `account_statements` | `ck_account_statements_period` — `period_end >= period_start` | ✅ | ❌ |
+| `instructors` | `ck_instructors_ratings` — `array_length >= 1` | ✅ | ❌ |
+| `lessons` | `ck_lessons_min_duration` — `min_duration_mins > 0` | ✅ | ❌ |
 
 ---
 
-## 8. Triggers — Missing from EF
+## 5. ENUMs — `fsbs_schema` uses native PG enums, EF uses `text`
 
-`fsbs_schema.sql` defines two triggers that maintain `org_accounts.current_balance_gbp`:
+`fsbs_schema` defines rich native PG enums for all status/type columns. EF maps most of these as `text`. The EF model only defines one native enum: `fsbs.training_type`.
+
+Columns affected (EF uses `text`, `fsbs_schema` uses a typed enum):
+
+| Table | Column | `fsbs_schema` type | EF type |
+|---|---|---|---|
+| `app_users` | `app_role` | `app_role` (enum) | `text` |
+| `bookings` | `status` | `booking_status` (enum) | `text` |
+| `bookings` | `booker_role` | `app_role` (enum) | `text` |
+| `booking_slots` | `slot_status` | `slot_status` (enum) | `text` |
+| `enrolments` | `status` | `enrolment_status` (enum) | `text` |
+| `invitations` | `status` | `invitation_status` (enum) | `text` |
+| `invitations` | `invitee_role` | `invitee_role` (enum) | `text` |
+| `account_payments` | `payment_method` | `payment_method` (enum) | `text` |
+| `account_payments` | `status` | `payment_status` (enum) | `text` |
+| `org_accounts` | `status` | `account_status` (enum) | `text` |
+| `simulator_bays` | `status` | `bay_status` (enum) | `text` |
+| `instructor_availabilities` | `avail_type` | `availability_type` (enum) | `text` |
+| `discount_rules` | `discount_type` | `discount_type` (enum) | `text` |
+| `booking_discounts` | `discount_type` | `discount_type` (enum) | `text` |
+| `booking_approvals` | `decision` | `approval_decision` (enum) | `text` |
+| `report_runs` | `status` | `report_run_status` (enum) | `text` |
+| `invoices` | `status` | `invoice_status` (enum) | `text` |
+| `org_memberships` | `org_role` | `org_role` (enum) | `text` |
+| `organisations` | `customer_class` | `customer_class` (enum) | `text` |
+| `pricing_policies` | `customer_class` | `customer_class` (enum) | `text` |
+
+These must be added to the EF migration as raw SQL `CREATE TYPE … AS ENUM` statements, with the columns altered to use them.
+
+---
+
+## 6. Triggers — missing from EF
+
+`fsbs_schema` defines two triggers maintaining `org_accounts.current_balance_gbp`:
 
 ```sql
 CREATE TRIGGER trg_invoices_update_balance  AFTER INSERT OR UPDATE OR DELETE ON fsbs.invoices ...
 CREATE TRIGGER trg_payments_update_balance  AFTER INSERT OR UPDATE OR DELETE ON fsbs.account_payments ...
 ```
 
-**The EF-generated schema has no triggers at all.** The balance column will not be maintained automatically if the EF schema is applied as-is. These must be added as raw SQL via `migrationBuilder.Sql(...)` in the EF migration.
+EF has no triggers. These must be added via `migrationBuilder.Sql(...)`.
 
 ---
 
-## 9. Row-Level Security — Missing from EF
+## 7. Row-Level Security — missing from EF
 
-`fsbs_schema.sql` enables RLS and defines a `tenant_isolation` policy on the six tenant-scoped tables. The EF-generated schema has **no** `ALTER TABLE … ENABLE ROW LEVEL SECURITY` or `CREATE POLICY` statements. These must also be applied via raw SQL in migrations.
-
----
-
-## 10. Unique Indexes — EF has significantly more
-
-`fsbs_schema.sql` defines only 3 unique/partial indexes. The EF schema defines 17:
-
-| Index | EF | `fsbs_schema` |
-|---|---|---|
-| `uq_invitations_token_hash` | ✅ | ❌ **Missing** (security requirement) |
-| `uq_bookings_idempotency_key` | ✅ | ❌ **Missing** |
-| `uq_enrolments_user_course` | ✅ | ❌ Missing |
-| `uq_reconfig_templates_pair` | ✅ | ❌ Missing |
-| `uq_reconfig_slots_bay_time` | ✅ | ❌ Missing |
-| `uq_instructors_user` / `uq_instructors_employee_number` | ✅ | ❌ Missing |
-| `uq_app_users_cognito_sub` / `uq_app_users_email` | ✅ | ❌ Missing |
-| `uq_booking_slots_bay_time` (partial, `WHERE slot_status != 'Cancelled'`) | ✅ | ✅ |
-| `uq_invitations_pending_email_org` (partial) | ✅ | ✅ |
-
-The missing `uq_invitations_token_hash` is a security gap — the guidelines explicitly require it.
+`fsbs_schema` enables RLS and defines a `tenant_isolation` policy on six tables. EF has no `ALTER TABLE … ENABLE ROW LEVEL SECURITY` or `CREATE POLICY` statements. Must be added via raw SQL in the migration.
 
 ---
 
-## Summary: What Needs to Be Reconciled
+## 8. `simulator_configurations.simulator_unit_id` — nullable vs NOT NULL
 
-| Category | Action needed |
+| Schema | `simulator_unit_id` nullability |
 |---|---|
-| `aircraft_types` table | Add to `fsbs_schema.sql` or accept EF as authoritative |
-| Table/column renames | Align naming (`users`→`app_users`, `s3_key` vs `s3key`, etc.) |
-| Missing columns (`user_profiles`, `invitations`, `org_memberships`, etc.) | Decide which schema is correct; `fsbs_schema` appears incomplete in several places |
-| 3 critical CHECK constraints (min duration, FD/CC capacity) | **Add to `fsbs_schema.sql`** — currently a compliance gap |
-| Balance triggers | Add as raw SQL in EF migration (`migrationBuilder.Sql(...)`) |
-| RLS policies | Add as raw SQL in EF migration |
-| 14 missing unique indexes in `fsbs_schema` | Add them — `uq_invitations_token_hash` is a security requirement |
+| `fsbs_schema` | `NULL` (optional FK, deferred constraint) |
+| EF | `NOT NULL` |
+
+Needs a decision: EF treats every configuration as belonging to a unit at creation time; `fsbs_schema` allows configurations to exist independently. Align before migration.
+
+---
+
+## 9. `org_accounts` — missing `credit_limit_gbp` CHECK in EF
+
+`fsbs_schema` has `ck_org_accounts_credit_limit CHECK (credit_limit_gbp >= 0)`. EF omits this. Add via raw SQL in migration.
+
+---
+
+## 10. `invitations` — `claimed_by` FK missing in EF
+
+`fsbs_schema` has explicit FKs for `issued_by`, `claimed_by`, and `revoked_by` referencing `app_users`. EF only stores `claimed_by` as a bare `uuid` with no FK constraint. Add FK constraints via raw SQL in migration or update the EF model.

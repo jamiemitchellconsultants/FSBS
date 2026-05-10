@@ -156,6 +156,7 @@ ACCOUNT_ID="cccccccc-0000-0000-0000-000000000001"
 UNIT_ID="dddddddd-0000-0000-0000-000000000001"
 BAY_A_ID="eeeeeeee-0000-0000-0000-000000000001"
 BAY_B_ID="eeeeeeee-0000-0000-0000-000000000002"
+AIRCRAFT_TYPE_ID="aaaaaaaa-1111-0000-0000-000000000001"
 CONFIG_FD_ID="ffffffff-0000-0000-0000-000000000001"
 CONFIG_CC_ID="ffffffff-0000-0000-0000-000000000002"
 POLICY_FD_STD_ID="11111111-0000-0000-0000-000000000001"
@@ -195,11 +196,19 @@ run_sql "
   ON CONFLICT (org_id) DO NOTHING;
 " || log_warn "OrgAccount seed failed (may already exist)."
 
-# ── 2. Simulator unit, bays, and configurations ───────────────────────────────
-# simulator_configurations must be inserted before simulator_units
-# because simulator_units.active_configuration_id references simulator_configurations.
-# simulator_configurations also requires simulator_unit_id, so we insert the unit
-# first without an active_config, then insert configs, then update the unit.
+# ── 2. Aircraft type ──────────────────────────────────────────────────────────
+log_info "Seeding aircraft type 'B737-800'..."
+run_sql "
+  INSERT INTO fsbs.aircraft_types
+    (aircraft_type_id, icao_code, name, is_active, is_deleted, created_at, updated_at)
+  VALUES
+    ('${AIRCRAFT_TYPE_ID}', 'B737-800', 'Boeing 737-800', true, false, now(), now())
+  ON CONFLICT DO NOTHING;
+" || log_warn "AircraftType seed failed (may already exist)."
+
+# ── 3. Simulator unit, bays, and configurations ───────────────────────────────
+# Insert unit first (without active_config), then configs (which FK to unit),
+# then update unit to point at the active config.
 
 log_info "Seeding simulator unit 'FFS-1'..."
 run_sql "
@@ -225,14 +234,14 @@ run_sql "
 log_info "Seeding simulator configurations..."
 run_sql "
   INSERT INTO fsbs.simulator_configurations
-    (config_id, simulator_unit_id, name, aircraft_type, config_mode,
+    (config_id, simulator_unit_id, name, aircraft_type_id, config_mode,
      supported_training_types, max_capacity_flight_deck, max_capacity_cabin_crew,
      is_active, is_deleted, created_at, updated_at)
   VALUES
-    ('${CONFIG_FD_ID}', '${UNIT_ID}', 'B737-800 Flight Deck', 'B737-800',
+    ('${CONFIG_FD_ID}', '${UNIT_ID}', 'B737-800 Flight Deck', '${AIRCRAFT_TYPE_ID}',
      'CockpitOnly', ARRAY['flight_deck']::fsbs.training_type[],
      4, 10, true, false, now(), now()),
-    ('${CONFIG_CC_ID}', '${UNIT_ID}', 'B737-800 Full Cabin', 'B737-800',
+    ('${CONFIG_CC_ID}', '${UNIT_ID}', 'B737-800 Full Cabin', '${AIRCRAFT_TYPE_ID}',
      'CockpitAndCabin', ARRAY['flight_deck','cabin_crew']::fsbs.training_type[],
      4, 10, true, false, now(), now())
   ON CONFLICT (config_id) DO NOTHING;
@@ -245,7 +254,7 @@ run_sql "
   WHERE unit_id = '${UNIT_ID}';
 " || log_warn "SimulatorUnit active_config update failed."
 
-# ── 3. Pricing policies ───────────────────────────────────────────────────────
+# ── 4. Pricing policies ───────────────────────────────────────────────────────
 log_info "Seeding pricing policies..."
 run_sql "
   INSERT INTO fsbs.pricing_policies
@@ -261,7 +270,7 @@ run_sql "
   ON CONFLICT (policy_id) DO NOTHING;
 " || log_warn "PricingPolicy seed failed (may already exist)."
 
-# ── 4. Demo users (via API) ───────────────────────────────────────────────────
+# ── 5. Demo users (via API) ───────────────────────────────────────────────────
 log_info "Seeding demo users via API..."
 
 DEMO_STAFF_ROLES=("SystemAdmin" "ScheduleAdmin" "CourseDirector" "Instructor" "Management" "SalesStaff" "InternalStudent")
@@ -291,7 +300,7 @@ for ROLE in "CorporateManager" "CorporateStudent"; do
           (membership_id, org_id, user_id, org_role, is_deleted, created_at, updated_at)
         VALUES
           (gen_random_uuid(), '${ORG_ID}', '${CORP_USER_ID}', '${ORG_ROLE}', false, now(), now())
-        ON CONFLICT (org_id, user_id) DO NOTHING;
+        ON CONFLICT (user_id, org_id) DO NOTHING;
       " || log_warn "  OrgMembership insert failed for ${EMAIL}."
     fi
   else
