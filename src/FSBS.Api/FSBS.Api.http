@@ -1,4 +1,4 @@
-@FSBS.Api_HostAddress = http://localhost:5222
+@FSBS.Api_HostAddress = http://localhost:5230
 
 GET {{FSBS.Api_HostAddress}}/weatherforecast/
 Accept: application/json
