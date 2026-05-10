@@ -1,8 +1,5 @@
 Using launch settings from src/FSBS.Api/Properties/launchSettings.json...
 Building...
-/Users/jamesmitchell/RiderProjects/FSBS/src/FSBS.Api/Program.cs(176,13): warning CS0618: 'ScalarAuthenticationOptions.PreferredSecurityScheme' is obsolete: 'This property is obsolete and will be removed in a future release. Use PreferredSecuritySchemes property to configure the preferred security scheme instead.' [/Users/jamesmitchell/RiderProjects/FSBS/src/FSBS.Api/FSBS.Api.csproj]
-/Users/jamesmitchell/RiderProjects/FSBS/src/FSBS.Api/Program.cs(34,9): warning CS8602: Dereference of a possibly null reference. [/Users/jamesmitchell/RiderProjects/FSBS/src/FSBS.Api/FSBS.Api.csproj]
-/Users/jamesmitchell/RiderProjects/FSBS/src/FSBS.Api/Program.cs(43,9): warning CS8602: Dereference of a possibly null reference. [/Users/jamesmitchell/RiderProjects/FSBS/src/FSBS.Api/FSBS.Api.csproj]
 info: Microsoft.Hosting.Lifetime[14]
       Now listening on: https://localhost:7177
 info: Microsoft.Hosting.Lifetime[14]
@@ -34,8 +31,62 @@ warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
 warn: Microsoft.EntityFrameworkCore.Model.Validation[10622]
       Entity 'AppUser' has a global query filter defined and is the required end of a relationship with the entity 'UserProfile'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
 info: Microsoft.EntityFrameworkCore.Database.Command[20101]
-      Executed DbCommand (14ms) [Parameters=[@email='?'], CommandType='Text', CommandTimeout='30']
-      SELECT a.user_id, a.app_role, a.cognito_sub, a.created_at, a.created_by, a.email, a.is_deleted, a.tenant_id, a.updated_at, a.updated_by, a.xmin
+      Executed DbCommand (12ms) [Parameters=[@email='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a.user_id, a.app_role, a.cognito_sub, a.created_at, a.created_by, a.email, a.is_active, a.is_deleted, a.tenant_id, a.updated_at, a.updated_by, a.xmin
+      FROM fsbs.app_users AS a
+      WHERE a.email = @email
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@email='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a.user_id, a.app_role, a.cognito_sub, a.created_at, a.created_by, a.email, a.is_active, a.is_deleted, a.tenant_id, a.updated_at, a.updated_by, a.xmin
+      FROM fsbs.app_users AS a
+      WHERE a.email = @email
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@email='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a.user_id, a.app_role, a.cognito_sub, a.created_at, a.created_by, a.email, a.is_active, a.is_deleted, a.tenant_id, a.updated_at, a.updated_by, a.xmin
+      FROM fsbs.app_users AS a
+      WHERE a.email = @email
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@email='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a.user_id, a.app_role, a.cognito_sub, a.created_at, a.created_by, a.email, a.is_active, a.is_deleted, a.tenant_id, a.updated_at, a.updated_by, a.xmin
+      FROM fsbs.app_users AS a
+      WHERE a.email = @email
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@email='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a.user_id, a.app_role, a.cognito_sub, a.created_at, a.created_by, a.email, a.is_active, a.is_deleted, a.tenant_id, a.updated_at, a.updated_by, a.xmin
+      FROM fsbs.app_users AS a
+      WHERE a.email = @email
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@email='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a.user_id, a.app_role, a.cognito_sub, a.created_at, a.created_by, a.email, a.is_active, a.is_deleted, a.tenant_id, a.updated_at, a.updated_by, a.xmin
+      FROM fsbs.app_users AS a
+      WHERE a.email = @email
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@email='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a.user_id, a.app_role, a.cognito_sub, a.created_at, a.created_by, a.email, a.is_active, a.is_deleted, a.tenant_id, a.updated_at, a.updated_by, a.xmin
+      FROM fsbs.app_users AS a
+      WHERE a.email = @email
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@email='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a.user_id, a.app_role, a.cognito_sub, a.created_at, a.created_by, a.email, a.is_active, a.is_deleted, a.tenant_id, a.updated_at, a.updated_by, a.xmin
+      FROM fsbs.app_users AS a
+      WHERE a.email = @email
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@email='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a.user_id, a.app_role, a.cognito_sub, a.created_at, a.created_by, a.email, a.is_active, a.is_deleted, a.tenant_id, a.updated_at, a.updated_by, a.xmin
+      FROM fsbs.app_users AS a
+      WHERE a.email = @email
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@email='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a.user_id, a.app_role, a.cognito_sub, a.created_at, a.created_by, a.email, a.is_active, a.is_deleted, a.tenant_id, a.updated_at, a.updated_by, a.xmin
       FROM fsbs.app_users AS a
       WHERE a.email = @email
       LIMIT 1

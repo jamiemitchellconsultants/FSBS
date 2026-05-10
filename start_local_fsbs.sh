@@ -157,6 +157,8 @@ UNIT_ID="dddddddd-0000-0000-0000-000000000001"
 BAY_A_ID="eeeeeeee-0000-0000-0000-000000000001"
 BAY_B_ID="eeeeeeee-0000-0000-0000-000000000002"
 AIRCRAFT_TYPE_ID="aaaaaaaa-1111-0000-0000-000000000001"
+MEMBERSHIP_MANAGER_ID="cccccccc-0000-0000-0000-000000000002"
+MEMBERSHIP_STUDENT_ID="cccccccc-0000-0000-0000-000000000003"
 CONFIG_FD_ID="ffffffff-0000-0000-0000-000000000001"
 CONFIG_CC_ID="ffffffff-0000-0000-0000-000000000002"
 POLICY_FD_STD_ID="11111111-0000-0000-0000-000000000001"
@@ -171,6 +173,14 @@ PG_CONTAINER=$(docker compose ps -q postgres)
 # ── Helper: run psql inside the container ────────────────────────────────────
 run_sql() {
   docker exec "$PG_CONTAINER" psql -U postgres -d fsbs -c "$1"
+}
+
+run_sql_scalar() {
+  docker exec "$PG_CONTAINER" psql -Atq -U postgres -d fsbs -c "$1"
+}
+
+to_lower() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
 }
 
 # ── 1. Organisation + OrgAccount ─────────────────────────────────────────────
@@ -226,8 +236,8 @@ run_sql "
   INSERT INTO fsbs.simulator_bays
     (bay_id, simulator_unit_id, bay_code, status, is_deleted, created_at, updated_at)
   VALUES
-    ('${BAY_A_ID}', '${UNIT_ID}', 'A', 'Operational', false, now(), now()),
-    ('${BAY_B_ID}', '${UNIT_ID}', 'B', 'Operational', false, now(), now())
+    ('${BAY_A_ID}', '${UNIT_ID}', 'A', 'operational', false, now(), now()),
+    ('${BAY_B_ID}', '${UNIT_ID}', 'B', 'operational', false, now(), now())
   ON CONFLICT (bay_id) DO NOTHING;
 " || log_warn "SimulatorBay seed failed (may already exist)."
 
@@ -275,7 +285,7 @@ log_info "Seeding demo users via API..."
 
 DEMO_STAFF_ROLES=("SystemAdmin" "ScheduleAdmin" "CourseDirector" "Instructor" "Management" "SalesStaff" "InternalStudent")
 for ROLE in "${DEMO_STAFF_ROLES[@]}"; do
-  EMAIL="${ROLE,,}@fsbs.local"
+  EMAIL="$(to_lower "$ROLE")@fsbs.local"
   log_info "  Seeding ${EMAIL} (${ROLE})..."
   curl -sf -X POST "${API_URL}/dev/users/seed?email=${EMAIL}&role=${ROLE}" -k > /dev/null \
     || log_warn "  Failed to seed ${EMAIL} (may already exist)."
@@ -287,24 +297,33 @@ curl -sf -X POST "${API_URL}/dev/users/seed?email=privatecustomer@fsbs.local&rol
 
 # Corporate users — seeded via API then linked to org via SQL
 for ROLE in "CorporateManager" "CorporateStudent"; do
-  EMAIL="${ROLE,,}@fsbs.local"
+  EMAIL="$(to_lower "$ROLE")@fsbs.local"
   log_info "  Seeding ${EMAIL} (${ROLE})..."
+  CORP_USER_ID=""
   USER_RESP=$(curl -sf -X POST "${API_URL}/dev/users/seed?email=${EMAIL}&role=${ROLE}" -k)
   if [[ $? -eq 0 ]]; then
     CORP_USER_ID=$(echo "$USER_RESP" | jq -r '.userId')
-    if [[ -n "$CORP_USER_ID" && "$CORP_USER_ID" != "null" ]]; then
-      ORG_ROLE="Manager"
-      [[ "$ROLE" == "CorporateStudent" ]] && ORG_ROLE="Student"
-      run_sql "
-        INSERT INTO fsbs.org_memberships
-          (membership_id, org_id, user_id, org_role, is_deleted, created_at, updated_at)
-        VALUES
-          (gen_random_uuid(), '${ORG_ID}', '${CORP_USER_ID}', '${ORG_ROLE}', false, now(), now())
-        ON CONFLICT (user_id, org_id) DO NOTHING;
-      " || log_warn "  OrgMembership insert failed for ${EMAIL}."
-    fi
   else
     log_warn "  Failed to seed ${EMAIL} (may already exist)."
+  fi
+
+  if [[ -z "$CORP_USER_ID" || "$CORP_USER_ID" == "null" ]]; then
+    CORP_USER_ID=$(run_sql_scalar "SELECT user_id FROM fsbs.app_users WHERE email = '${EMAIL}' LIMIT 1;")
+  fi
+
+  CORP_USER_ID=$(printf '%s' "$CORP_USER_ID" | tr -d '[:space:]')
+  if [[ -n "$CORP_USER_ID" ]]; then
+    ORG_ROLE="manager"
+    MEMBERSHIP_ID="$MEMBERSHIP_MANAGER_ID"
+    [[ "$ROLE" == "CorporateStudent" ]] && ORG_ROLE="student"
+    [[ "$ROLE" == "CorporateStudent" ]] && MEMBERSHIP_ID="$MEMBERSHIP_STUDENT_ID"
+    run_sql "
+      INSERT INTO fsbs.org_memberships
+        (membership_id, org_id, user_id, org_role, is_deleted, created_at, updated_at)
+      VALUES
+        ('${MEMBERSHIP_ID}', '${ORG_ID}', '${CORP_USER_ID}', '${ORG_ROLE}', false, now(), now())
+      ON CONFLICT (user_id, org_id) DO NOTHING;
+    " || log_warn "  OrgMembership insert failed for ${EMAIL}."
   fi
 done
 
