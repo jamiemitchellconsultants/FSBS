@@ -33,6 +33,7 @@ public static class RepositoriesServiceExtensions
         services.AddScoped<Application.Common.Interfaces.IUserProfileRepository, UserProfileRepository>();
         services.AddScoped<Application.Common.Interfaces.IReferenceDataRepository, ReferenceDataRepository>();
         services.AddScoped<Application.Common.Interfaces.IInstructorScheduleRepository, InstructorScheduleRepository>();
+        services.AddScoped<Application.Common.Interfaces.IOrganisationAccountRepository, OrganisationAccountRepository>();
 
         return services;
     }

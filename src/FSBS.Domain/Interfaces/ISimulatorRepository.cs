@@ -27,4 +27,13 @@ public interface ISimulatorRepository
 
     /// <summary>Returns all non-deleted simulator units with their Bays and Configurations loaded.</summary>
     Task<IReadOnlyList<SimulatorUnit>> ListAllAsync(CancellationToken ct = default);
+
+    /// <summary>Adds a new simulator unit to the current unit of work.</summary>
+    Task AddUnitAsync(SimulatorUnit unit, CancellationToken ct = default);
+
+    /// <summary>Adds a new simulator bay to the current unit of work.</summary>
+    Task AddBayAsync(SimulatorBay bay, CancellationToken ct = default);
+
+    /// <summary>Adds a new simulator configuration to the current unit of work.</summary>
+    Task AddConfigurationAsync(SimulatorConfiguration configuration, CancellationToken ct = default);
 }

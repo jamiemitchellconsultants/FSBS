@@ -42,4 +42,13 @@ internal sealed class SimulatorRepository(FsbsDbContext db) : ISimulatorReposito
             .Where(u => !u.IsDeleted)
             .OrderBy(u => u.Name)
             .ToListAsync(ct);
+
+    public Task AddUnitAsync(SimulatorUnit unit, CancellationToken ct = default) =>
+        db.SimulatorUnits.AddAsync(unit, ct).AsTask();
+
+    public Task AddBayAsync(SimulatorBay bay, CancellationToken ct = default) =>
+        db.SimulatorBays.AddAsync(bay, ct).AsTask();
+
+    public Task AddConfigurationAsync(SimulatorConfiguration configuration, CancellationToken ct = default) =>
+        db.SimulatorConfigurations.AddAsync(configuration, ct).AsTask();
 }

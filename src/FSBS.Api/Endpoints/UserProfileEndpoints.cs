@@ -45,8 +45,6 @@ public static class UserProfileEndpoints
         UpdateUserProfileRequest body,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(body.FirstName) || string.IsNullOrWhiteSpace(body.LastName))
-            return Results.Problem("FirstName and LastName are required.", statusCode: StatusCodes.Status400BadRequest);
 
         await sender.Send(new UpdateMyProfileCommand(body), ct);
         return Results.NoContent();

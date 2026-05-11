@@ -182,7 +182,7 @@ if (app.Environment.IsDevelopment())
         options.DefaultHttpClient = new(ScalarTarget.Http, ScalarClient.HttpClient);
         options.Authentication  = new ScalarAuthenticationOptions
         {
-            PreferredSecurityScheme = "Bearer",
+            PreferredSecuritySchemes = ["Bearer"],
         };
     });
     app.MapDevEndpoints(builder.Configuration);
