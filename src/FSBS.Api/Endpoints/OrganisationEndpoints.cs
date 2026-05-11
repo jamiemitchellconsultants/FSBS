@@ -39,6 +39,21 @@ public static class OrganisationEndpoints
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound);
 
+        group.MapPut("/{orgId:guid}/payments/{paymentId:guid}/verify", VerifyPaymentAsync)
+            .WithName("VerifyOrgPayment")
+            .WithSummary("Mark a Pending payment as Verified, updating the account balance (Management / SystemAdmin).")
+            .RequireAuthorization("RequireManagement")
+            .Produces<PaymentDto>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPut("/{orgId:guid}/payments/{paymentId:guid}/void", VoidPaymentAsync)
+            .WithName("VoidOrgPayment")
+            .WithSummary("Void a payment with a mandatory reason (Management / SystemAdmin).")
+            .RequireAuthorization("RequireManagement")
+            .Produces<PaymentDto>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound);
+
         return app;
     }
 
@@ -74,7 +89,31 @@ public static class OrganisationEndpoints
             payment);
     }
 
+    private static async Task<IResult> VerifyPaymentAsync(
+        Guid orgId, Guid paymentId, ISender sender, CancellationToken ct)
+    {
+        var payment = await sender.Send(
+            new VerifyOrganisationPaymentCommand(orgId, paymentId), ct);
+        return Results.Ok(payment);
+    }
+
+    private static async Task<IResult> VoidPaymentAsync(
+        Guid orgId, Guid paymentId, VoidPaymentRequest body, ISender sender, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(body.Reason) || body.Reason.Length < 10)
+            return Results.Problem(
+                "Void reason must be at least 10 characters.",
+                statusCode: StatusCodes.Status400BadRequest);
+
+        var payment = await sender.Send(
+            new VoidOrganisationPaymentCommand(orgId, paymentId, body.Reason), ct);
+        return Results.Ok(payment);
+    }
+
 }
 
 /// <summary>Response body for <c>GET /v1/organisations</c>.</summary>
 public record OrganisationListResponse(IReadOnlyList<OrganisationSummary> Items);
+
+/// <summary>Request body for <c>PUT /v1/organisations/{id}/payments/{id}/void</c>.</summary>
+public record VoidPaymentRequest(string Reason);

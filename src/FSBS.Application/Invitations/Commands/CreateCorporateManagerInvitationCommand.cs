@@ -1,4 +1,4 @@
-using MediatR;
+using FSBS.Application.Common.Interfaces;
 
 namespace FSBS.Application.Invitations.Commands;
 
@@ -10,4 +10,4 @@ namespace FSBS.Application.Invitations.Commands;
 public record CreateCorporateManagerInvitationCommand(
     string InviteeEmail,
     Guid OrgId,
-    string? PersonalNote = null) : IRequest<CreateCorporateManagerInvitationResult>;
+    string? PersonalNote = null) : ICommand<CreateCorporateManagerInvitationResult>;

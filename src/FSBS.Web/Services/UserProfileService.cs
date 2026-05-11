@@ -33,12 +33,20 @@ public sealed class UserProfileService(HttpClient http)
     /// <summary>
     /// Uploads the photo bytes directly to S3 using the pre-signed PUT URL.
     /// The API is never in the upload path — the browser sends bytes straight to S3.
+    /// Uses a dedicated HttpClient without the API resilience handler since the
+    /// target is S3, not the FSBS API.
     /// </summary>
-    public async Task UploadPhotoToS3Async(string presignedUrl, Stream photoStream, string contentType, CancellationToken ct = default)
+    public async Task UploadPhotoToS3Async(
+        string presignedUrl, Stream photoStream, string contentType,
+        CancellationToken ct = default)
     {
         using var content = new StreamContent(photoStream);
-        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        content.Headers.ContentType =
+            new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
 
+        // A separate client is intentional here: the pre-signed URL targets S3
+        // directly, not the FSBS API base address, so the injected HttpClient
+        // (which has the API base address set) cannot be reused.
         using var s3Client = new HttpClient();
         var response = await s3Client.PutAsync(presignedUrl, content, ct);
         response.EnsureSuccessStatusCode();

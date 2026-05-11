@@ -13,7 +13,12 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
-builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
+builder.Services.AddTransient<ApiResilienceHandler>();
+builder.Services.AddScoped(_ =>
+{
+    var handler = new ApiResilienceHandler { InnerHandler = new HttpClientHandler() };
+    return new HttpClient(handler) { BaseAddress = new Uri(apiBaseUrl) };
+});
 
 builder.Services.AddMudServices();
 builder.Services.AddFluxor(options => options.ScanAssemblies(typeof(Program).Assembly));

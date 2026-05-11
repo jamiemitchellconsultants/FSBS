@@ -54,6 +54,35 @@ public sealed class OrganisationAccountRepository(FsbsDbContext db) : IOrganisat
         return MapPayment(payment);
     }
 
+    public async Task<PaymentDto> VerifyPaymentAsync(
+        Guid orgId, Guid paymentId, Guid verifiedBy, CancellationToken ct = default)
+    {
+        var payment = await db.AccountPayments
+            .FirstOrDefaultAsync(p => p.Id == paymentId && p.OrgId == orgId, ct)
+            ?? throw new OrganisationNotFoundException(orgId);
+
+        payment.Status     = PaymentStatus.Verified;
+        payment.VerifiedBy = verifiedBy;
+        payment.VerifiedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return MapPayment(payment);
+    }
+
+    public async Task<PaymentDto> VoidPaymentAsync(
+        Guid orgId, Guid paymentId, string reason, Guid voidedBy, CancellationToken ct = default)
+    {
+        var payment = await db.AccountPayments
+            .FirstOrDefaultAsync(p => p.Id == paymentId && p.OrgId == orgId, ct)
+            ?? throw new OrganisationNotFoundException(orgId);
+
+        payment.Status     = PaymentStatus.Voided;
+        payment.VoidReason = reason;
+        payment.VerifiedBy = voidedBy;
+        payment.VerifiedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return MapPayment(payment);
+    }
+
     private static OrgAccountDto MapAccount(OrgAccount a) =>
         new(
             a.Id,

@@ -15,5 +15,18 @@ public interface IOrganisationAccountRepository
         string? notes,
         Guid recordedBy,
         CancellationToken ct = default);
+
+    Task<PaymentDto> VerifyPaymentAsync(
+        Guid orgId,
+        Guid paymentId,
+        Guid verifiedBy,
+        CancellationToken ct = default);
+
+    Task<PaymentDto> VoidPaymentAsync(
+        Guid orgId,
+        Guid paymentId,
+        string reason,
+        Guid voidedBy,
+        CancellationToken ct = default);
 }
 

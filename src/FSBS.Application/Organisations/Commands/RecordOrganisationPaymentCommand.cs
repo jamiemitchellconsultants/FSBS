@@ -1,5 +1,5 @@
+using FSBS.Application.Common.Interfaces;
 using FSBS.Shared.Payments;
-using MediatR;
 
 namespace FSBS.Application.Organisations.Commands;
 
@@ -9,6 +9,6 @@ public record RecordOrganisationPaymentCommand(
     DateOnly PaymentDate,
     string PaymentMethod,
     string? Reference,
-    string? Notes) : IRequest<PaymentDto>;
+    string? Notes) : ICommand<PaymentDto>;
 
 

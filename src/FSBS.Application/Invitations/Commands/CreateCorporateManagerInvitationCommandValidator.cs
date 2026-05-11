@@ -14,5 +14,9 @@ public sealed class CreateCorporateManagerInvitationCommandValidator
 
         RuleFor(x => x.OrgId)
             .NotEmpty();
+
+        RuleFor(x => x.PersonalNote)
+            .MaximumLength(1000)
+            .When(x => x.PersonalNote is not null);
     }
 }

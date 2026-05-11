@@ -1,4 +1,4 @@
-using MediatR;
+using FSBS.Application.Common.Interfaces;
 
 namespace FSBS.Application.Invitations.Commands;
 
@@ -8,4 +8,4 @@ namespace FSBS.Application.Invitations.Commands;
 /// than accepting it from the client, preventing cross-org invitation forgery.
 /// </summary>
 public record InviteCorporateStudentCommand(string InviteeEmail, string? PersonalNote = null)
-    : IRequest<CreateCorporateManagerInvitationResult>;
+    : ICommand<CreateCorporateManagerInvitationResult>;

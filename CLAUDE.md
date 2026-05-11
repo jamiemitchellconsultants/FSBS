@@ -504,6 +504,18 @@ The canonical schema is in `fsbs_schema.sql`. Key decisions explained below.
 
 All `BookingStatus`, `TrainingType`, `ConfigurationMode`, `DiscountType` etc. are native PostgreSQL ENUMs. EF Core uses the Npgsql enum mapping (`MapEnum<T>()`). Values are type-safe at the DB level; no `CHECK` constraints needed to enumerate string values.
 
+**Exception — state-machine and role enums stored as `text`:** The following enums are intentionally stored as `text` in EF Core (using `HasConversion<string>()`) rather than as native PG enums. This is because they represent internal state machine transitions or authorization roles whose values are tightly coupled to application code deployments, and where the overhead of a `ALTER TYPE ... ADD VALUE` migration for every new state is not justified:
+
+- `BookingStatus`, `SlotStatus`, `EnrolmentStatus`, `ApprovalDecision`, `InvoiceStatus`, `PaymentStatus`, `AppRole` (booker_role and app_role columns)
+
+The following enums **are** native PG enums (registered via `HasPostgresEnum` / `MapEnum`):
+
+- `TrainingType`, `InvitationStatus`, `InviteeRole`, `AvailabilityType`, `BayStatus`, `OrgRole`
+
+The following are **reference tables** (not enums) to allow administrator configuration without code deployment:
+
+- `customer_classes`, `discount_types`, `payment_methods`, `account_statuses`
+
 ### Critical CHECK constraints
 
 These four rules are enforced at the storage layer regardless of how data enters the database:
