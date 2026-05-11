@@ -23,4 +23,9 @@ public interface IInstructorRepository
     Task<IReadOnlyList<Instructor>> ListRatedForAsync(
         TrainingType trainingType,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns all active instructors, ordered by employee number.
+    /// </summary>
+    Task<IReadOnlyList<Instructor>> ListAllAsync(CancellationToken ct = default);
 }

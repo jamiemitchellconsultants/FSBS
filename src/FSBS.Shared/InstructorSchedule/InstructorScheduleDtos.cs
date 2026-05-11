@@ -66,3 +66,7 @@ public sealed record OverrideRequest(
     DateTimeOffset EndAt,
     string Type,
     string? Notes);
+
+/// <summary>Lightweight row for the instructor picker / roster.</summary>
+public sealed record InstructorRowDto(Guid InstructorId, string EmployeeNumber, string FullName, string Email);
+
