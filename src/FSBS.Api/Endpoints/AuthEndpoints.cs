@@ -1,6 +1,4 @@
-using System.Net.Http.Headers;
 using System.Security.Claims;
-using System.Text.Json;
 using FSBS.Application.Auth.Commands;
 using FSBS.Application.Invitations.Commands;
 using MediatR;
@@ -170,86 +168,28 @@ public static class AuthEndpoints
         string? state,
         string? error,
         HttpContext context,
-        IConfiguration config,
-        IHttpClientFactory httpClientFactory,
+        ISender sender,
         CancellationToken ct)
     {
-        if (!string.IsNullOrWhiteSpace(error))
-            return Results.Redirect($"/?auth_error={Uri.EscapeDataString(error)}");
+        var callback = await sender.Send(new ProcessHostedUiCallbackCommand(code, state, error), ct);
 
-        if (string.IsNullOrWhiteSpace(code))
-            return Results.Redirect("/?auth_error=missing_code");
-
-        // Determine which pool this callback is for via the state parameter prefix.
-        // state format: "staff|<random>" or "customer|<random>"
-        var isStaff = state?.StartsWith("staff|", StringComparison.OrdinalIgnoreCase) ?? false;
-
-        var awsRegion    = config["Cognito:AwsRegion"] ?? string.Empty;
-        var poolId       = isStaff ? config["Cognito:StaffPoolId"]    : config["Cognito:CustomerPoolId"];
-        var clientId     = isStaff ? config["Cognito:StaffClientId"]  : config["Cognito:CustomerClientId"];
-        var clientSecret = isStaff ? config["Cognito:StaffClientSecret"] : config["Cognito:CustomerClientSecret"];
-        var redirectUri  = isStaff ? config["Cognito:StaffCallbackUrl"]  : config["Cognito:CustomerCallbackUrl"];
-
-        if (string.IsNullOrWhiteSpace(poolId) || string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(redirectUri))
-            return Results.Redirect("/?auth_error=misconfigured");
-
-        var tokenEndpoint = $"https://{config["Cognito:Domain"]}.auth.{awsRegion}.amazoncognito.com/oauth2/token";
-
-        var formValues = new Dictionary<string, string>
-        {
-            ["grant_type"]   = "authorization_code",
-            ["client_id"]    = clientId,
-            ["code"]         = code,
-            ["redirect_uri"] = redirectUri,
-        };
-
-        if (!string.IsNullOrWhiteSpace(clientSecret))
-            formValues["client_secret"] = clientSecret;
-
-        using var client = httpClientFactory.CreateClient();
-        using var tokenRequest = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint)
-        {
-            Content = new FormUrlEncodedContent(formValues)
-        };
-
-        HttpResponseMessage tokenResponse;
-        try
-        {
-            tokenResponse = await client.SendAsync(tokenRequest, ct);
-        }
-        catch
-        {
-            return Results.Redirect("/?auth_error=token_exchange_failed");
-        }
-
-        if (!tokenResponse.IsSuccessStatusCode)
-            return Results.Redirect("/?auth_error=token_exchange_failed");
-
-        var json = await tokenResponse.Content.ReadAsStringAsync(ct);
-        using var doc = JsonDocument.Parse(json);
-
-        var idToken      = doc.RootElement.TryGetProperty("id_token",      out var idTok)      ? idTok.GetString()      : null;
-        var accessToken  = doc.RootElement.TryGetProperty("access_token",  out var accTok)     ? accTok.GetString()     : null;
-        var refreshToken = doc.RootElement.TryGetProperty("refresh_token", out var refTok)     ? refTok.GetString()     : null;
-        var expiresIn    = doc.RootElement.TryGetProperty("expires_in",    out var expIn)      ? expIn.GetInt32()       : 3600;
-
-        if (string.IsNullOrWhiteSpace(idToken))
-            return Results.Redirect("/?auth_error=no_id_token");
+        if (!callback.Success)
+            return Results.Redirect($"/?auth_error={Uri.EscapeDataString(callback.ErrorCode ?? "token_exchange_failed")}");
 
         var cookieOptions = new CookieOptions
         {
             HttpOnly  = true,
             Secure    = true,
             SameSite  = SameSiteMode.Lax,
-            Expires   = DateTimeOffset.UtcNow.AddSeconds(expiresIn),
+            Expires   = DateTimeOffset.UtcNow.AddSeconds(callback.ExpiresInSeconds),
             Path      = "/",
         };
 
-        context.Response.Cookies.Append("fsbs_id_token", idToken, cookieOptions);
+        context.Response.Cookies.Append("fsbs_id_token", callback.IdToken!, cookieOptions);
 
-        if (!string.IsNullOrWhiteSpace(refreshToken))
+        if (!string.IsNullOrWhiteSpace(callback.RefreshToken))
         {
-            context.Response.Cookies.Append("fsbs_refresh_token", refreshToken, new CookieOptions
+            context.Response.Cookies.Append("fsbs_refresh_token", callback.RefreshToken, new CookieOptions
             {
                 HttpOnly = true,
                 Secure   = true,

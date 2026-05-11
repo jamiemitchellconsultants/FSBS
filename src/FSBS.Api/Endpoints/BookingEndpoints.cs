@@ -1,10 +1,8 @@
 using FSBS.Api.Hubs;
 using FSBS.Application.Bookings.Commands;
 using FSBS.Application.Bookings.Queries;
-using FSBS.Application.Common.Exceptions;
 using FSBS.Application.Common.Interfaces;
 using FSBS.Domain.Enums;
-using FSBS.Domain.Exceptions;
 using FSBS.Shared.Bookings;
 using FSBS.Shared.Common;
 using MediatR;
@@ -122,15 +120,8 @@ public static class BookingEndpoints
         Guid id,
         CancellationToken ct)
     {
-        try
-        {
-            var dto = await sender.Send(new GetBookingDetailQuery(id), ct);
-            return Results.Ok(dto);
-        }
-        catch (BookingNotFoundException)
-        {
-            return Results.NotFound();
-        }
+        var dto = await sender.Send(new GetBookingDetailQuery(id), ct);
+        return Results.Ok(dto);
     }
 
     // ── Write handlers ────────────────────────────────────────────────────────
@@ -164,21 +155,10 @@ public static class BookingEndpoints
             DepartmentName: body.DepartmentName,
             BudgetCode: body.BudgetCode);
 
-        try
-        {
-            var result = await sender.Send(command, ct);
-            await PushAvailabilityUpdateAsync(
-                body.SimulatorId, availabilityCache, availabilityReadService, hubContext, ct);
-            return Results.Created($"/v1/bookings/{result.BookingId}", result);
-        }
-        catch (BookingConflictException ex)
-        {
-            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status409Conflict);
-        }
-        catch (DomainException ex)
-        {
-            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
-        }
+        var result = await sender.Send(command, ct);
+        await PushAvailabilityUpdateAsync(
+            body.SimulatorId, availabilityCache, availabilityReadService, hubContext, ct);
+        return Results.Created($"/v1/bookings/{result.BookingId}", result);
     }
 
     private static async Task<IResult> ApproveBookingAsync(
@@ -190,25 +170,10 @@ public static class BookingEndpoints
         ApproveBookingRequest body,
         CancellationToken ct)
     {
-        try
-        {
-            var result = await sender.Send(new ApproveBookingCommand(id), ct);
-            await PushAvailabilityUpdateAsync(
-                body.SimulatorId, availabilityCache, availabilityReadService, hubContext, ct);
-            return Results.Ok(result);
-        }
-        catch (BookingNotFoundException)
-        {
-            return Results.NotFound();
-        }
-        catch (SelfApprovalException ex)
-        {
-            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status409Conflict);
-        }
-        catch (InvalidBookingStateTransitionException ex)
-        {
-            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
-        }
+        var result = await sender.Send(new ApproveBookingCommand(id), ct);
+        await PushAvailabilityUpdateAsync(
+            body.SimulatorId, availabilityCache, availabilityReadService, hubContext, ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> RejectBookingAsync(
@@ -220,32 +185,10 @@ public static class BookingEndpoints
         RejectBookingRequest body,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(body.Reason) || body.Reason.Length < 10)
-        {
-            return Results.Problem(
-                detail: "Rejection reason must be at least 10 characters.",
-                statusCode: StatusCodes.Status400BadRequest);
-        }
-
-        try
-        {
-            var result = await sender.Send(new RejectBookingCommand(id, body.Reason), ct);
-            await PushAvailabilityUpdateAsync(
-                body.SimulatorId, availabilityCache, availabilityReadService, hubContext, ct);
-            return Results.Ok(result);
-        }
-        catch (BookingNotFoundException)
-        {
-            return Results.NotFound();
-        }
-        catch (SelfApprovalException ex)
-        {
-            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status409Conflict);
-        }
-        catch (InvalidBookingStateTransitionException ex)
-        {
-            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
-        }
+        var result = await sender.Send(new RejectBookingCommand(id, body.Reason), ct);
+        await PushAvailabilityUpdateAsync(
+            body.SimulatorId, availabilityCache, availabilityReadService, hubContext, ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> CancelBookingAsync(
@@ -257,21 +200,10 @@ public static class BookingEndpoints
         CancelBookingRequest body,
         CancellationToken ct)
     {
-        try
-        {
-            var result = await sender.Send(new CancelBookingCommand(id, body.Reason), ct);
-            await PushAvailabilityUpdateAsync(
-                body.SimulatorId, availabilityCache, availabilityReadService, hubContext, ct);
-            return Results.Ok(result);
-        }
-        catch (BookingNotFoundException)
-        {
-            return Results.NotFound();
-        }
-        catch (InvalidBookingStateTransitionException ex)
-        {
-            return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
-        }
+        var result = await sender.Send(new CancelBookingCommand(id, body.Reason), ct);
+        await PushAvailabilityUpdateAsync(
+            body.SimulatorId, availabilityCache, availabilityReadService, hubContext, ct);
+        return Results.Ok(result);
     }
 
     // ── Shared helper ─────────────────────────────────────────────────────────

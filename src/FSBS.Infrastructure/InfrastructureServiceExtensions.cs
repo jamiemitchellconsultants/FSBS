@@ -51,6 +51,7 @@ public static class InfrastructureServiceExtensions
                 new AmazonCognitoIdentityProviderClient(region));
             services.AddScoped<ICognitoService, CognitoService>();
         }
+        services.AddScoped<ICognitoHostedUiService, CognitoHostedUiService>();
 
         // SQS
         services.Configure<SqsSettings>(configuration.GetSection("Sqs"));

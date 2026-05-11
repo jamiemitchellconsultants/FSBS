@@ -1,4 +1,5 @@
 using FSBS.Application.Common.Exceptions;
+using FSBS.Domain.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -97,6 +98,42 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                     Title  = "Booking not found",
                     Detail = bnfex.Message,
                     Status = StatusCodes.Status404NotFound,
+                }),
+
+            BookingConflictException bcex => (
+                StatusCodes.Status409Conflict,
+                new ProblemDetails
+                {
+                    Title  = "Booking conflict",
+                    Detail = bcex.Message,
+                    Status = StatusCodes.Status409Conflict,
+                }),
+
+            SelfApprovalException saex => (
+                StatusCodes.Status409Conflict,
+                new ProblemDetails
+                {
+                    Title  = "Invalid approver",
+                    Detail = saex.Message,
+                    Status = StatusCodes.Status409Conflict,
+                }),
+
+            InvalidBookingStateTransitionException stex => (
+                StatusCodes.Status400BadRequest,
+                new ProblemDetails
+                {
+                    Title  = "Invalid booking state transition",
+                    Detail = stex.Message,
+                    Status = StatusCodes.Status400BadRequest,
+                }),
+
+            DomainException dex => (
+                StatusCodes.Status400BadRequest,
+                new ProblemDetails
+                {
+                    Title  = "Domain rule violated",
+                    Detail = dex.Message,
+                    Status = StatusCodes.Status400BadRequest,
                 }),
 
             ForbiddenException fex => (
