@@ -62,7 +62,12 @@ public static class DevEndpoints
 
             return Results.Ok(new { token = tokenString, userId, tenantId, email, role });
         })
-        .WithSummary("Issue a signed dev JWT for any role (dev only).");
+        .WithName("GetDevToken")
+        .WithSummary("Issue a signed dev JWT for any role (development only).")
+        .WithDescription(
+            "Use this endpoint to create temporary test JWTs. Pass email and a valid AppRole (e.g., PrivateCustomer, " +
+            "ScheduleAdmin, Instructor). Optionally specify orgId for corporate roles. " +
+            "Return value includes the token, generated user ID, and tenant ID for debugging.");
 
         // POST /dev/users/seed?email=...&role=...
         group.MapPost("/users/seed", async (
@@ -111,7 +116,12 @@ public static class DevEndpoints
 
             return Results.Ok(new { userId, tenantId, email, role });
         })
-        .WithSummary("Create an AppUser + UserProfile row, replacing the Post-Confirmation Lambda (dev only).");
+        .WithName("SeedDevUser")
+        .WithSummary("Create an AppUser + UserProfile row (development only).")
+        .WithDescription(
+            "Bypasses Cognito and the Post-Confirmation Lambda. Useful for quick local testing. " +
+            "Creates a database user record directly. Optionally provide firstName and lastName; " +
+            "otherwise they default to empty strings. The response includes the generated user ID and tenant ID.");
 
         return app;
     }

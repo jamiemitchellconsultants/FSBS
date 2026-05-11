@@ -4,6 +4,11 @@ using FSBS.Shared.Simulators;
 
 namespace FSBS.Api.Endpoints;
 
+/// <summary>
+/// Minimal API endpoints for aircraft type reference data management.
+/// Routes are under <c>/v1/aircraft-types</c> and require authentication.
+/// Write operations require ScheduleAdmin role.
+/// </summary>
 public static class AircraftTypeEndpoints
 {
     public static IEndpointRouteBuilder MapAircraftTypeEndpoints(this IEndpointRouteBuilder app)
@@ -15,23 +20,26 @@ public static class AircraftTypeEndpoints
 
         group.MapGet("/", ListAsync)
             .WithName("ListAircraftTypes")
-            .WithSummary("Return all aircraft types.")
+            .WithSummary("Return all available aircraft types (e.g., Boeing 737, Airbus A320).")
             .Produces<IReadOnlyList<AircraftTypeDto>>();
 
         group.MapPost("/", CreateAsync)
             .WithName("CreateAircraftType")
+            .WithSummary("Create a new aircraft type with ICAO code and description (ScheduleAdmin only).")
             .RequireAuthorization("RequireScheduleAdmin")
             .Produces<AircraftTypeDto>(StatusCodes.Status201Created)
             .Produces(StatusCodes.Status409Conflict);
 
         group.MapPut("/{id:guid}", UpdateAsync)
             .WithName("UpdateAircraftType")
+            .WithSummary("Update an aircraft type's ICAO code and description (ScheduleAdmin only).")
             .RequireAuthorization("RequireScheduleAdmin")
             .Produces<AircraftTypeDto>()
             .Produces(StatusCodes.Status404NotFound);
 
         group.MapDelete("/{id:guid}", DeleteAsync)
             .WithName("DeleteAircraftType")
+            .WithSummary("Soft-delete an aircraft type (ScheduleAdmin only).")
             .RequireAuthorization("RequireScheduleAdmin")
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound);

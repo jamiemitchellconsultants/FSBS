@@ -8,6 +8,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FSBS.Api.Endpoints;
 
+/// <summary>
+/// Minimal API endpoints for instructor schedule management (weekly patterns, daily overrides, availability).
+/// Routes are under <c>/v1/instructors</c> and require authentication.
+/// Instructors manage their own schedules under the <c>/me/schedule</c> prefix.
+/// Admins (ScheduleAdmin, SystemAdmin) can view and manage any instructor's schedule.
+/// </summary>
 public static class InstructorScheduleEndpoints
 {
     public static IEndpointRouteBuilder MapInstructorScheduleEndpoints(this IEndpointRouteBuilder app)
@@ -32,6 +38,7 @@ public static class InstructorScheduleEndpoints
                 return Results.Ok(rows);
             })
             .WithName("ListInstructors")
+            .WithSummary("Return a roster of all active instructors with employee numbers and contact info (Staff only).")
             .RequireAuthorization("RequireStaff")
             .Produces<IReadOnlyList<InstructorRowDto>>();
 
@@ -39,6 +46,7 @@ public static class InstructorScheduleEndpoints
         group.MapGet("/me/schedule", async (DateOnly from, DateOnly to, ISender s, CancellationToken ct) =>
                 Results.Ok(await s.Send(new GetMyInstructorScheduleQuery(from, to), ct)))
             .WithName("GetMyInstructorSchedule")
+            .WithSummary("Return the current instructor's schedule (weekly pattern + overrides) for a date range.")
             .Produces<InstructorScheduleDto>();
 
         group.MapPut("/me/schedule/pattern", async (
@@ -49,6 +57,7 @@ public static class InstructorScheduleEndpoints
                 return Results.Ok(result);
             })
             .WithName("UpsertMyWeeklyPattern")
+            .WithSummary("Set or update the current instructor's weekly standard availability pattern.")
             .Produces<WeeklyPatternDto>();
 
         group.MapPut("/me/schedule/days/{date}", async (
@@ -58,7 +67,8 @@ public static class InstructorScheduleEndpoints
                 await s.Send(new SetSingleDayCommand(instructorId, date, body.Available), ct);
                 return Results.NoContent();
             })
-            .WithName("SetMySingleDay");
+            .WithName("SetMySingleDay")
+            .WithSummary("Override the current instructor's availability for a single day (Available/Unavailable).");
 
         group.MapPost("/me/schedule/overrides", async (
                 OverrideRequest body, ISender s, MeInstructorIdResolver me, HttpRequest http, CancellationToken ct) =>
@@ -69,6 +79,7 @@ public static class InstructorScheduleEndpoints
                 return Results.Created($"{http.Path}/{dto.Id}", dto);
             })
             .WithName("CreateMyOverride")
+            .WithSummary("Create a time-bounded availability override (vacation, illness, meeting, other).")
             .Produces<AvailabilityOverrideDto>(StatusCodes.Status201Created);
 
         group.MapPut("/me/schedule/overrides/{overrideId:guid}", async (
@@ -80,6 +91,7 @@ public static class InstructorScheduleEndpoints
                 return Results.Ok(dto);
             })
             .WithName("UpdateMyOverride")
+            .WithSummary("Update an existing availability override (type, range, notes).")
             .Produces<AvailabilityOverrideDto>();
 
         group.MapDelete("/me/schedule/overrides/{overrideId:guid}", async (
@@ -89,13 +101,15 @@ public static class InstructorScheduleEndpoints
                 await s.Send(new DeleteOverrideCommand(instructorId, overrideId), ct);
                 return Results.NoContent();
             })
-            .WithName("DeleteMyOverride");
+            .WithName("DeleteMyOverride")
+            .WithSummary("Delete an availability override.");
 
         // ── /{instructorId}/ admin / cross-instructor routes ─────────────────
         group.MapGet("/{instructorId:guid}/schedule", async (
                 Guid instructorId, DateOnly from, DateOnly to, ISender s, CancellationToken ct) =>
                 Results.Ok(await s.Send(new GetInstructorScheduleQuery(instructorId, from, to), ct)))
             .WithName("GetInstructorSchedule")
+            .WithSummary("Return an instructor's schedule by ID for a date range (Staff/Admins only).")
             .Produces<InstructorScheduleDto>();
 
         group.MapPut("/{instructorId:guid}/schedule/pattern", async (
@@ -105,6 +119,7 @@ public static class InstructorScheduleEndpoints
                 return Results.Ok(result);
             })
             .WithName("UpsertInstructorWeeklyPattern")
+            .WithSummary("Set or update an instructor's weekly standard availability pattern (Admins only).")
             .Produces<WeeklyPatternDto>();
 
         group.MapPut("/{instructorId:guid}/schedule/days/{date}", async (
@@ -113,7 +128,8 @@ public static class InstructorScheduleEndpoints
                 await s.Send(new SetSingleDayCommand(instructorId, date, body.Available), ct);
                 return Results.NoContent();
             })
-            .WithName("SetInstructorSingleDay");
+            .WithName("SetInstructorSingleDay")
+            .WithSummary("Override an instructor's availability for a single day (Admins only).");
 
         group.MapPost("/{instructorId:guid}/schedule/overrides", async (
                 Guid instructorId, OverrideRequest body, ISender s, HttpRequest http, CancellationToken ct) =>
@@ -123,6 +139,7 @@ public static class InstructorScheduleEndpoints
                 return Results.Created($"{http.Path}/{dto.Id}", dto);
             })
             .WithName("CreateInstructorOverride")
+            .WithSummary("Create a time-bounded availability override for an instructor (Admins only).")
             .Produces<AvailabilityOverrideDto>(StatusCodes.Status201Created);
 
         group.MapPut("/{instructorId:guid}/schedule/overrides/{overrideId:guid}", async (
@@ -133,6 +150,7 @@ public static class InstructorScheduleEndpoints
                 return Results.Ok(dto);
             })
             .WithName("UpdateInstructorOverride")
+            .WithSummary("Update an instructor's availability override (Admins only).")
             .Produces<AvailabilityOverrideDto>();
 
         group.MapDelete("/{instructorId:guid}/schedule/overrides/{overrideId:guid}", async (
@@ -141,7 +159,8 @@ public static class InstructorScheduleEndpoints
                 await s.Send(new DeleteOverrideCommand(instructorId, overrideId), ct);
                 return Results.NoContent();
             })
-            .WithName("DeleteInstructorOverride");
+            .WithName("DeleteInstructorOverride")
+            .WithSummary("Delete an instructor's availability override (Admins only).");
 
         return app;
     }

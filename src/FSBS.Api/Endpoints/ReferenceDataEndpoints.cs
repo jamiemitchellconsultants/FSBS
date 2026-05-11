@@ -5,6 +5,11 @@ using MediatR;
 
 namespace FSBS.Api.Endpoints;
 
+/// <summary>
+/// Minimal API endpoints for managing system reference data (lookup tables).
+/// Routes are under <c>/v1/reference-data</c> and require authentication.
+/// All write endpoints require SystemAdmin role.
+/// </summary>
 public static class ReferenceDataEndpoints
 {
     public static IEndpointRouteBuilder MapReferenceDataEndpoints(this IEndpointRouteBuilder app)
@@ -18,6 +23,7 @@ public static class ReferenceDataEndpoints
         group.MapGet("/customer-classes", async (ISender s, CancellationToken ct) =>
             Results.Ok(await s.Send(new GetCustomerClassesQuery(), ct)))
             .WithName("GetCustomerClasses")
+            .WithSummary("Return all customer class reference items (Standard, Corporate, Staff).")
             .Produces<IReadOnlyList<ReferenceItemDto>>();
 
         group.MapPut("/customer-classes/{code}", async (string code, UpsertReferenceItemRequest body, ISender s, CancellationToken ct) =>
@@ -27,6 +33,7 @@ public static class ReferenceDataEndpoints
             return Results.Ok(result);
         })
         .WithName("UpsertCustomerClass")
+        .WithSummary("Create or update a customer class code and description (SystemAdmin only).")
         .RequireAuthorization("RequireSystemAdmin")
         .Produces<ReferenceItemDto>();
 
@@ -34,6 +41,7 @@ public static class ReferenceDataEndpoints
         group.MapGet("/discount-types", async (ISender s, CancellationToken ct) =>
             Results.Ok(await s.Send(new GetDiscountTypesQuery(), ct)))
             .WithName("GetDiscountTypes")
+            .WithSummary("Return all discount type reference items (Volume, Advance, Group, etc.).")
             .Produces<IReadOnlyList<ReferenceItemDto>>();
 
         group.MapPut("/discount-types/{code}", async (string code, UpsertReferenceItemRequest body, ISender s, CancellationToken ct) =>
@@ -43,6 +51,7 @@ public static class ReferenceDataEndpoints
             return Results.Ok(result);
         })
         .WithName("UpsertDiscountType")
+        .WithSummary("Create or update a discount type code and description (SystemAdmin only).")
         .RequireAuthorization("RequireSystemAdmin")
         .Produces<ReferenceItemDto>();
 
@@ -50,6 +59,7 @@ public static class ReferenceDataEndpoints
         group.MapGet("/payment-methods", async (ISender s, CancellationToken ct) =>
             Results.Ok(await s.Send(new GetPaymentMethodsQuery(), ct)))
             .WithName("GetPaymentMethods")
+            .WithSummary("Return all payment method reference items (BankTransfer, Cheque, Cash, etc.).")
             .Produces<IReadOnlyList<ReferenceItemDto>>();
 
         group.MapPut("/payment-methods/{code}", async (string code, UpsertReferenceItemRequest body, ISender s, CancellationToken ct) =>
@@ -59,6 +69,7 @@ public static class ReferenceDataEndpoints
             return Results.Ok(result);
         })
         .WithName("UpsertPaymentMethod")
+        .WithSummary("Create or update a payment method code and description (SystemAdmin only).")
         .RequireAuthorization("RequireSystemAdmin")
         .Produces<ReferenceItemDto>();
 
@@ -66,6 +77,7 @@ public static class ReferenceDataEndpoints
         group.MapGet("/account-statuses", async (ISender s, CancellationToken ct) =>
             Results.Ok(await s.Send(new GetAccountStatusesQuery(), ct)))
             .WithName("GetAccountStatuses")
+            .WithSummary("Return all account status reference items (Active, Suspended, Dormant, etc.) with activation flags.")
             .Produces<IReadOnlyList<AccountStatusDto>>();
 
         group.MapPut("/account-statuses/{code}", async (string code, UpsertAccountStatusRequest body, ISender s, CancellationToken ct) =>
@@ -75,6 +87,7 @@ public static class ReferenceDataEndpoints
             return Results.Ok(result);
         })
         .WithName("UpsertAccountStatus")
+        .WithSummary("Create or update an account status code, description, and active flag (SystemAdmin only).")
         .RequireAuthorization("RequireSystemAdmin")
         .Produces<AccountStatusDto>();
 
