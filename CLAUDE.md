@@ -476,6 +476,7 @@ Key events the notification worker must handle:
 
 - Never store raw invitation tokens — SHA-256 hash only
 - Never put business logic in Blazor components or API controllers
+- Exception: `DevEndpoints` are development/test-only utilities and are excluded from production endpoint-thinning refactor requirements
 - Never use offset pagination — cursor-based only
 - Never run `dotnet ef database update` against production manually
 - Never bypass the FluentValidation pipeline in MediatR

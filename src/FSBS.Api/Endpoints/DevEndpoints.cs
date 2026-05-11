@@ -13,6 +13,9 @@ namespace FSBS.Api.Endpoints;
 /// Development-only endpoints. All return 404 unless the application is running
 /// in the Development environment. Never deploy with <c>ASPNETCORE_ENVIRONMENT=Development</c>
 /// in production.
+///
+/// Note: these routes are intentionally scoped to development/test workflows and
+/// are excluded from the production CQRS endpoint-thinning refactor requirements.
 /// </summary>
 public static class DevEndpoints
 {
