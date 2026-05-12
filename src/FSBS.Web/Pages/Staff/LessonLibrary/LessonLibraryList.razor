@@ -1,0 +1,147 @@
+@page "/staff/lesson-library"
+@layout MainLayout
+@attribute [Authorize(Roles = "SystemAdmin,CourseDirector,Management,SalesStaff,Instructor")]
+@inject LessonTemplateService Svc
+@inject NavigationManager Nav
+
+<PageTitle>Lesson Library — FSBS</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-2">Lesson Library</MudText>
+<MudText Typo="Typo.body2" Class="mb-4" Color="Color.Secondary">
+    Reusable lesson blueprints that can be attached to course modules.
+    Editing a template does not change lessons that have already been attached.
+</MudText>
+
+<MudGrid Class="mb-4 align-center">
+    <MudItem xs="12" sm="3">
+        <MudSelect T="TrainingType?" Label="Training Type" @bind-Value="_trainingType" Variant="Variant.Outlined" Dense="true" Clearable="true">
+            <MudSelectItem T="TrainingType?" Value="@((TrainingType?)null)">All</MudSelectItem>
+            <MudSelectItem T="TrainingType?" Value="@((TrainingType?)TrainingType.FlightDeck)">Flight Deck</MudSelectItem>
+            <MudSelectItem T="TrainingType?" Value="@((TrainingType?)TrainingType.CabinCrew)">Cabin Crew</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="3">
+        <MudSelect T="bool?" Label="Status" @bind-Value="_isActive" Variant="Variant.Outlined" Dense="true" Clearable="true">
+            <MudSelectItem T="bool?" Value="@((bool?)true)">Active only</MudSelectItem>
+            <MudSelectItem T="bool?" Value="@((bool?)false)">Retired only</MudSelectItem>
+            <MudSelectItem T="bool?" Value="@((bool?)null)">All</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudTextField @bind-Value="_search" Label="Search title" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" />
+    </MudItem>
+    <MudItem xs="12" sm="2">
+        <MudButton OnClick="LoadAsync" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true">Apply</MudButton>
+    </MudItem>
+</MudGrid>
+
+<AuthorizeView Roles="SystemAdmin,CourseDirector">
+    <Authorized>
+        <MudButton Href="/staff/lesson-library/new" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Filled" Color="Color.Primary" Class="mb-4">
+            New template
+        </MudButton>
+    </Authorized>
+</AuthorizeView>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_items.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No templates match the current filters.</MudAlert>
+}
+else
+{
+    <MudTable Items="_items" Hover="true" Striped="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Title</MudTh>
+            <MudTh>Training Type</MudTh>
+            <MudTh>Category</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Used by</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate Context="row">
+            <MudTd DataLabel="Title">@row.Title</MudTd>
+            <MudTd DataLabel="TrainingType">@row.TrainingType</MudTd>
+            <MudTd DataLabel="Category">@row.Category</MudTd>
+            <MudTd DataLabel="Status">
+                @if (row.IsActive)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">Retired</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="UsageCount">@row.UsageCount</MudTd>
+            <MudTd>
+                <MudButton Size="Size.Small" Href="@($"/staff/lesson-library/{row.Id}")">View</MudButton>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+
+    @if (_nextCursor is not null)
+    {
+        <MudButton OnClick="LoadNextPageAsync" Class="mt-2">Load more</MudButton>
+    }
+}
+
+@code {
+    private TrainingType? _trainingType;
+    private bool? _isActive = true;
+    private string? _search;
+    private string? _nextCursor;
+    private List<LessonTemplateListItemDto> _items = [];
+    private bool _isLoading;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        _nextCursor = null;
+        try
+        {
+            var page = await Svc.ListAsync(_trainingType, null, _isActive, _search, null, 25);
+            _items = page.Items.ToList();
+            _nextCursor = page.NextCursor;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load templates: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadNextPageAsync()
+    {
+        if (_nextCursor is null) return;
+        _isLoading = true;
+        try
+        {
+            var page = await Svc.ListAsync(_trainingType, null, _isActive, _search, _nextCursor, 25);
+            _items.AddRange(page.Items);
+            _nextCursor = page.NextCursor;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load more: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

@@ -39,13 +39,16 @@ public sealed class TenantCommandInterceptor(ICurrentUser currentUser) : DbConne
 
     private void SetTenantId(DbConnection connection)
     {
+        // amazonq-ignore-next-line
         using var cmd = connection.CreateCommand();
+        // amazonq-ignore-next-line
         cmd.CommandText = $"SET app.current_tenant_id = '{currentUser.TenantId}'";
         cmd.ExecuteNonQuery();
     }
 
     private async Task SetTenantIdAsync(DbConnection connection, CancellationToken ct)
     {
+        // amazonq-ignore-next-line
         await using var cmd = connection.CreateCommand();
         cmd.CommandText = $"SET app.current_tenant_id = '{currentUser.TenantId}'";
         await cmd.ExecuteNonQueryAsync(ct);

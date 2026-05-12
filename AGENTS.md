@@ -457,6 +457,23 @@ Key events the notification worker must handle:
 
 ---
 
+## Code documentation requirements
+
+Every `public` class, struct, record, interface, enum, method, and property in C# code MUST carry an XML doc comment (`/// <summary>…</summary>` or `/// <inheritdoc/>`). This applies to all server-side projects: `FSBS.Domain`, `FSBS.Application`, `FSBS.Shared`, `FSBS.Api`, `FSBS.Worker`, `FSBS.Functions`, and `FSBS.Infrastructure*`.
+
+Conventions:
+- **Types**: one-line `<summary>` plus any non-obvious invariants. For aggregate roots, mention what they own and who can mutate them. `src/FSBS.Domain/Entities/Course.cs` is the reference example.
+- **CQRS commands / queries / DTOs (records)**: a single `<summary>` on the record is enough; document positional parameters with `<param>` tags only when their meaning isn't already clear from the name.
+- **Repository implementations**: prefer `/// <inheritdoc/>` on methods that implement an interface — author the prose on the interface itself.
+- **Enums**: `<summary>` on the enum, and on individual values when the name alone is ambiguous.
+- **Internal / private members**: not required, but encouraged where they capture non-obvious intent.
+
+The doc comment must sit immediately above the declaration (attributes between are allowed). New code added without doc comments will be flagged in review.
+
+Existing gaps are tracked in `DevNotes/MissingXMLComments.md`; regenerate that file with the detector documented in its "Verification" section after closing a batch of gaps.
+
+---
+
 ## What not to do
 
 - Never store raw invitation tokens — SHA-256 hash only

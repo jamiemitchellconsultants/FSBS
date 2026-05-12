@@ -161,6 +161,13 @@ public class FsbsDbContext(DbContextOptions<FsbsDbContext> options, ICurrentUser
     public DbSet<Lesson> Lessons => Set<Lesson>();
 
     /// <summary>
+    /// Reusable lesson blueprints in the curriculum library. Tenant-scoped;
+    /// retiring a template (<c>IsActive=false</c>) hides it from the picker
+    /// without affecting previously-attached <see cref="Lessons"/>.
+    /// </summary>
+    public DbSet<LessonTemplate> LessonTemplates => Set<LessonTemplate>();
+
+    /// <summary>
     /// Student enrolments on a course. A unique constraint on <c>(user_id, course_id)</c>
     /// prevents duplicate active enrolments.
     /// </summary>
@@ -355,6 +362,7 @@ public class FsbsDbContext(DbContextOptions<FsbsDbContext> options, ICurrentUser
         mb.Entity<AppUser>().HasQueryFilter(e => !e.IsDeleted && e.TenantId == currentUser.TenantId);
         mb.Entity<Organisation>().HasQueryFilter(e => !e.IsDeleted && e.TenantId == currentUser.TenantId);
         mb.Entity<Course>().HasQueryFilter(e => !e.IsDeleted && e.TenantId == currentUser.TenantId);
+        mb.Entity<LessonTemplate>().HasQueryFilter(e => !e.IsDeleted && e.TenantId == currentUser.TenantId);
 
         mb.Entity<Qualification>().HasQueryFilter(e => !e.IsDeleted);
         mb.Entity<OrgMembership>().HasQueryFilter(e => !e.IsDeleted);

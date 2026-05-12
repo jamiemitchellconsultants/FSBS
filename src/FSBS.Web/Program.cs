@@ -34,6 +34,7 @@ builder.Services.AddScoped<AvailabilityService>();
 builder.Services.AddScoped<PricingService>();
 builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<InvitationService>();
+builder.Services.AddScoped<LessonTemplateService>();
 builder.Services.AddScoped<OrganisationService>();
 builder.Services.AddScoped<SimulatorService>();
 builder.Services.AddScoped<AircraftTypeService>();

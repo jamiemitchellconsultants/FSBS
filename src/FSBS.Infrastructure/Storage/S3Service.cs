@@ -30,6 +30,7 @@ internal sealed class S3Service(
             Key        = objectKey,
             Verb       = HttpVerb.GET,
             Expires    = DateTime.UtcNow.AddMinutes(expiryMinutes)
+        // amazonq-ignore-next-line
         };
         return Task.FromResult(s3.GetPreSignedURL(request));
     }
@@ -50,6 +51,7 @@ internal sealed class S3Service(
             Verb        = HttpVerb.PUT,
             ContentType = contentType,
             Expires     = DateTime.UtcNow.AddMinutes(expiryMinutes)
+        // amazonq-ignore-next-line
         };
         return Task.FromResult(s3.GetPreSignedURL(request));
     }

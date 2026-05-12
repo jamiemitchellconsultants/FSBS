@@ -19,6 +19,12 @@ public class LessonConfiguration : IEntityTypeConfiguration<Lesson>
         builder.HasIndex(e => new { e.ModuleId, e.SequenceOrder }).IsUnique().HasDatabaseName("uq_lessons_module_sequence");
         builder.HasCheckConstraint("ck_lessons_sequence", "sequence_order >= 1");
 
+        builder.Property(e => e.SourceTemplateId).HasColumnName("source_template_id");
+        builder.HasOne(e => e.SourceTemplate)
+            .WithMany()
+            .HasForeignKey(e => e.SourceTemplateId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
     }
 }

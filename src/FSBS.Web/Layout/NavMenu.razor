@@ -75,6 +75,12 @@
                         </Authorized>
                     </AuthorizeView>
 
+                    <AuthorizeView Roles="SystemAdmin,CourseDirector,Management,SalesStaff,Instructor" Context="__">
+                        <Authorized>
+                            <MudNavLink Href="/staff/lesson-library" Icon="@Icons.Material.Filled.LibraryBooks">Lesson Library</MudNavLink>
+                        </Authorized>
+                    </AuthorizeView>
+
                     <AuthorizeView Roles="Instructor" Context="__">
                         <Authorized>
                             <MudNavLink Href="/staff/my-schedule" Icon="@Icons.Material.Filled.EventNote">My Schedule</MudNavLink>

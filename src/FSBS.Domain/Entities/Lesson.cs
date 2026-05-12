@@ -37,6 +37,18 @@ public class Lesson : AuditableEntity, ISoftDeletable
     /// <inheritdoc/>
     public bool IsDeleted { get; set; }
 
+    /// <summary>
+    /// Optional pointer to the <see cref="LessonTemplate"/> this lesson was
+    /// authored from. Set when a CourseDirector attaches a library template to
+    /// the module; <c>null</c> for lessons created ad-hoc. Purely informational
+    /// — the lesson's fields are a snapshot, so retiring or editing the
+    /// referenced template has no effect on this row.
+    /// </summary>
+    public Guid? SourceTemplateId { get; set; }
+
+    /// <summary>Navigation to the source template, if any.</summary>
+    public LessonTemplate? SourceTemplate { get; set; }
+
     /// <summary>Navigation to the parent module.</summary>
     public Module Module { get; set; } = null!;
 }

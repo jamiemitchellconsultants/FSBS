@@ -167,7 +167,13 @@ builder.Services.AddAuthorizationBuilder()
         "SystemAdmin", "ScheduleAdmin", "CourseDirector",
         "Instructor", "Management", "SalesStaff", "InternalStudent"))
     .AddPolicy("RequireApprover", p => p.RequireClaim("app_role",
-        "SystemAdmin", "SalesStaff"));
+        "SystemAdmin", "SalesStaff"))
+    .AddPolicy("RequireLessonLibraryWriter", p => p.RequireClaim("app_role",
+        "SystemAdmin", "CourseDirector"))
+    .AddPolicy("RequireLessonLibraryReader", p => p.RequireClaim("app_role",
+        "SystemAdmin", "CourseDirector", "Management", "SalesStaff", "Instructor"))
+    .AddPolicy("RequireCourseAuthor", p => p.RequireClaim("app_role",
+        "SystemAdmin", "CourseDirector"));
 
 // ── Build ─────────────────────────────────────────────────────────────────────
 var app = builder.Build();
@@ -206,6 +212,7 @@ app.MapPricingEndpoints();
 app.MapUserProfileEndpoints();
 app.MapReferenceDataEndpoints();
 app.MapInstructorScheduleEndpoints();
+app.MapLessonTemplateEndpoints();
 app.MapHub<AvailabilityHub>("/hubs/availability");
 
 app.Run();

@@ -1,0 +1,138 @@
+@page "/staff/lesson-library/{Id:guid}"
+@layout MainLayout
+@attribute [Authorize(Roles = "SystemAdmin,CourseDirector,Management,SalesStaff,Instructor")]
+@inject LessonTemplateService Svc
+@inject NavigationManager Nav
+@inject IDialogService Dialogs
+
+<PageTitle>@(_template?.Title ?? "Lesson Template") — FSBS</PageTitle>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_template is null)
+{
+    <MudAlert Severity="Severity.Error">Template not found.</MudAlert>
+    <MudButton Href="/staff/lesson-library" Class="mt-4">Back to library</MudButton>
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" md="8">
+            <MudText Typo="Typo.h5" Class="mb-2">@_template.Title</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                @_template.TrainingType
+                @if (!string.IsNullOrWhiteSpace(_template.Category)) { <span> · @_template.Category</span> }
+                · Used by @_template.UsageCount lesson@(_template.UsageCount == 1 ? "" : "s")
+            </MudText>
+
+            @if (!_template.IsActive)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4">This template is retired and hidden from the library picker.</MudAlert>
+            }
+
+            <MudText Typo="Typo.subtitle2">Description</MudText>
+            <MudText Class="mb-4">@(_template.Description ?? "(no description)")</MudText>
+
+            <MudSimpleTable Dense="true" Class="mb-4">
+                <tbody>
+                    <tr><td>Default min duration</td><td>@_template.DefaultMinDurationMins minutes</td></tr>
+                    <tr><td>Requires instructor</td><td>@(_template.RequiresInstructor ? "Yes" : "No")</td></tr>
+                    <tr><td>Mandatory by default</td><td>@(_template.IsMandatoryByDefault ? "Yes" : "No")</td></tr>
+                </tbody>
+            </MudSimpleTable>
+
+            <AuthorizeView Roles="SystemAdmin,CourseDirector">
+                <Authorized>
+                    <MudButton Href="@($"/staff/lesson-library/{_template.Id}/edit")" Variant="Variant.Filled" Color="Color.Primary">Edit</MudButton>
+                    <MudButton OnClick="ToggleActiveAsync" Class="ml-2">
+                        @(_template.IsActive ? "Retire" : "Reactivate")
+                    </MudButton>
+                    <MudButton OnClick="DeleteAsync" Color="Color.Error" Class="ml-2">Delete</MudButton>
+                </Authorized>
+            </AuthorizeView>
+
+            <MudButton Href="/staff/lesson-library" Class="ml-2">Back</MudButton>
+
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-4">@_error</MudAlert>
+            }
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private LessonTemplateDto? _template;
+    private bool _isLoading = true;
+    private string? _error;
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            _template = await Svc.GetAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ToggleActiveAsync()
+    {
+        if (_template is null) return;
+
+        var newState = !_template.IsActive;
+        if (newState == false && _template.UsageCount > 0)
+        {
+            var ok = await Dialogs.ShowMessageBox(
+                "Retire template?",
+                $"This template is attached to {_template.UsageCount} lesson(s). Existing attachments are unaffected. Continue?",
+                yesText: "Retire", cancelText: "Cancel");
+            if (ok != true) return;
+        }
+
+        try
+        {
+            _template = await Svc.SetActiveAsync(_template.Id, newState);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_template is null) return;
+
+        var ok = await Dialogs.ShowMessageBox(
+            "Delete template?",
+            _template.UsageCount > 0
+                ? $"This template is attached to {_template.UsageCount} lesson(s). Existing attachments are unaffected. Delete?"
+                : "Delete this template?",
+            yesText: "Delete", cancelText: "Cancel");
+        if (ok != true) return;
+
+        try
+        {
+            await Svc.DeleteAsync(_template.Id);
+            Nav.NavigateTo("/staff/lesson-library");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

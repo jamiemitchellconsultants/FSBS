@@ -1,0 +1,134 @@
+@page "/staff/lesson-library/{Id:guid}/edit"
+@layout MainLayout
+@attribute [Authorize(Roles = "SystemAdmin,CourseDirector")]
+@inject LessonTemplateService Svc
+@inject NavigationManager Nav
+
+<PageTitle>Edit Lesson Template — FSBS</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">Edit Lesson Template</MudText>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_model is null)
+{
+    <MudAlert Severity="Severity.Error">Template not found.</MudAlert>
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" sm="10" md="8">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <EditForm Model="_model" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator />
+
+                        <MudTextField @bind-Value="_model.Title" Label="Title" Variant="Variant.Outlined" Class="mb-3" Required="true" For="@(() => _model.Title)" />
+                        <MudTextField @bind-Value="_model.Description" Label="Description (optional)" Variant="Variant.Outlined" Lines="3" Class="mb-3" For="@(() => _model.Description)" />
+
+                        <MudSelect T="TrainingType" @bind-Value="_model.TrainingType" Label="Training Type" Variant="Variant.Outlined" Class="mb-3" Required="true">
+                            <MudSelectItem T="TrainingType" Value="@TrainingType.FlightDeck">Flight Deck</MudSelectItem>
+                            <MudSelectItem T="TrainingType" Value="@TrainingType.CabinCrew">Cabin Crew</MudSelectItem>
+                        </MudSelect>
+
+                        <MudNumericField @bind-Value="_model.DefaultMinDurationMins" Label="Default Min Duration (minutes)" Min="1" Max="1440" Variant="Variant.Outlined" Class="mb-3" For="@(() => _model.DefaultMinDurationMins)" />
+
+                        <MudTextField @bind-Value="_model.Category" Label="Category (optional)" Variant="Variant.Outlined" Class="mb-3" For="@(() => _model.Category)" />
+
+                        <MudSwitch @bind-Value="_model.RequiresInstructor" Color="Color.Primary" Label="Requires instructor" Class="mb-2" />
+                        <MudSwitch @bind-Value="_model.IsMandatoryByDefault" Color="Color.Primary" Label="Mandatory by default" Class="mb-4" />
+
+                        @if (_error is not null)
+                        {
+                            <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@_error</MudAlert>
+                        }
+
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="_isSubmitting">
+                            @if (_isSubmitting) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                            Save changes
+                        </MudButton>
+                        <MudButton Href="@($"/staff/lesson-library/{Id}")" Class="ml-2">Cancel</MudButton>
+                    </EditForm>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private FormModel? _model;
+    private string? _error;
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var dto = await Svc.GetAsync(Id);
+            if (dto is not null)
+            {
+                _model = new FormModel
+                {
+                    Title = dto.Title,
+                    Description = dto.Description,
+                    TrainingType = dto.TrainingType,
+                    DefaultMinDurationMins = dto.DefaultMinDurationMins,
+                    RequiresInstructor = dto.RequiresInstructor,
+                    IsMandatoryByDefault = dto.IsMandatoryByDefault,
+                    Category = dto.Category,
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (_model is null) return;
+        _error = null;
+        _isSubmitting = true;
+        try
+        {
+            await Svc.UpdateAsync(Id, new UpdateLessonTemplateRequest(
+                _model.Title.Trim(),
+                string.IsNullOrWhiteSpace(_model.Description) ? null : _model.Description!.Trim(),
+                _model.TrainingType,
+                _model.DefaultMinDurationMins,
+                _model.RequiresInstructor,
+                _model.IsMandatoryByDefault,
+                string.IsNullOrWhiteSpace(_model.Category) ? null : _model.Category!.Trim()));
+            Nav.NavigateTo($"/staff/lesson-library/{Id}");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private sealed class FormModel
+    {
+        [Required, MaxLength(300)] public string Title { get; set; } = "";
+        [MaxLength(4000)]          public string? Description { get; set; }
+        [MaxLength(100)]           public string? Category { get; set; }
+                                    public TrainingType TrainingType { get; set; }
+        [Range(1, 1440)]           public int DefaultMinDurationMins { get; set; }
+                                    public bool RequiresInstructor { get; set; }
+                                    public bool IsMandatoryByDefault { get; set; }
+    }
+}

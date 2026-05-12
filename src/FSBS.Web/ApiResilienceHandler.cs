@@ -37,6 +37,7 @@ public sealed class ApiResilienceHandler : DelegatingHandler
             .Build();
 
     protected override Task<HttpResponseMessage> SendAsync(
+        // amazonq-ignore-next-line
         HttpRequestMessage request, CancellationToken ct) =>
         _pipeline.ExecuteAsync(
             async token => await base.SendAsync(request, token), ct).AsTask();

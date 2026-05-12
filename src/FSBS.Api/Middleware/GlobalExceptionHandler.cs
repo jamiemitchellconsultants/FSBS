@@ -145,6 +145,42 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                     Status = StatusCodes.Status403Forbidden,
                 }),
 
+            LessonTemplateNotFoundException ltnf => (
+                StatusCodes.Status404NotFound,
+                new ProblemDetails
+                {
+                    Title  = "Lesson template not found",
+                    Detail = ltnf.Message,
+                    Status = StatusCodes.Status404NotFound,
+                }),
+
+            ModuleNotFoundException mnf => (
+                StatusCodes.Status404NotFound,
+                new ProblemDetails
+                {
+                    Title  = "Module not found",
+                    Detail = mnf.Message,
+                    Status = StatusCodes.Status404NotFound,
+                }),
+
+            LessonTemplateInactiveException lti => (
+                StatusCodes.Status400BadRequest,
+                new ProblemDetails
+                {
+                    Title  = "Lesson template is not active",
+                    Detail = lti.Message,
+                    Status = StatusCodes.Status400BadRequest,
+                }),
+
+            LessonTemplateTrainingTypeMismatchException ltm => (
+                StatusCodes.Status400BadRequest,
+                new ProblemDetails
+                {
+                    Title  = "Training type mismatch",
+                    Detail = ltm.Message,
+                    Status = StatusCodes.Status400BadRequest,
+                }),
+
             InvalidConfirmationCodeException or ConfirmationCodeExpiredException => (
                 StatusCodes.Status400BadRequest,
                 new ProblemDetails

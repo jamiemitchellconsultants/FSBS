@@ -1659,6 +1659,10 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("sequence_order");
 
+                    b.Property<Guid?>("SourceTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_template_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -1682,6 +1686,9 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     b.HasKey("Id")
                         .HasName("pk_lessons");
 
+                    b.HasIndex("SourceTemplateId")
+                        .HasDatabaseName("ix_lessons_source_template_id");
+
                     b.HasIndex("ModuleId", "SequenceOrder")
                         .IsUnique()
                         .HasDatabaseName("uq_lessons_module_sequence");
@@ -1689,6 +1696,101 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                     b.ToTable("lessons", "fsbs", t =>
                         {
                             t.HasCheckConstraint("ck_lessons_sequence", "sequence_order >= 1");
+                        });
+                });
+
+            modelBuilder.Entity("FSBS.Domain.Entities.LessonTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("lesson_template_id");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("DefaultMinDurationMins")
+                        .HasColumnType("integer")
+                        .HasColumnName("default_min_duration_mins");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsMandatoryByDefault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_mandatory_by_default");
+
+                    b.Property<bool>("RequiresInstructor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("requires_instructor");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("title");
+
+                    b.Property<TrainingType>("TrainingType")
+                        .HasColumnType("fsbs.training_type")
+                        .HasColumnName("training_type");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_lesson_templates");
+
+                    b.HasIndex("TenantId", "Title")
+                        .IsUnique()
+                        .HasDatabaseName("uq_lesson_templates_tenant_title_active")
+                        .HasFilter("is_deleted = false");
+
+                    b.HasIndex("TenantId", "TrainingType", "IsActive", "IsDeleted")
+                        .HasDatabaseName("ix_lesson_templates_filter");
+
+                    b.ToTable("lesson_templates", "fsbs", t =>
+                        {
+                            t.HasCheckConstraint("ck_lesson_templates_duration", "default_min_duration_mins > 0");
                         });
                 });
 
@@ -3324,7 +3426,15 @@ namespace FSBS.Infrastructure.Persistence.Migrations.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_lessons_modules_module_id");
 
+                    b.HasOne("FSBS.Domain.Entities.LessonTemplate", "SourceTemplate")
+                        .WithMany()
+                        .HasForeignKey("SourceTemplateId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_lessons_lesson_templates_source_template_id");
+
                     b.Navigation("Module");
+
+                    b.Navigation("SourceTemplate");
                 });
 
             modelBuilder.Entity("FSBS.Domain.Entities.MaintenanceWindow", b =>

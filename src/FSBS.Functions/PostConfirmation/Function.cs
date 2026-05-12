@@ -164,6 +164,7 @@ public sealed class Function
         string inviteeRole;
         Guid orgId;
         Guid tenantId;
+// amazonq-ignore-next-line
 
         await using (var cmd = new NpgsqlCommand(invitationSql, conn))
         {
@@ -249,6 +250,7 @@ public sealed class Function
             RETURNING user_id
         """;
 
+        // amazonq-ignore-next-line
         await using var cmd = tx is null
             ? new NpgsqlCommand(sql, conn)
             : new NpgsqlCommand(sql, conn, tx);

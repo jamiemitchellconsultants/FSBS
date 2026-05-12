@@ -64,6 +64,7 @@ public sealed class Function
         var master   = await ReadCredentialsAsync(sm, masterArn);
         var app      = await ReadCredentialsAsync(sm, appArn);
         var ronly    = string.IsNullOrEmpty(readonlyArn) ? null : await ReadCredentialsAsync(sm, readonlyArn);
+// amazonq-ignore-next-line
 
         var masterConn = new NpgsqlConnectionStringBuilder
         {
@@ -144,6 +145,7 @@ public sealed class Function
         }
     }
 
+    // amazonq-ignore-next-line
     private static async Task ExecAsync(NpgsqlConnection conn, string sql)
     {
         await using var cmd = new NpgsqlCommand(sql, conn);

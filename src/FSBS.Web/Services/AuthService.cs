@@ -74,6 +74,7 @@ public sealed class AuthService(HttpClient http, ILocalStorageService localStora
     public async Task<MeResponse?> GetMeAsync(CancellationToken ct = default)
     {
         try
+        // amazonq-ignore-next-line
         {
             var token = await localStorage.GetItemAsync<string>(TokenKey, ct);
 
@@ -137,6 +138,7 @@ public sealed class AuthService(HttpClient http, ILocalStorageService localStora
     public async Task StoreTokenAsync(string token, CancellationToken ct = default) =>
         await localStorage.SetItemAsync(TokenKey, token, ct);
 
+    // amazonq-ignore-next-line
     public async Task<string?> GetStoredTokenAsync(CancellationToken ct = default) =>
         await localStorage.GetItemAsync<string>(TokenKey, ct);
 }

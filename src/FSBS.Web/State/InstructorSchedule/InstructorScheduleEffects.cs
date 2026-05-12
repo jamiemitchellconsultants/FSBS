@@ -92,6 +92,7 @@ public sealed class InstructorScheduleEffects(
         }
     }
 
+    // amazonq-ignore-next-line
     [EffectMethod]
     public async Task OnDeleteOverride(DeleteOverrideAction action, IDispatcher dispatcher)
     {

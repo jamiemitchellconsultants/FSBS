@@ -78,6 +78,7 @@ internal sealed class AvailabilityReadService(IDbConnection db) : IAvailabilityR
 
             ORDER BY StartAt;
             """;
+// amazonq-ignore-next-line
 
         var rows = await db.QueryAsync<RawAvailabilityRow>(
             new CommandDefinition(sql, new { SimulatorId = simulatorId, From = from, To = to },

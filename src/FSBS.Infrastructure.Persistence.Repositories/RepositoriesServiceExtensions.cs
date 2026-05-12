@@ -20,6 +20,7 @@ public static class RepositoriesServiceExtensions
         services.AddScoped<IInvitationRepository, InvitationRepository>();
         services.AddScoped<IOrganisationRepository, OrganisationRepository>();
         services.AddScoped<IBookingRepository, BookingRepository>();
+        services.AddScoped<ILessonTemplateReadRepository, LessonTemplateReadRepository>();
 
         // Write-side repositories — implement interfaces from Domain.Interfaces
         services.AddScoped<Domain.Interfaces.IBookingRepository, BookingWriteRepository>();
@@ -29,6 +30,8 @@ public static class RepositoriesServiceExtensions
         services.AddScoped<Domain.Interfaces.IPricingPolicyRepository, PricingPolicyRepository>();
         services.AddScoped<Domain.Interfaces.IInstructorRepository, InstructorRepository>();
         services.AddScoped<Domain.Interfaces.IAircraftTypeRepository, AircraftTypeRepository>();
+        services.AddScoped<Domain.Interfaces.ILessonTemplateRepository, LessonTemplateRepository>();
+        services.AddScoped<Domain.Interfaces.ILessonRepository, LessonRepository>();
         services.AddScoped<Application.Common.Interfaces.IAvailabilityReadService, AvailabilityReadService>();
         services.AddScoped<Application.Common.Interfaces.IUserProfileRepository, UserProfileRepository>();
         services.AddScoped<Application.Common.Interfaces.IReferenceDataRepository, ReferenceDataRepository>();
