@@ -213,6 +213,7 @@ app.MapUserProfileEndpoints();
 app.MapReferenceDataEndpoints();
 app.MapInstructorScheduleEndpoints();
 app.MapLessonTemplateEndpoints();
+app.MapCourseEndpoints();
 app.MapHub<AvailabilityHub>("/hubs/availability");
 
 app.Run();

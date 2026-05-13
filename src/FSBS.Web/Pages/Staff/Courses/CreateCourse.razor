@@ -1,0 +1,246 @@
+@page "/staff/courses/create"
+@layout MainLayout
+@attribute [Authorize(Roles = "CourseDirector,SystemAdmin")]
+@inject CourseService Svc
+@inject NavigationManager Nav
+
+<PageTitle>New Course — FSBS</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">New Course</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="10">
+        <MudCard Elevation="2">
+            <MudCardContent>
+                <EditForm Model="_model" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+
+                    <MudTextField @bind-Value="_model.Title"
+                                  Label="Title"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3"
+                                  Required="true"
+                                  For="@(() => _model.Title)" />
+
+                    <MudTextField @bind-Value="_model.Description"
+                                  Label="Description (optional)"
+                                  Variant="Variant.Outlined"
+                                  Lines="3"
+                                  Class="mb-3"
+                                  For="@(() => _model.Description)" />
+
+                    <MudTextField @bind-Value="_model.RegulatoryFramework"
+                                  Label="Regulatory framework (optional, e.g. EASA Part-FCL)"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3"
+                                  For="@(() => _model.RegulatoryFramework)" />
+
+                    <MudGrid Class="mb-3">
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField @bind-Value="_model.TotalHours"
+                                             Label="Total hours"
+                                             Min="0.1m" Max="9999.9m" Step="0.5m"
+                                             Variant="Variant.Outlined"
+                                             For="@(() => _model.TotalHours)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="TrainingType"
+                                       @bind-Value="_model.TrainingType"
+                                       Label="Training type"
+                                       Variant="Variant.Outlined"
+                                       Required="true">
+                                <MudSelectItem T="TrainingType" Value="@TrainingType.FlightDeck">Flight Deck</MudSelectItem>
+                                <MudSelectItem T="TrainingType" Value="@TrainingType.CabinCrew">Cabin Crew</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudSwitch @bind-Value="_model.IsActive"
+                               Color="Color.Primary"
+                               Label="Open for new enrolments"
+                               Class="mb-4" />
+
+                    <MudDivider Class="my-4" />
+                    <MudText Typo="Typo.h6" Class="mb-2">Initial modules</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                        Optional. Each module groups lessons within the course. Sequence numbers must be unique.
+                    </MudText>
+
+                    @if (_model.Modules.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Class="mb-3" Dense="true">
+                            No modules yet. Click "Add module" to add one.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="_model.Modules" Dense="true" Hover="true" Class="mb-3">
+                            <HeaderContent>
+                                <MudTh Style="width: 70px">Seq</MudTh>
+                                <MudTh>Title</MudTh>
+                                <MudTh>Description</MudTh>
+                                <MudTh Style="width: 80px"></MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="row">
+                                <MudTd>
+                                    <MudNumericField T="int" @bind-Value="row.SequenceOrder" Min="1" Max="999" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                </MudTd>
+                                <MudTd>
+                                    <MudTextField @bind-Value="row.Title" Required="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                </MudTd>
+                                <MudTd>
+                                    <MudTextField @bind-Value="row.Description" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                </MudTd>
+                                <MudTd>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => RemoveModule(row))" />
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+
+                    <MudButton OnClick="AddModule" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Outlined" Class="mb-4">
+                        Add module
+                    </MudButton>
+
+                    @if (_duplicateSequenceWarning is not null)
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="mb-3" Dense="true">@_duplicateSequenceWarning</MudAlert>
+                    }
+
+                    @if (_error is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-3" Dense="true">@_error</MudAlert>
+                    }
+
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="_isSubmitting">
+                        @if (_isSubmitting)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Create course
+                    </MudButton>
+                    <MudButton Href="/staff/courses" Class="ml-2">Cancel</MudButton>
+                </EditForm>
+            </MudCardContent>
+        </MudCard>
+
+        @if (_result is not null)
+        {
+            <MudAlert Severity="Severity.Success" Class="mt-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2">Course created</MudText>
+                <MudText Typo="Typo.body2">
+                    <b>@_result.Title</b> (@_result.TrainingType) — @_result.ModuleCount module@(_result.ModuleCount == 1 ? "" : "s")
+                </MudText>
+                <MudButton OnClick="ResetForAnother" Class="mt-2">Create another</MudButton>
+            </MudAlert>
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    private readonly CreateCourseFormModel _model = new();
+    private CreateCourseResponse? _result;
+    private string? _error;
+    private string? _duplicateSequenceWarning;
+    private bool _isSubmitting;
+
+    private void AddModule()
+    {
+        var nextSeq = _model.Modules.Count == 0 ? 1 : _model.Modules.Max(m => m.SequenceOrder) + 1;
+        _model.Modules.Add(new ModuleRow { SequenceOrder = nextSeq, Title = "" });
+        RefreshDuplicateWarning();
+    }
+
+    private void RemoveModule(ModuleRow row)
+    {
+        _model.Modules.Remove(row);
+        RefreshDuplicateWarning();
+    }
+
+    private void RefreshDuplicateWarning()
+    {
+        var dupes = _model.Modules
+            .GroupBy(m => m.SequenceOrder)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+        _duplicateSequenceWarning = dupes.Count == 0
+            ? null
+            : $"Duplicate sequence number(s): {string.Join(", ", dupes)}. Each module needs a unique sequence.";
+    }
+
+    private async Task HandleSubmit()
+    {
+        RefreshDuplicateWarning();
+        if (_duplicateSequenceWarning is not null) return;
+
+        _error = null;
+        _result = null;
+        _isSubmitting = true;
+        try
+        {
+            var request = new CreateCourseRequest(
+                _model.Title.Trim(),
+                string.IsNullOrWhiteSpace(_model.Description) ? null : _model.Description!.Trim(),
+                string.IsNullOrWhiteSpace(_model.RegulatoryFramework) ? null : _model.RegulatoryFramework!.Trim(),
+                _model.TotalHours,
+                _model.TrainingType,
+                _model.IsActive,
+                _model.Modules
+                    .Select(m => new CreateCourseModuleRequest(
+                        m.Title.Trim(),
+                        m.SequenceOrder,
+                        string.IsNullOrWhiteSpace(m.Description) ? null : m.Description!.Trim()))
+                    .ToList());
+
+            _result = await Svc.CreateAsync(request);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _error = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to create course: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void ResetForAnother()
+    {
+        _model.Title = "";
+        _model.Description = null;
+        _model.RegulatoryFramework = null;
+        _model.TotalHours = 1;
+        _model.TrainingType = TrainingType.FlightDeck;
+        _model.IsActive = true;
+        _model.Modules.Clear();
+        _result = null;
+        _error = null;
+        _duplicateSequenceWarning = null;
+    }
+
+    private sealed class CreateCourseFormModel
+    {
+        [Required, MaxLength(300)] public string Title { get; set; } = "";
+        [MaxLength(4000)]          public string? Description { get; set; }
+        [MaxLength(100)]           public string? RegulatoryFramework { get; set; }
+        [Range(0.1, 9999.9)]       public decimal TotalHours { get; set; } = 1;
+        [Required]                 public TrainingType TrainingType { get; set; } = TrainingType.FlightDeck;
+                                    public bool IsActive { get; set; } = true;
+                                    public List<ModuleRow> Modules { get; } = new();
+    }
+
+    private sealed class ModuleRow
+    {
+        [Required, MaxLength(200)] public string Title { get; set; } = "";
+        [Range(1, 999)]            public int SequenceOrder { get; set; } = 1;
+        [MaxLength(4000)]          public string? Description { get; set; }
+    }
+}

@@ -4,8 +4,15 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FSBS.Infrastructure.Persistence.Entities.Configurations;
 
+/// <summary>
+/// EF Fluent API configuration for <see cref="Lesson"/>. Sets column names,
+/// length and check constraints, the <c>(module_id, sequence_order)</c> unique
+/// index, the optional <c>source_template_id</c> FK to
+/// <see cref="LessonTemplate"/>, and the <c>xmin</c> concurrency token.
+/// </summary>
 public class LessonConfiguration : IEntityTypeConfiguration<Lesson>
 {
+    /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<Lesson> builder)
     {
         builder.HasKey(e => e.Id);
