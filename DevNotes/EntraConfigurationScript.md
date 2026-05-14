@@ -23,7 +23,10 @@ The script creates or updates the `FSBS Staff Portal` app registration and appli
 The script does **not** configure Cognito for you. After it completes, you still need to:
 
 1. add the Entra OIDC identity provider in the Cognito staff pool
-2. configure the Cognito hosted UI callback and sign-out URLs
+2. configure the Cognito hosted UI callback and sign-out URLs:
+   - `https://localhost:5001/auth/callback`
+   - `https://staging.fsbs.tqaentry.com/auth/callback`
+   - `https://app.fsbs.tqaentry.com/auth/callback`
 3. populate `FSBS.Web/wwwroot/appsettings.json` and API Cognito settings
 4. assign real staff users to the Entra security groups
 

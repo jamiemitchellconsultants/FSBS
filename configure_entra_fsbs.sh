@@ -15,9 +15,11 @@ ASSUME_YES=0
 AWS_REGION=""
 AWS_SECRET_PREFIX="fsbs/entra"
 LOCAL_CALLBACK_URL="https://localhost:5001/auth/callback"
-PROD_CALLBACK_URL="https://app.fsbs.example.com/auth/callback"
+STAGING_CALLBACK_URL="https://staging.fsbs.tqaentry.com/auth/callback"
+PROD_CALLBACK_URL="https://app.fsbs.tqaentry.com/auth/callback"
 LOCAL_LOGOUT_URL="https://localhost:5001/logout"
-PROD_LOGOUT_URL="https://app.fsbs.example.com/logout"
+STAGING_LOGOUT_URL="https://staging.fsbs.tqaentry.com/logout"
+PROD_LOGOUT_URL="https://app.fsbs.tqaentry.com/logout"
 APP_EXISTS=0
 AZ_ACCOUNT_NAME=""
 AZ_ACCOUNT_USER=""
@@ -78,8 +80,10 @@ Optional:
   --aws-region <region>           AWS region for Secrets Manager writes
   --aws-secret-prefix <prefix>    Secrets Manager prefix. Default: fsbs/entra
   --local-callback-url <url>      Printed reminder for Cognito hosted UI config
+  --staging-callback-url <url>    Printed reminder for Cognito hosted UI config
   --prod-callback-url <url>       Printed reminder for Cognito hosted UI config
   --local-logout-url <url>        Printed reminder for Cognito hosted UI config
+  --staging-logout-url <url>      Printed reminder for Cognito hosted UI config
   --prod-logout-url <url>         Printed reminder for Cognito hosted UI config
   --help                          Show this help text
 
@@ -186,12 +190,20 @@ parse_args() {
         LOCAL_CALLBACK_URL="$2"
         shift 2
         ;;
+      --staging-callback-url)
+        STAGING_CALLBACK_URL="$2"
+        shift 2
+        ;;
       --prod-callback-url)
         PROD_CALLBACK_URL="$2"
         shift 2
         ;;
       --local-logout-url)
         LOCAL_LOGOUT_URL="$2"
+        shift 2
+        ;;
+      --staging-logout-url)
+        STAGING_LOGOUT_URL="$2"
         shift 2
         ;;
       --prod-logout-url)
@@ -655,9 +667,11 @@ Still required outside Entra:
      - Issuer URL: https://login.microsoftonline.com/${TENANT_ID}/v2.0
   2. In Cognito hosted UI, set callback URLs:
      - ${LOCAL_CALLBACK_URL}
+     - ${STAGING_CALLBACK_URL}
      - ${PROD_CALLBACK_URL}
   3. In Cognito hosted UI, set sign-out URLs:
      - ${LOCAL_LOGOUT_URL}
+     - ${STAGING_LOGOUT_URL}
      - ${PROD_LOGOUT_URL}
   4. Assign staff users to one or more of these Entra groups:
      - ${ROLE_GROUPS[*]}
