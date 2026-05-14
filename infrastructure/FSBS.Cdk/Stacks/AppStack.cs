@@ -42,6 +42,12 @@ public class AppStackProps : StackProps
     public required string EntraTenantId { get; init; }
 
     /// <summary>
+    /// Root domain for this deployment, e.g. <c>fsbs.tqaentry.com</c>.
+    /// App subdomain is derived from <see cref="DeployEnv"/>.
+    /// </summary>
+    public required string RootDomain { get; init; }
+
+    /// <summary>
     /// School-wide root tenant_id used for staff and private customer
     /// provisioning. Stored as a Cognito Lambda env var.
     /// </summary>
@@ -56,6 +62,13 @@ public class AppStack : Stack
         var data = props.Data;
         var isProd = props.DeployEnv == "production";
 
+        var appDomain = props.DeployEnv switch
+        {
+            "production" => $"app.{props.RootDomain}",
+            "uat"        => $"uat.{props.RootDomain}",
+            _            => $"staging.{props.RootDomain}"
+        };
+
         // Import buckets by deterministic names to avoid cross-stack bucket
         // policy mutations that can create dependency cycles with CloudFront.
         var staticBucket = Bucket.FromBucketName(this, "StaticBucketImported", $"fsbs-static-{Account}");
@@ -64,7 +77,7 @@ public class AppStack : Stack
         // ── ACM wildcard certificate ──────────────────────────────────────────
         var cert = new Certificate(this, "WildcardCert", new CertificateProps
         {
-            DomainName = "*.fsbs.example.com",
+            DomainName = $"*.{props.RootDomain}",
             Validation = CertificateValidation.FromDns()
         });
 
@@ -192,8 +205,8 @@ public class AppStack : Stack
             {
                 Flows = new OAuthFlows { AuthorizationCodeGrant = true },
                 Scopes = [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE],
-                CallbackUrls = ["https://app.fsbs.example.com/auth/callback/staff"],
-                LogoutUrls = ["https://app.fsbs.example.com/logout"]
+                CallbackUrls = [$"https://{appDomain}/auth/callback/staff"],
+                LogoutUrls = [$"https://{appDomain}/logout"]
             },
             GenerateSecret = true
         });
@@ -253,8 +266,8 @@ public class AppStack : Stack
             {
                 Flows = new OAuthFlows { AuthorizationCodeGrant = true },
                 Scopes = [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE],
-                CallbackUrls = ["https://app.fsbs.example.com/auth/callback/customer"],
-                LogoutUrls = ["https://app.fsbs.example.com/logout"]
+                CallbackUrls = [$"https://{appDomain}/auth/callback/customer"],
+                LogoutUrls = [$"https://{appDomain}/logout"]
             },
             GenerateSecret = false
         });
@@ -584,7 +597,7 @@ public class AppStack : Stack
                 }
             },
             Certificate = cert,
-            DomainNames = ["app.fsbs.example.com"],
+            DomainNames = [appDomain],
             PriceClass = PriceClass.PRICE_CLASS_100,
             WebAclId = wafAcl.AttrArn,
             DefaultRootObject = "index.html",
@@ -633,6 +646,11 @@ public class AppStack : Stack
         {
             Value = distribution.DomainName,
             Description = "CloudFront distribution domain"
+        });
+        _ = new CfnOutput(this, "AppUrl", new CfnOutputProps
+        {
+            Value = $"https://{appDomain}",
+            Description = "Application URL"
         });
         _ = new CfnOutput(this, "StaffPoolId", new CfnOutputProps
         {

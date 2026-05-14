@@ -173,8 +173,8 @@ In **Cognito → App clients → fsbs-staff-app-client → Edit hosted UI**:
 
 | Field | Value |
 |---|---|
-| Allowed callback URLs | `https://localhost:5001/auth/callback` and `https://app.fsbs.example.com/auth/callback` |
-| Allowed sign-out URLs | `https://localhost:5001/logout` and `https://app.fsbs.example.com/logout` |
+| Allowed callback URLs | `https://localhost:5001/auth/callback` and `https://staging.fsbs.tqaentry.com/auth/callback` |
+| Allowed sign-out URLs | `https://localhost:5001/logout` and `https://staging.fsbs.tqaentry.com/logout` |
 | Identity providers | `EntraID` only — disable Cognito native sign-in for the staff pool |
 | OAuth 2.0 grant types | `Authorization code` |
 | OpenID Connect scopes | `openid`, `email`, `profile` |
@@ -206,7 +206,7 @@ To test the real Entra → Cognito flow on localhost, set `DevAuth:Enabled` to `
 {
   "ApiBaseUrl": "https://localhost:5001",
   "Cognito": {
-    "StaffPoolLoginUrl": "https://<cognito-domain>.auth.eu-west-1.amazoncognito.com/login?client_id=<staff-client-id>&response_type=code&scope=openid+email+profile&redirect_uri=https%3A%2F%2Flocalhost%3A5001%2Fauth%2Fcallback"
+    "StaffPoolLoginUrl": "https://<cognito-domain>.auth.eu-west-1.amazoncognito.com/login?client_id=<staff-client-id>&response_type=code&scope=openid+email+profile&redirect_uri=https%3A%2F%2Fstaging.fsbs.tqaentry.com%2Fauth%2Fcallback"
   }
 }
 ```

@@ -100,6 +100,7 @@ Three mandatory context values are required at deploy time — the app will thro
 | `entraClientId` | Azure app registration client ID |
 | `entraTenantId` | Azure tenant ID (GUID) |
 | `deployEnv` | `staging` / `uat` / `production` (defaults to `staging` if omitted) |
+| `rootDomain` | Root domain for the deployment (defaults to `fsbs.tqaentry.com` if omitted) |
 | `cloudFrontPrefixListId` | Optional — CloudFront managed prefix list ID for ALB security group (defaults to `pl-93a247fa` for eu-west-1) |
 
 ### Staging deploy example
@@ -107,6 +108,7 @@ Three mandatory context values are required at deploy time — the app will thro
 ```bash
 cdk deploy --all \
   -c deployEnv=staging \
+  -c rootDomain=fsbs.tqaentry.com \
   -c apiImageUri=123456789012.dkr.ecr.eu-west-1.amazonaws.com/fsbs-api:latest \
   -c workerImageUri=123456789012.dkr.ecr.eu-west-1.amazonaws.com/fsbs-worker:latest \
   -c rootTenantId=<your-root-tenant-guid> \
@@ -121,6 +123,7 @@ Production uses a manual approval gate in CodePipeline and blue/green deployment
 ```bash
 cdk deploy --all \
   -c deployEnv=production \
+  -c rootDomain=fsbs.tqaentry.com \
   -c apiImageUri=123456789012.dkr.ecr.eu-west-1.amazonaws.com/fsbs-api:1.0.0 \
   -c workerImageUri=123456789012.dkr.ecr.eu-west-1.amazonaws.com/fsbs-worker:1.0.0 \
   -c rootTenantId=<your-root-tenant-guid> \

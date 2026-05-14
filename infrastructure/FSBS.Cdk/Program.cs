@@ -11,6 +11,7 @@ var env = new Amazon.CDK.Environment
 
 // Derive deploy environment from CDK context or default to "staging"
 var deployEnv = app.Node.TryGetContext("deployEnv") as string ?? "staging";
+var rootDomain = app.Node.TryGetContext("rootDomain") as string ?? "fsbs.tqaentry.com";
 var cloudFrontPrefixListId = app.Node.TryGetContext("cloudFrontPrefixListId") as string;
 var apiImageUri = app.Node.TryGetContext("apiImageUri") as string
     ?? throw new InvalidOperationException("CDK context 'apiImageUri' is required.");
@@ -44,6 +45,7 @@ var appStack = new AppStack(app, "FsbsAppStack", new AppStackProps
     Network = network,
     Data = data,
     DeployEnv = deployEnv,
+    RootDomain = rootDomain,
     ApiImageUri = apiImageUri,
     WorkerImageUri = workerImageUri,
     RootTenantId = rootTenantId,
