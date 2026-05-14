@@ -556,9 +556,7 @@ ensure_group() {
   log_info "Creating security group '${group_name}'..."
   az ad group create \
     --display-name "$group_name" \
-    --mail-nickname "$mail_nickname" \
-    --security-enabled true \
-    --mail-enabled false >/dev/null
+    --mail-nickname "$mail_nickname" >/dev/null
 }
 
 ensure_role_groups() {
