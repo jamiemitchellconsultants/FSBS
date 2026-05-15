@@ -439,39 +439,47 @@ public class AppStack : Stack
         // ── DB grants Custom Resource ─────────────────────────────────────────
         // Provisions the runtime fsbs_app + fsbs_readonly roles inside the RDS
         // instance using the master credentials. Idempotent — safe to re-run.
-        var dbGrantsFn = new DbGrantsFunction(this, "DbGrantsFn", net.Vpc, net.LambdaSg);
-        data.DbSecret.GrantRead(dbGrantsFn);
-        data.AppDbSecret.GrantRead(dbGrantsFn);
-        data.ReadonlyDbSecret.GrantRead(dbGrantsFn);
+        // Skip on first deploy (pass -c skipDbGrants=true) until the schema
+        // has been applied via fsbs_schema.sql.
+        var skipDbGrants = props.Node.TryGetContext("skipDbGrants") as string == "true";
 
-        var dbGrantsProvider = new Provider(this, "DbGrantsProvider", new ProviderProps
+        CustomResource? dbGrants = null;
+        if (!skipDbGrants)
         {
-            OnEventHandler = dbGrantsFn,
-            LogRetention   = RetentionDays.ONE_MONTH
-        });
+            var dbGrantsFn = new DbGrantsFunction(this, "DbGrantsFn", net.Vpc, net.LambdaSg);
+            data.DbSecret.GrantRead(dbGrantsFn);
+            data.AppDbSecret.GrantRead(dbGrantsFn);
+            data.ReadonlyDbSecret.GrantRead(dbGrantsFn);
 
-        var dbGrants = new CustomResource(this, "DbGrants", new CustomResourceProps
-        {
-            ServiceToken = dbGrantsProvider.ServiceToken,
-            Properties   = new Dictionary<string, object>
+            var dbGrantsProvider = new Provider(this, "DbGrantsProvider", new ProviderProps
             {
-                ["DbHost"]            = data.Postgres.DbInstanceEndpointAddress,
-                ["DbPort"]            = data.Postgres.DbInstanceEndpointPort,
-                ["DbName"]            = "fsbs",
-                ["MasterSecretArn"]   = data.DbSecret.SecretArn,
-                ["AppSecretArn"]      = data.AppDbSecret.SecretArn,
-                ["ReadonlySecretArn"] = data.ReadonlyDbSecret.SecretArn,
-                // Bumping this on every deploy forces the provider to re-run
-                // even if no other property has changed — picks up rotated
-                // passwords without requiring a separate rotation hook.
-                ["RotationToken"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()
-            }
-        });
-        dbGrants.Node.AddDependency(data.Postgres);
+                OnEventHandler = dbGrantsFn,
+                LogRetention   = RetentionDays.ONE_MONTH
+            });
+
+            dbGrants = new CustomResource(this, "DbGrants", new CustomResourceProps
+            {
+                ServiceToken = dbGrantsProvider.ServiceToken,
+                Properties   = new Dictionary<string, object>
+                {
+                    ["DbHost"]            = data.Postgres.DbInstanceEndpointAddress,
+                    ["DbPort"]            = data.Postgres.DbInstanceEndpointPort,
+                    ["DbName"]            = "fsbs",
+                    ["MasterSecretArn"]   = data.DbSecret.SecretArn,
+                    ["AppSecretArn"]      = data.AppDbSecret.SecretArn,
+                    ["ReadonlySecretArn"] = data.ReadonlyDbSecret.SecretArn,
+                    ["RotationToken"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()
+                }
+            });
+            dbGrants.Node.AddDependency(data.Postgres);
+        }
 
         // ECS tasks must not start until fsbs_app role exists in the DB.
-        apiService.Node.AddDependency(dbGrants);
-        workerService.Node.AddDependency(dbGrants);
+        if (dbGrants is not null)
+        {
+            apiService.Node.AddDependency(dbGrants);
+            workerService.Node.AddDependency(dbGrants);
+        }
 
         // ── CloudFront distribution ───────────────────────────────────────────
         var oac = new S3OriginAccessControl(this, "Oac", new S3OriginAccessControlProps

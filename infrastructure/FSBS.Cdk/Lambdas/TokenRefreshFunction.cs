@@ -25,7 +25,7 @@ public class TokenRefreshFunction : Function
         MemorySize     = 512,
         Description    = "Cognito Token Refresh: re-syncs Entra groups, overrides token claims",
         Vpc            = vpc,
-        VpcSubnets     = new SubnetSelection { SubnetType = SubnetType.PRIVATE_ISOLATED },
+        VpcSubnets     = new SubnetSelection { SubnetType = SubnetType.PRIVATE_WITH_EGRESS },
         SecurityGroups = [securityGroup]
     })
     { }

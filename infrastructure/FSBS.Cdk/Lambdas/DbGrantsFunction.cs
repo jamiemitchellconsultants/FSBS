@@ -26,11 +26,11 @@ public class DbGrantsFunction : Function
         Runtime     = Runtime.DOTNET_8,
         Handler     = "FSBS.Functions::FSBS.Functions.DbGrants.Function::FunctionHandler",
         Code        = FunctionsAsset.Code,
-        Timeout     = Duration.Minutes(2),
-        MemorySize  = 512,
+        Timeout     = Duration.Minutes(15),
+        MemorySize  = 1024,
         Description = "Provisions fsbs_app and fsbs_readonly DB roles via Custom Resource",
         Vpc         = vpc,
-        VpcSubnets  = new SubnetSelection { SubnetType = SubnetType.PRIVATE_ISOLATED },
+        VpcSubnets  = new SubnetSelection { SubnetType = SubnetType.PRIVATE_WITH_EGRESS },
         SecurityGroups = [securityGroup]
     })
     { }

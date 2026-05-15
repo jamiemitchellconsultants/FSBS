@@ -332,7 +332,7 @@ uuidgen | tr '[:upper:]' '[:lower:]'
 
 Keep this value — it must remain the same across all future deploys.
 
-### Step 16 — Deploy all stacks
+### Step 16 — First deploy (skip DB grants)
 
 The `entraClientId` value is the **Application (client) ID** printed by the Entra
 script at the end of Step 6. It is also visible in **Azure Portal → Microsoft
@@ -367,16 +367,22 @@ aws secretsmanager describe-secret \
 # If not found, re-run Step 6 with --write-aws-secrets
 ```
 
+Deploy with `-c skipDbGrants=true` on the first run. The DB grants custom
+resource requires the schema to exist first — that is applied in Step 22.
+The ECS services will start without the DB grants dependency on this deploy
+and will be redeployed in Step 16b once the schema is applied.
+
 ```bash
 cd infrastructure/FSBS.Cdk
 
 cdk deploy --all \
   -c deployEnv=staging \
+  -c skipDbGrants=true \
   -c rootDomain=fsbs.tqaentry.com \
   -c apiImageUri=679777944071.dkr.ecr.eu-west-1.amazonaws.com/fsbs-api:latest \
   -c workerImageUri=679777944071.dkr.ecr.eu-west-1.amazonaws.com/fsbs-worker:latest \
-  -c rootTenantId=<your-root-tenant-guid> \
-  -c entraClientId=<Application (client) ID from Step 6> \
+  -c rootTenantId=f98e1104-fb79-4273-91cc-24165ebae395 \
+  -c entraClientId=7c4d9b67-713b-4bf6-bb58-2a096590d574 \
   -c entraTenantId=ad999378-23c8-46ed-9254-c191aae0fc77 \
   -c entraClientSecret=<client-secret-value-from-Step-6> \
   -c cloudFrontPrefixListId=<cloudfront-prefix-list-id>
@@ -536,6 +542,26 @@ PGPASSWORD="$MASTER_PASSWORD" psql \
   -h localhost -p 5433 \
   -U fsbs_master -d fsbs \
   -f fsbs_schema.sql
+```
+
+### Step 16b — Second deploy (with DB grants)
+
+Now that the schema exists, redeploy without `skipDbGrants` so the DB grants
+custom resource runs and provisions the `fsbs_app` and `fsbs_readonly` roles:
+
+```bash
+cd infrastructure/FSBS.Cdk
+
+cdk deploy FsbsAppStack \
+  -c deployEnv=staging \
+  -c rootDomain=fsbs.tqaentry.com \
+  -c apiImageUri=679777944071.dkr.ecr.eu-west-1.amazonaws.com/fsbs-api:latest \
+  -c workerImageUri=679777944071.dkr.ecr.eu-west-1.amazonaws.com/fsbs-worker:latest \
+  -c rootTenantId=f98e1104-fb79-4273-91cc-24165ebae395 \
+  -c entraClientId=7c4d9b67-713b-4bf6-bb58-2a096590d574 \
+  -c entraTenantId=ad999378-23c8-46ed-9254-c191aae0fc77 \
+  -c entraClientSecret=<client-secret-value-from-Step-6> \
+  -c cloudFrontPrefixListId=<cloudfront-prefix-list-id>
 ```
 
 ---

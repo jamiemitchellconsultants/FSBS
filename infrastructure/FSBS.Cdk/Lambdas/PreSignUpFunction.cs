@@ -25,7 +25,7 @@ public class PreSignUpFunction : Function
         MemorySize     = 512,
         Description    = "Cognito Pre Sign-up: validates invitation token hash",
         Vpc            = vpc,
-        VpcSubnets     = new SubnetSelection { SubnetType = SubnetType.PRIVATE_ISOLATED },
+        VpcSubnets     = new SubnetSelection { SubnetType = SubnetType.PRIVATE_WITH_EGRESS },
         SecurityGroups = [securityGroup]
     })
     { }

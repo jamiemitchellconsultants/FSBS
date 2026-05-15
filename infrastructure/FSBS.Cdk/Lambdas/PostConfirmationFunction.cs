@@ -25,7 +25,7 @@ public class PostConfirmationFunction : Function
         MemorySize     = 512,
         Description    = "Cognito Post Confirmation: creates AppUser, assigns role, marks invitation Claimed",
         Vpc            = vpc,
-        VpcSubnets     = new SubnetSelection { SubnetType = SubnetType.PRIVATE_ISOLATED },
+        VpcSubnets     = new SubnetSelection { SubnetType = SubnetType.PRIVATE_WITH_EGRESS },
         SecurityGroups = [securityGroup]
     })
     { }
