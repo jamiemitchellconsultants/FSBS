@@ -93,10 +93,12 @@ public class NetworkStack : Stack
 
     private string ResolveCloudFrontPrefixListId()
     {
-        // Known value for eu-west-1. Other regions should pass an explicit
-        // value via CDK context to avoid accidental region mismatches.
-        if (Region == "eu-west-1")
-            return "pl-93a247fa";
+        // The CloudFront managed prefix list ID is account-specific even within
+        // the same region. Always pass cloudFrontPrefixListId via CDK context.
+        // To look up the correct value for your account:
+        //   aws ec2 describe-managed-prefix-lists --region eu-west-1 \
+        //     --filters Name=prefix-list-name,Values="com.amazonaws.global.cloudfront.origin-facing" \
+        //     --query "PrefixLists[0].PrefixListId" --output text
 
         throw new InvalidOperationException(
             $"CloudFront managed prefix list id is not configured for region '{Region}'. " +

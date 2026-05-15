@@ -9,21 +9,36 @@ var env = new Amazon.CDK.Environment
     Region  = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION")
 };
 
+var usEast1Env = new Amazon.CDK.Environment
+{
+    Account = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT"),
+    Region  = "us-east-1"
+};
+
 // Derive deploy environment from CDK context or default to "staging"
 var deployEnv = app.Node.TryGetContext("deployEnv") as string ?? "staging";
 var rootDomain = app.Node.TryGetContext("rootDomain") as string ?? "fsbs.tqaentry.com";
 var cloudFrontPrefixListId = app.Node.TryGetContext("cloudFrontPrefixListId") as string;
-var apiImageUri = app.Node.TryGetContext("apiImageUri") as string
-    ?? throw new InvalidOperationException("CDK context 'apiImageUri' is required.");
-var workerImageUri = app.Node.TryGetContext("workerImageUri") as string
-    ?? throw new InvalidOperationException("CDK context 'workerImageUri' is required.");
-var entraClientId = app.Node.TryGetContext("entraClientId") as string
-    ?? throw new InvalidOperationException("CDK context 'entraClientId' is required.");
-var entraTenantId = app.Node.TryGetContext("entraTenantId") as string
-    ?? throw new InvalidOperationException("CDK context 'entraTenantId' is required.");
-var rootTenantId = app.Node.TryGetContext("rootTenantId") as string
-    ?? throw new InvalidOperationException(
-        "CDK context 'rootTenantId' is required (school's root tenant_id GUID).");
+var apiImageUri = app.Node.TryGetContext("apiImageUri") as string;
+var workerImageUri = app.Node.TryGetContext("workerImageUri") as string;
+var entraClientId = app.Node.TryGetContext("entraClientId") as string;
+var entraTenantId = app.Node.TryGetContext("entraTenantId") as string;
+var entraClientSecret = app.Node.TryGetContext("entraClientSecret") as string;
+var rootTenantId = app.Node.TryGetContext("rootTenantId") as string;
+
+// During cdk bootstrap the app is not synthesised — skip stack construction.
+if (args.Contains("bootstrap"))
+{
+    app.Synth();
+    return;
+}
+
+if (apiImageUri is null) throw new InvalidOperationException("CDK context 'apiImageUri' is required.");
+if (workerImageUri is null) throw new InvalidOperationException("CDK context 'workerImageUri' is required.");
+if (entraClientId is null) throw new InvalidOperationException("CDK context 'entraClientId' is required.");
+if (entraTenantId is null) throw new InvalidOperationException("CDK context 'entraTenantId' is required.");
+if (entraClientSecret is null) throw new InvalidOperationException("CDK context 'entraClientSecret' is required.");
+if (rootTenantId is null) throw new InvalidOperationException("CDK context 'rootTenantId' is required (school's root tenant_id GUID).");
 
 var network = new NetworkStack(app, "FsbsNetworkStack", new NetworkStackProps
 {
@@ -39,9 +54,18 @@ var data = new DataStack(app, "FsbsDataStack", new DataStackProps
 });
 data.AddDependency(network);
 
+// WAF WebACL must be in us-east-1 for CloudFront scope.
+// CrossRegionReferences must be enabled on both stacks for the ARN reference to resolve.
+var waf = new WafStack(app, "FsbsWafStack", new StackProps
+{
+    Env = usEast1Env,
+    CrossRegionReferences = true
+});
+
 var appStack = new AppStack(app, "FsbsAppStack", new AppStackProps
 {
     Env = env,
+    CrossRegionReferences = true,
     Network = network,
     Data = data,
     DeployEnv = deployEnv,
@@ -50,7 +74,10 @@ var appStack = new AppStack(app, "FsbsAppStack", new AppStackProps
     WorkerImageUri = workerImageUri,
     RootTenantId = rootTenantId,
     EntraClientId = entraClientId,
-    EntraTenantId = entraTenantId
+    EntraTenantId = entraTenantId,
+    EntraClientSecret = entraClientSecret,
+    WebAclArn = waf.WebAclArn
 });
+appStack.AddDependency(waf);
 
 app.Synth();

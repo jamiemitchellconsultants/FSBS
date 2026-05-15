@@ -112,6 +112,13 @@ public class DataStack : Stack
             VpcSubnets = new SubnetSelection { SubnetType = SubnetType.PRIVATE_ISOLATED }
         });
 
+        var backupRetentionDays = props.DeployEnv switch
+        {
+            "production" => 7,
+            "uat"        => 3,
+            _            => 1
+        };
+
         Postgres = new DatabaseInstance(this, "Postgres", new DatabaseInstanceProps
         {
             Engine = DatabaseInstanceEngine.Postgres(new PostgresInstanceEngineProps
@@ -125,7 +132,7 @@ public class DataStack : Stack
             MultiAz = isProd,
             AllocatedStorage = 100,
             StorageType = StorageType.GP3,
-            BackupRetention = Duration.Days(7),
+            BackupRetention = Duration.Days(backupRetentionDays),
             DeletionProtection = isProd,
             Credentials = Credentials.FromSecret(DbSecret),
             DatabaseName = "fsbs",

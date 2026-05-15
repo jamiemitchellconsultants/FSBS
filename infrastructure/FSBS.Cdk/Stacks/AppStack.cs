@@ -12,7 +12,6 @@ using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.S3;
 using Amazon.CDK.AWS.SNS;
 using Amazon.CDK.AWS.SQS;
-using Amazon.CDK.AWS.WAFv2;
 using Amazon.CDK.CustomResources;
 using Constructs;
 using FSBS.Cdk.Lambdas;
@@ -40,12 +39,18 @@ public class AppStackProps : StackProps
     public required string WorkerImageUri { get; init; }
     public required string EntraClientId { get; init; }
     public required string EntraTenantId { get; init; }
+    public required string EntraClientSecret { get; init; }
 
     /// <summary>
     /// Root domain for this deployment, e.g. <c>fsbs.tqaentry.com</c>.
     /// App subdomain is derived from <see cref="DeployEnv"/>.
     /// </summary>
     public required string RootDomain { get; init; }
+
+    /// <summary>
+    /// ARN of the WAFv2 WebACL from <see cref="WafStack"/> (must be in us-east-1).
+    /// </summary>
+    public required string WebAclArn { get; init; }
 
     /// <summary>
     /// School-wide root tenant_id used for staff and private customer
@@ -177,14 +182,12 @@ public class AppStack : Stack
         });
 
         // Entra ID OIDC identity provider
-        var entraClientSecret = SecretsManagerSecret.FromSecretNameV2(this, "EntraClientSecret", "fsbs/entra/client-secret");
-
         var entraIdp = new UserPoolIdentityProviderOidc(this, "EntraIdp", new UserPoolIdentityProviderOidcProps
         {
             UserPool = staffPool,
             Name = "EntraID",
             ClientId = props.EntraClientId,
-            ClientSecret = entraClientSecret.SecretValue.UnsafeUnwrap(),
+            ClientSecret = props.EntraClientSecret,
             IssuerUrl = $"https://login.microsoftonline.com/{props.EntraTenantId}/v2.0",
             Scopes = ["openid", "email", "profile"],
             AttributeMapping = new AttributeMapping
@@ -308,7 +311,7 @@ public class AppStack : Stack
         {
             LogGroupName = "/fsbs/api",
             Retention = RetentionDays.ONE_YEAR,
-            RemovalPolicy = RemovalPolicy.RETAIN
+            RemovalPolicy = isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY
         });
 
         // ── API Fargate service ───────────────────────────────────────────────
@@ -405,7 +408,7 @@ public class AppStack : Stack
                 {
                     LogGroupName = "/fsbs/worker",
                     Retention = RetentionDays.ONE_YEAR,
-                    RemovalPolicy = RemovalPolicy.RETAIN
+                    RemovalPolicy = isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY
                 }),
                 StreamPrefix = "worker"
             }),
@@ -470,87 +473,6 @@ public class AppStack : Stack
         apiService.Node.AddDependency(dbGrants);
         workerService.Node.AddDependency(dbGrants);
 
-        // ── WAF WebACL (CLOUDFRONT scope — must be in us-east-1) ─────────────
-        var wafAcl = new CfnWebACL(this, "WafAcl", new CfnWebACLProps
-        {
-            Name = "fsbs-waf",
-            Scope = "CLOUDFRONT",
-            DefaultAction = new CfnWebACL.DefaultActionProperty { Allow = new CfnWebACL.AllowActionProperty() },
-            VisibilityConfig = new CfnWebACL.VisibilityConfigProperty
-            {
-                SampledRequestsEnabled = true,
-                CloudWatchMetricsEnabled = true,
-                MetricName = "fsbs-waf"
-            },
-            Rules = new object[]
-            {
-                // Rate limit: 300 req / 5 min per IP
-                new CfnWebACL.RuleProperty
-                {
-                    Name = "RateLimit",
-                    Priority = 1,
-                    Action = new CfnWebACL.RuleActionProperty { Block = new CfnWebACL.BlockActionProperty() },
-                    VisibilityConfig = new CfnWebACL.VisibilityConfigProperty
-                    {
-                        SampledRequestsEnabled = true,
-                        CloudWatchMetricsEnabled = true,
-                        MetricName = "RateLimit"
-                    },
-                    Statement = new CfnWebACL.StatementProperty
-                    {
-                        RateBasedStatement = new CfnWebACL.RateBasedStatementProperty
-                        {
-                            Limit = 300,
-                            AggregateKeyType = "IP",
-                            EvaluationWindowSec = 300
-                        }
-                    }
-                },
-                // OWASP Core Rule Set
-                new CfnWebACL.RuleProperty
-                {
-                    Name = "AWSManagedRulesCommonRuleSet",
-                    Priority = 2,
-                    OverrideAction = new CfnWebACL.OverrideActionProperty { None = new Dictionary<string, object>() },
-                    VisibilityConfig = new CfnWebACL.VisibilityConfigProperty
-                    {
-                        SampledRequestsEnabled = true,
-                        CloudWatchMetricsEnabled = true,
-                        MetricName = "AWSManagedRulesCommonRuleSet"
-                    },
-                    Statement = new CfnWebACL.StatementProperty
-                    {
-                        ManagedRuleGroupStatement = new CfnWebACL.ManagedRuleGroupStatementProperty
-                        {
-                            VendorName = "AWS",
-                            Name = "AWSManagedRulesCommonRuleSet"
-                        }
-                    }
-                },
-                // SQL injection managed rule
-                new CfnWebACL.RuleProperty
-                {
-                    Name = "AWSManagedRulesSQLiRuleSet",
-                    Priority = 3,
-                    OverrideAction = new CfnWebACL.OverrideActionProperty { None = new Dictionary<string, object>() },
-                    VisibilityConfig = new CfnWebACL.VisibilityConfigProperty
-                    {
-                        SampledRequestsEnabled = true,
-                        CloudWatchMetricsEnabled = true,
-                        MetricName = "AWSManagedRulesSQLiRuleSet"
-                    },
-                    Statement = new CfnWebACL.StatementProperty
-                    {
-                        ManagedRuleGroupStatement = new CfnWebACL.ManagedRuleGroupStatementProperty
-                        {
-                            VendorName = "AWS",
-                            Name = "AWSManagedRulesSQLiRuleSet"
-                        }
-                    }
-                }
-            }
-        });
-
         // ── CloudFront distribution ───────────────────────────────────────────
         var oac = new S3OriginAccessControl(this, "Oac", new S3OriginAccessControlProps
         {
@@ -599,7 +521,7 @@ public class AppStack : Stack
             Certificate = cert,
             DomainNames = [appDomain],
             PriceClass = PriceClass.PRICE_CLASS_100,
-            WebAclId = wafAcl.AttrArn,
+            WebAclId = props.WebAclArn,
             DefaultRootObject = "index.html",
             ErrorResponses =
             [

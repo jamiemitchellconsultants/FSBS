@@ -107,8 +107,12 @@ export CDK_DEFAULT_REGION=eu-west-1
 
 ### Step 3 — Bootstrap CDK (one-time)
 
+The WAF stack deploys to `us-east-1` (required for CloudFront-scoped WAF) while
+everything else deploys to `eu-west-1`. Both regions must be bootstrapped:
+
 ```bash
 cdk bootstrap aws://679777944071/eu-west-1
+cdk bootstrap aws://679777944071/us-east-1
 ```
 
 ---
@@ -330,6 +334,39 @@ Keep this value — it must remain the same across all future deploys.
 
 ### Step 16 — Deploy all stacks
 
+The `entraClientId` value is the **Application (client) ID** printed by the Entra
+script at the end of Step 6. It is also visible in **Azure Portal → Microsoft
+Entra ID → App registrations → FSBS Staff Portal → Overview**.
+
+```bash
+# Retrieve it from the Azure CLI if needed:
+az ad app list --display-name "FSBS Staff Portal" --query '[0].appId' -o tsv
+```
+
+The `cloudFrontPrefixListId` is account-specific — look it up before deploying:
+
+```bash
+aws ec2 describe-managed-prefix-lists \
+  --region eu-west-1 \
+  --filters Name=prefix-list-name,Values="com.amazonaws.global.cloudfront.origin-facing" \
+  --query "PrefixLists[0].PrefixListId" \
+  --output text
+# referred to below as <cloudfront-prefix-list-id>
+```
+
+Confirm the Entra client secret exists in Secrets Manager before deploying —
+the CDK reads it at synth time to configure the Cognito OIDC provider:
+
+```bash
+aws secretsmanager describe-secret \
+  --secret-id fsbs/entra/client-secret \
+  --region eu-west-1 \
+  --query "Name" \
+  --output text
+# Expected: fsbs/entra/client-secret
+# If not found, re-run Step 6 with --write-aws-secrets
+```
+
 ```bash
 cd infrastructure/FSBS.Cdk
 
@@ -339,8 +376,10 @@ cdk deploy --all \
   -c apiImageUri=679777944071.dkr.ecr.eu-west-1.amazonaws.com/fsbs-api:latest \
   -c workerImageUri=679777944071.dkr.ecr.eu-west-1.amazonaws.com/fsbs-worker:latest \
   -c rootTenantId=<your-root-tenant-guid> \
-  -c entraClientId=<entra-client-id> \
-  -c entraTenantId=ad999378-23c8-46ed-9254-c191aae0fc77
+  -c entraClientId=<Application (client) ID from Step 6> \
+  -c entraTenantId=ad999378-23c8-46ed-9254-c191aae0fc77 \
+  -c entraClientSecret=<client-secret-value-from-Step-6> \
+  -c cloudFrontPrefixListId=<cloudfront-prefix-list-id>
 ```
 
 The deploy will pause waiting for the ACM certificate to be validated. **Do not
