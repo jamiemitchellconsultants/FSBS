@@ -84,9 +84,17 @@ public class AppStack : Stack
         var staticBucket = Bucket.FromBucketName(this, "StaticBucketImported", $"fsbs-static-{Account}");
         var documentsBucket = Bucket.FromBucketName(this, "DocumentsBucketImported", $"fsbs-documents-{Account}");
 
-        // ── ACM wildcard certificate ──────────────────────────────────────────
-        // Certificate is created in us-east-1 via CertStack (CloudFront requirement).
-        var cert = props.Certificate;
+        // ── ACM certificates ──────────────────────────────────────────────────
+        // CloudFront requires a certificate in us-east-1 — passed in via CertStack.
+        var cfCert = props.Certificate;
+
+        // ALB requires a certificate in the same region as the load balancer.
+        // A separate cert is created here so it lands in the app region.
+        var albCert = new Certificate(this, "AlbCert", new CertificateProps
+        {
+            DomainName = $"*.{props.RootDomain}",
+            Validation = CertificateValidation.FromDns()
+        });
 
         // ── SQS queues ────────────────────────────────────────────────────────
         var bookingEventsDlq = new Queue(this, "BookingEventsDlq", new QueueProps
@@ -424,7 +432,7 @@ public class AppStack : Stack
         {
             Port = 443,
             Protocol = AlbProtocol.HTTPS,
-            Certificates = [AlbListenerCert.FromCertificateManager(cert)],
+            Certificates = [AlbListenerCert.FromCertificateManager(albCert)],
             DefaultTargetGroups = [targetGroup]
         });
 
@@ -564,7 +572,7 @@ public class AppStack : Stack
                     OriginRequestPolicy = OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER
                 }
             },
-            Certificate = cert,
+            Certificate = cfCert,
             DomainNames = [appDomain],
             PriceClass = PriceClass.PRICE_CLASS_100,
             WebAclId = props.WebAclArn,
