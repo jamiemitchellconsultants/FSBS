@@ -441,7 +441,7 @@ public class AppStack : Stack
         // instance using the master credentials. Idempotent — safe to re-run.
         // Skip on first deploy (pass -c skipDbGrants=true) until the schema
         // has been applied via fsbs_schema.sql.
-        var skipDbGrants = props.Node.TryGetContext("skipDbGrants") as string == "true";
+        var skipDbGrants = Node.TryGetContext("skipDbGrants") as string == "true";
 
         CustomResource? dbGrants = null;
         if (!skipDbGrants)
