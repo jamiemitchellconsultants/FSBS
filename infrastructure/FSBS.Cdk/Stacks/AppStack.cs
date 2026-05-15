@@ -288,6 +288,27 @@ public class AppStack : Stack
             AssumedBy = new ServicePrincipal("ecs-tasks.amazonaws.com"),
             Description = "FSBS API Fargate task role"
         });
+
+        // Execution roles are created explicitly so GrantRead calls have a
+        // non-null grantee at construction time. The auto-created ExecutionRole
+        // on FargateTaskDefinition is null until synthesis and causes a jsii
+        // SerializationError when passed to Secret.GrantRead.
+        var apiExecutionRole = new Role(this, "ApiExecutionRole", new RoleProps
+        {
+            AssumedBy = new ServicePrincipal("ecs-tasks.amazonaws.com"),
+            ManagedPolicies = [ManagedPolicy.FromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy")]
+        });
+        data.AppDbSecret.GrantRead(apiExecutionRole);
+        data.ApiKeysSecret.GrantRead(apiExecutionRole);
+
+        var workerExecutionRole = new Role(this, "WorkerExecutionRole", new RoleProps
+        {
+            AssumedBy = new ServicePrincipal("ecs-tasks.amazonaws.com"),
+            ManagedPolicies = [ManagedPolicy.FromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy")]
+        });
+        data.AppDbSecret.GrantRead(workerExecutionRole);
+        data.ApiKeysSecret.GrantRead(workerExecutionRole);
+
         // ECS tasks read the runtime fsbs_app credentials, never the master.
         data.AppDbSecret.GrantRead(taskRole);
         data.ApiKeysSecret.GrantRead(taskRole);
@@ -332,15 +353,9 @@ public class AppStack : Stack
         {
             Cpu = 1024,
             MemoryLimitMiB = 2048,
-            TaskRole = taskRole
+            TaskRole = taskRole,
+            ExecutionRole = apiExecutionRole
         });
-
-        // Execution role must be able to pull images from ECR and fetch
-        // Secrets Manager values used in container startup.
-        apiTaskDef.ExecutionRole?.AddManagedPolicy(
-            ManagedPolicy.FromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy"));
-        data.AppDbSecret.GrantRead(apiTaskDef.ExecutionRole!);
-        data.ApiKeysSecret.GrantRead(apiTaskDef.ExecutionRole!);
 
         apiTaskDef.AddContainer("Api", new ContainerDefinitionOptions
         {
@@ -416,15 +431,9 @@ public class AppStack : Stack
         {
             Cpu = 512,
             MemoryLimitMiB = 1024,
-            TaskRole = taskRole
+            TaskRole = taskRole,
+            ExecutionRole = workerExecutionRole
         });
-
-        // Worker execution role needs the same startup permissions as API:
-        // ECR pull + Secrets Manager reads for injected secrets.
-        workerTaskDef.ExecutionRole?.AddManagedPolicy(
-            ManagedPolicy.FromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy"));
-        data.AppDbSecret.GrantRead(workerTaskDef.ExecutionRole!);
-        data.ApiKeysSecret.GrantRead(workerTaskDef.ExecutionRole!);
 
         workerTaskDef.AddContainer("Worker", new ContainerDefinitionOptions
         {
