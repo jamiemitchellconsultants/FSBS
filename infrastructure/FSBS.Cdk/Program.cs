@@ -54,12 +54,19 @@ var data = new DataStack(app, "FsbsDataStack", new DataStackProps
 });
 data.AddDependency(network);
 
-// WAF WebACL must be in us-east-1 for CloudFront scope.
+// WAF WebACL and ACM certificate must be in us-east-1 for CloudFront.
 // CrossRegionReferences must be enabled on both stacks for the ARN reference to resolve.
 var waf = new WafStack(app, "FsbsWafStack", new StackProps
 {
     Env = usEast1Env,
     CrossRegionReferences = true
+});
+
+var cert = new CertStack(app, "FsbsCertStack", new CertStackProps
+{
+    Env = usEast1Env,
+    CrossRegionReferences = true,
+    RootDomain = rootDomain
 });
 
 var appStack = new AppStack(app, "FsbsAppStack", new AppStackProps
@@ -76,8 +83,10 @@ var appStack = new AppStack(app, "FsbsAppStack", new AppStackProps
     EntraClientId = entraClientId,
     EntraTenantId = entraTenantId,
     EntraClientSecret = entraClientSecret,
-    WebAclArn = waf.WebAclArn
+    WebAclArn = waf.WebAclArn,
+    Certificate = cert.Certificate
 });
 appStack.AddDependency(waf);
+appStack.AddDependency(cert);
 
 app.Synth();

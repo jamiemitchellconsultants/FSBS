@@ -53,6 +53,11 @@ public class AppStackProps : StackProps
     public required string WebAclArn { get; init; }
 
     /// <summary>
+    /// ACM certificate from <see cref="CertStack"/> (must be in us-east-1).
+    /// </summary>
+    public required ICertificate Certificate { get; init; }
+
+    /// <summary>
     /// School-wide root tenant_id used for staff and private customer
     /// provisioning. Stored as a Cognito Lambda env var.
     /// </summary>
@@ -80,11 +85,8 @@ public class AppStack : Stack
         var documentsBucket = Bucket.FromBucketName(this, "DocumentsBucketImported", $"fsbs-documents-{Account}");
 
         // ── ACM wildcard certificate ──────────────────────────────────────────
-        var cert = new Certificate(this, "WildcardCert", new CertificateProps
-        {
-            DomainName = $"*.{props.RootDomain}",
-            Validation = CertificateValidation.FromDns()
-        });
+        // Certificate is created in us-east-1 via CertStack (CloudFront requirement).
+        var cert = props.Certificate;
 
         // ── SQS queues ────────────────────────────────────────────────────────
         var bookingEventsDlq = new Queue(this, "BookingEventsDlq", new QueueProps
