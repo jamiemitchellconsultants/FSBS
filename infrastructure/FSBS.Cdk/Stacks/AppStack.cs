@@ -294,7 +294,20 @@ public class AppStack : Stack
         staticBucket.GrantReadWrite(taskRole);
         documentsBucket.GrantReadWrite(taskRole);
         bookingEventsQueue.GrantSendMessages(taskRole);
+        bookingEventsQueue.GrantConsumeMessages(taskRole);
         bookingEventsTopic.GrantPublish(taskRole);
+        taskRole.AddToPolicy(new PolicyStatement(new PolicyStatementProps
+        {
+            Effect = Effect.ALLOW,
+            Actions =
+            [
+                "ses:SendEmail",
+                "ses:SendTemplatedEmail",
+                "ses:CreateTemplate",
+                "ses:UpdateTemplate"
+            ],
+            Resources = ["*"]
+        }));
         taskRole.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AWSXRayDaemonWriteAccess"));
 
         // ── ALB ───────────────────────────────────────────────────────────────
@@ -321,6 +334,13 @@ public class AppStack : Stack
             MemoryLimitMiB = 2048,
             TaskRole = taskRole
         });
+
+        // Execution role must be able to pull images from ECR and fetch
+        // Secrets Manager values used in container startup.
+        apiTaskDef.ExecutionRole?.AddManagedPolicy(
+            ManagedPolicy.FromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy"));
+        data.AppDbSecret.GrantRead(apiTaskDef.ExecutionRole!);
+        data.ApiKeysSecret.GrantRead(apiTaskDef.ExecutionRole!);
 
         apiTaskDef.AddContainer("Api", new ContainerDefinitionOptions
         {
@@ -398,6 +418,13 @@ public class AppStack : Stack
             MemoryLimitMiB = 1024,
             TaskRole = taskRole
         });
+
+        // Worker execution role needs the same startup permissions as API:
+        // ECR pull + Secrets Manager reads for injected secrets.
+        workerTaskDef.ExecutionRole?.AddManagedPolicy(
+            ManagedPolicy.FromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy"));
+        data.AppDbSecret.GrantRead(workerTaskDef.ExecutionRole!);
+        data.ApiKeysSecret.GrantRead(workerTaskDef.ExecutionRole!);
 
         workerTaskDef.AddContainer("Worker", new ContainerDefinitionOptions
         {
