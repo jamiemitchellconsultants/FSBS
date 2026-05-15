@@ -393,13 +393,13 @@ cancel it** — proceed to Step 17 immediately in a second terminal.
 
 ### Step 17 — Add the ACM validation CNAME (while deploy is running)
 
-In a new terminal:
+The certificate is created in `us-east-1` via `FsbsCertStack`. In a new terminal:
 
 ```bash
-aws acm list-certificates --region eu-west-1 \
+aws acm list-certificates --region us-east-1 \
   --query "CertificateSummaryList[?DomainName=='*.fsbs.tqaentry.com'].CertificateArn" \
   --output text | xargs -I{} \
-  aws acm describe-certificate --region eu-west-1 --certificate-arn {} \
+  aws acm describe-certificate --region us-east-1 --certificate-arn {} \
   --query "Certificate.DomainValidationOptions[0].ResourceRecord"
 ```
 
