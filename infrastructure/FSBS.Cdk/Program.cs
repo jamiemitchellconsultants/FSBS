@@ -23,7 +23,6 @@ var apiImageUri = app.Node.TryGetContext("apiImageUri") as string;
 var workerImageUri = app.Node.TryGetContext("workerImageUri") as string;
 var entraClientId = app.Node.TryGetContext("entraClientId") as string;
 var entraTenantId = app.Node.TryGetContext("entraTenantId") as string;
-var entraClientSecret = app.Node.TryGetContext("entraClientSecret") as string;
 var rootTenantId = app.Node.TryGetContext("rootTenantId") as string;
 
 // During cdk bootstrap the app is not synthesised — skip stack construction.
@@ -37,8 +36,10 @@ if (apiImageUri is null) throw new InvalidOperationException("CDK context 'apiIm
 if (workerImageUri is null) throw new InvalidOperationException("CDK context 'workerImageUri' is required.");
 if (entraClientId is null) throw new InvalidOperationException("CDK context 'entraClientId' is required.");
 if (entraTenantId is null) throw new InvalidOperationException("CDK context 'entraTenantId' is required.");
-if (entraClientSecret is null) throw new InvalidOperationException("CDK context 'entraClientSecret' is required.");
 if (rootTenantId is null) throw new InvalidOperationException("CDK context 'rootTenantId' is required (school's root tenant_id GUID).");
+// Pre-requisite: 'fsbs/entra/client-secret' must exist in Secrets Manager before deploying.
+// Run StagingRunbook Step 6 with --write-aws-secrets. The CDK reads it at deploy time via
+// a CloudFormation dynamic reference — it is never embedded in the synthesised template.
 
 var network = new NetworkStack(app, "FsbsNetworkStack", new NetworkStackProps
 {
@@ -82,7 +83,6 @@ var appStack = new AppStack(app, "FsbsAppStack", new AppStackProps
     RootTenantId = rootTenantId,
     EntraClientId = entraClientId,
     EntraTenantId = entraTenantId,
-    EntraClientSecret = entraClientSecret,
     WebAclArn = waf.WebAclArn,
     Certificate = cert.Certificate
 });

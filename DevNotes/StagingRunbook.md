@@ -136,20 +136,21 @@ Preview what the script will do without making any changes:
 
 ```bash
 ./configure_entra_fsbs.sh \
-  --cognito-domain fsbs-staff.auth.eu-west-1.amazoncognito.com \
+  --cognito-domain fsbs-staff-679777944071.auth.eu-west-1.amazoncognito.com \
   --tenant-id ad999378-23c8-46ed-9254-c191aae0fc77 \
   --dry-run
 ```
 
-> The Cognito domain prefix `fsbs-staff` is a placeholder at this point — the
-> actual domain is created in Phase 5. The script only uses it to construct the
-> redirect URI, so the dry-run output is still useful for review.
+> The CDK creates the Cognito domain with prefix `fsbs-staff-{account-id}`. For
+> the staging account `679777944071` this is `fsbs-staff-679777944071`. The
+> full URL shown above is the real domain that will exist after Phase 5 — using
+> it here (and in Step 20) means no re-run is needed to update the redirect URI.
 
 ### Step 6 — Run the Entra script for real
 
 ```bash
 ./configure_entra_fsbs.sh \
-  --cognito-domain fsbs-staff.auth.eu-west-1.amazoncognito.com \
+  --cognito-domain fsbs-staff-679777944071.auth.eu-west-1.amazoncognito.com \
   --tenant-id ad999378-23c8-46ed-9254-c191aae0fc77 \
   --write-aws-secrets \
   --aws-region eu-west-1
@@ -355,7 +356,8 @@ aws ec2 describe-managed-prefix-lists \
 ```
 
 Confirm the Entra client secret exists in Secrets Manager before deploying —
-the CDK reads it at synth time to configure the Cognito OIDC provider:
+the CDK reads it at deploy time via a CloudFormation dynamic reference
+(it is never embedded in the synthesised template):
 
 ```bash
 aws secretsmanager describe-secret \
@@ -384,7 +386,6 @@ cdk deploy --all \
   -c rootTenantId=f98e1104-fb79-4273-91cc-24165ebae395 \
   -c entraClientId=7c4d9b67-713b-4bf6-bb58-2a096590d574 \
   -c entraTenantId=ad999378-23c8-46ed-9254-c191aae0fc77 \
-  -c entraClientSecret=<client-secret-value-from-Step-6> \
   -c cloudFrontPrefixListId=<cloudfront-prefix-list-id>
 ```
 
@@ -424,7 +425,7 @@ CDK deploy will continue automatically.
 
 ### Step 18 — Record CDK outputs
 
-When the deploy completes, note the following output values:
+When the deploy completes, all required values are in the stack outputs table:
 
 ```bash
 aws cloudformation describe-stacks \
@@ -437,29 +438,12 @@ aws cloudformation describe-stacks \
 Record:
 - `CdnDomain` — e.g. `d1234abcd.cloudfront.net` — referred to below as `<cdn-domain>`
 - `StaffPoolId` — e.g. `eu-west-1_AbCdEfGhI` — referred to below as `<staff-pool-id>`
-
-Also get the staff app client ID:
-
-```bash
-aws cognito-idp list-user-pool-clients \
-  --user-pool-id <staff-pool-id> \
-  --region eu-west-1 \
-  --query "UserPoolClients[?ClientName=='fsbs-staff-client'].ClientId" \
-  --output text
-# referred to below as <staff-client-id>
-```
-
-And the Cognito hosted UI domain prefix:
-
-```bash
-aws cognito-idp describe-user-pool \
-  --user-pool-id <staff-pool-id> \
-  --region eu-west-1 \
-  --query "UserPool.Domain" \
-  --output text
-# referred to below as <cognito-domain-prefix>
-# Full domain: <cognito-domain-prefix>.auth.eu-west-1.amazoncognito.com
-```
+- `StaffPoolClientId` — referred to below as `<staff-client-id>`
+- `CustomerPoolClientId` — referred to below as `<customer-client-id>`
+- `StaffPoolDomain` — full Cognito hosted UI base URL, e.g.
+  `https://fsbs-staff-679777944071.auth.eu-west-1.amazoncognito.com` —
+  the prefix portion `fsbs-staff-679777944071` is referred to below as
+  `<cognito-domain-prefix>`
 
 ---
 
@@ -480,18 +464,28 @@ Add this record to your `tqaentry.com` nameservers:
 The Entra script used a placeholder Cognito domain in Step 6. Now that the real
 Cognito domain is known, update the redirect URI.
 
-### Step 20 — Re-run the Entra script with the real Cognito domain
+### Step 20 — Verify Entra redirect URI
+
+Because Step 6 used the real CDK-generated domain prefix (`fsbs-staff-679777944071`)
+rather than a placeholder, the redirect URI registered in Entra already points to the
+correct `oauth2/idpresponse` endpoint. No re-run of the Entra script is needed.
+
+Confirm in the **Azure Portal → Microsoft Entra ID → App registrations →
+FSBS Staff Portal → Authentication** that the redirect URI is:
+
+```
+https://fsbs-staff-679777944071.auth.eu-west-1.amazoncognito.com/oauth2/idpresponse
+```
+
+If it differs, re-run the script with the `--skip-secret --skip-groups` flags:
 
 ```bash
 ./configure_entra_fsbs.sh \
-  --cognito-domain <cognito-domain-prefix>.auth.eu-west-1.amazoncognito.com \
+  --cognito-domain fsbs-staff-679777944071.auth.eu-west-1.amazoncognito.com \
   --tenant-id ad999378-23c8-46ed-9254-c191aae0fc77 \
   --skip-secret \
   --skip-groups
 ```
-
-This updates the redirect URI in the Entra app registration to the real Cognito
-`oauth2/idpresponse` endpoint without rotating the secret or recreating groups.
 
 ---
 
@@ -560,7 +554,6 @@ cdk deploy FsbsAppStack \
   -c rootTenantId=f98e1104-fb79-4273-91cc-24165ebae395 \
   -c entraClientId=7c4d9b67-713b-4bf6-bb58-2a096590d574 \
   -c entraTenantId=ad999378-23c8-46ed-9254-c191aae0fc77 \
-  -c entraClientSecret=<client-secret-value-from-Step-6> \
   -c cloudFrontPrefixListId=<cloudfront-prefix-list-id>
 ```
 

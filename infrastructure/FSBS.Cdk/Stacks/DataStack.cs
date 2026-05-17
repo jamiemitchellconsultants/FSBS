@@ -32,6 +32,13 @@ public class DataStack : Stack
 
     public Secret ApiKeysSecret { get; }
     public CfnReplicationGroup RedisCluster { get; }
+
+    /// <summary>Primary endpoint address of the ElastiCache Redis replication group.</summary>
+    public string RedisEndpointAddress => RedisCluster.AttrPrimaryEndPointAddress;
+
+    /// <summary>Primary endpoint port of the ElastiCache Redis replication group.</summary>
+    public string RedisEndpointPort => RedisCluster.AttrPrimaryEndPointPort;
+
     public Bucket StaticBucket { get; }
     public Bucket DocumentsBucket { get; }
 

@@ -39,7 +39,6 @@ public class AppStackProps : StackProps
     public required string WorkerImageUri { get; init; }
     public required string EntraClientId { get; init; }
     public required string EntraTenantId { get; init; }
-    public required string EntraClientSecret { get; init; }
 
     /// <summary>
     /// Root domain for this deployment, e.g. <c>fsbs.tqaentry.com</c>.
@@ -126,6 +125,12 @@ public class AppStack : Stack
         var postConfirmation = new PostConfirmationFunction(this, "PostConfirmationFn", net.Vpc, net.LambdaSg);
         var tokenRefresh     = new TokenRefreshFunction(this, "TokenRefreshFn", net.Vpc, net.LambdaSg);
 
+        // Resolved at CloudFormation deploy time via dynamic reference
+        // {{resolve:secretsmanager:fsbs/entra/client-secret::SecretString::}}.
+        // The secret is written by the Entra script in StagingRunbook Step 6.
+        var entraClientSecretRef = SecretsManagerSecret.FromSecretNameV2(
+            this, "EntraClientSecretRef", "fsbs/entra/client-secret");
+
         var dbEndpointEnv = new Dictionary<string, string>
         {
             ["FSBS_DB_SECRET_ARN"] = data.AppDbSecret.SecretArn,
@@ -158,6 +163,14 @@ public class AppStack : Stack
         });
         postConfirmation.AddToRolePolicy(cognitoAdminPolicy);
         tokenRefresh.AddToRolePolicy(cognitoAdminPolicy);
+
+        // TokenRefresh calls Microsoft Graph API to check Entra group membership
+        // and detect disabled accounts. It fetches the secret at runtime via the ARN.
+        entraClientSecretRef.GrantRead(tokenRefresh);
+        tokenRefresh.AddEnvironment("FSBS_ENTRA_CLIENT_ID", props.EntraClientId);
+        tokenRefresh.AddEnvironment("FSBS_ENTRA_TENANT_ID", props.EntraTenantId);
+        tokenRefresh.AddEnvironment("FSBS_ENTRA_CLIENT_SECRET_ARN",
+            entraClientSecretRef.SecretArn);
 
         // ── Cognito Staff Pool (Entra ID OIDC federation) ─────────────────────
         var staffPool = new UserPool(this, "StaffPool", new UserPoolProps
@@ -197,7 +210,7 @@ public class AppStack : Stack
             UserPool = staffPool,
             Name = "EntraID",
             ClientId = props.EntraClientId,
-            ClientSecret = props.EntraClientSecret,
+            ClientSecret = entraClientSecretRef.SecretValue.UnsafeUnwrap(),
             IssuerUrl = $"https://login.microsoftonline.com/{props.EntraTenantId}/v2.0",
             Scopes = ["openid", "email", "profile"],
             AttributeMapping = new AttributeMapping
@@ -224,6 +237,13 @@ public class AppStack : Stack
             GenerateSecret = true
         });
         staffPoolClient.Node.AddDependency(entraIdp);
+
+        // Hosted UI domain — the Account suffix makes the prefix globally unique
+        // across all Cognito pools in the region.
+        var staffPoolDomain = staffPool.AddDomain("StaffPoolDomain", new UserPoolDomainOptions
+        {
+            CognitoDomain = new CognitoDomainOptions { DomainPrefix = $"fsbs-staff-{Account}" }
+        });
 
         // Staff Cognito groups
         foreach (var role in new[] { "SystemAdmin", "ScheduleAdmin", "CourseDirector", "Instructor", "Management", "SalesStaff", "InternalStudent" })
@@ -271,7 +291,7 @@ public class AppStack : Stack
             RemovalPolicy = RemovalPolicy.RETAIN
         });
 
-        _ = customerPool.AddClient("CustomerPoolClient", new UserPoolClientOptions
+        var customerPoolClient = customerPool.AddClient("CustomerPoolClient", new UserPoolClientOptions
         {
             UserPoolClientName = "fsbs-customer-client",
             SupportedIdentityProviders = [UserPoolClientIdentityProvider.COGNITO],
@@ -283,6 +303,11 @@ public class AppStack : Stack
                 LogoutUrls = [$"https://{appDomain}/logout"]
             },
             GenerateSecret = false
+        });
+
+        var customerPoolDomain = customerPool.AddDomain("CustomerPoolDomain", new UserPoolDomainOptions
+        {
+            CognitoDomain = new CognitoDomainOptions { DomainPrefix = $"fsbs-customer-{Account}" }
         });
 
         // ── ECS Cluster ───────────────────────────────────────────────────────
@@ -378,12 +403,23 @@ public class AppStack : Stack
             }),
             Environment = new Dictionary<string, string>
             {
-                ["ASPNETCORE_ENVIRONMENT"] = isProd ? "Production" : "Staging",
-                ["AWS_REGION"] = Region,
+                ["ASPNETCORE_ENVIRONMENT"]    = isProd ? "Production" : "Staging",
+                ["AWS_REGION"]                = Region,
                 ["Sqs__BookingEventsQueueUrl"] = bookingEventsQueue.QueueUrl,
-                ["FSBS_DB_HOST"] = data.Postgres.DbInstanceEndpointAddress,
-                ["FSBS_DB_PORT"] = data.Postgres.DbInstanceEndpointPort,
-                ["FSBS_DB_NAME"] = "fsbs"
+                ["FSBS_DB_HOST"]              = data.Postgres.DbInstanceEndpointAddress,
+                ["FSBS_DB_PORT"]              = data.Postgres.DbInstanceEndpointPort,
+                ["FSBS_DB_NAME"]              = "fsbs",
+                // Cognito — appsettings.json has these empty; CDK overrides them.
+                ["Cognito__AwsRegion"]        = Region,
+                ["Cognito__StaffPoolId"]      = staffPool.UserPoolId,
+                ["Cognito__StaffClientId"]    = staffPoolClient.UserPoolClientId,
+                ["Cognito__CustomerPoolId"]   = customerPool.UserPoolId,
+                ["Cognito__CustomerClientId"] = customerPoolClient.UserPoolClientId,
+                // Redis — InfrastructureServiceExtensions reads Redis:ConnectionString.
+                // ElastiCache TLS uses port 6380; abortConnect=false prevents startup
+                // failures if the multiplexer connects before the cluster is fully ready.
+                ["Redis__ConnectionString"]   =
+                    $"{data.RedisEndpointAddress}:{data.RedisEndpointPort},ssl=true,abortConnect=false"
             },
             Secrets = new Dictionary<string, Amazon.CDK.AWS.ECS.Secret>
             {
@@ -403,7 +439,12 @@ public class AppStack : Stack
             VpcSubnets = new SubnetSelection { SubnetType = SubnetType.PRIVATE_WITH_EGRESS },
             AssignPublicIp = false,
             ServiceName = "fsbs-api",
-            CircuitBreaker = new DeploymentCircuitBreaker { Rollback = true }
+            CircuitBreaker = new DeploymentCircuitBreaker { Rollback = true },
+            // Allow 2 minutes for .NET startup + DB/Redis connection before ALB
+            // health checks begin — prevents premature circuit-breaker triggering.
+            HealthCheckGracePeriod = Duration.Seconds(120),
+            // Required for Step 22 SSM port-forward through an ECS task to reach RDS.
+            EnableExecuteCommand = true
         });
 
         // Auto-scaling: min 2, max 10, CPU 60%
@@ -650,6 +691,21 @@ public class AppStack : Stack
         {
             Value = bookingEventsQueue.QueueUrl,
             Description = "SQS booking events queue URL"
+        });
+        _ = new CfnOutput(this, "StaffPoolClientId", new CfnOutputProps
+        {
+            Value = staffPoolClient.UserPoolClientId,
+            Description = "Cognito Staff Pool app client ID (fsbs-staff-client)"
+        });
+        _ = new CfnOutput(this, "CustomerPoolClientId", new CfnOutputProps
+        {
+            Value = customerPoolClient.UserPoolClientId,
+            Description = "Cognito Customer Pool app client ID (fsbs-customer-client)"
+        });
+        _ = new CfnOutput(this, "StaffPoolDomain", new CfnOutputProps
+        {
+            Value = $"https://{staffPoolDomain.DomainName}.auth.{Region}.amazoncognito.com",
+            Description = "Cognito Staff Pool hosted UI base URL"
         });
     }
 }
