@@ -380,11 +380,15 @@ public class AppStack : Stack
             {
                 ["ASPNETCORE_ENVIRONMENT"] = isProd ? "Production" : "Staging",
                 ["AWS_REGION"] = Region,
-                ["Sqs__BookingEventsQueueUrl"] = bookingEventsQueue.QueueUrl
+                ["Sqs__BookingEventsQueueUrl"] = bookingEventsQueue.QueueUrl,
+                ["FSBS_DB_HOST"] = data.Postgres.DbInstanceEndpointAddress,
+                ["FSBS_DB_PORT"] = data.Postgres.DbInstanceEndpointPort,
+                ["FSBS_DB_NAME"] = "fsbs"
             },
             Secrets = new Dictionary<string, Amazon.CDK.AWS.ECS.Secret>
             {
-                ["ConnectionStrings__Default"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret),
+                ["FSBS_DB_USERNAME"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret, "username"),
+                ["FSBS_DB_PASSWORD"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret, "password"),
                 ["Secrets__DbCredentials"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret),
                 ["Secrets__ApiKeys"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.ApiKeysSecret)
             }
@@ -461,11 +465,15 @@ public class AppStack : Stack
             Environment = new Dictionary<string, string>
             {
                 ["Worker__BookingEventsQueueUrl"] = bookingEventsQueue.QueueUrl,
-                ["AWS_REGION"] = Region
+                ["AWS_REGION"] = Region,
+                ["FSBS_DB_HOST"] = data.Postgres.DbInstanceEndpointAddress,
+                ["FSBS_DB_PORT"] = data.Postgres.DbInstanceEndpointPort,
+                ["FSBS_DB_NAME"] = "fsbs"
             },
             Secrets = new Dictionary<string, Amazon.CDK.AWS.ECS.Secret>
             {
-                ["Database__ConnectionString"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret),
+                ["FSBS_DB_USERNAME"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret, "username"),
+                ["FSBS_DB_PASSWORD"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret, "password"),
                 ["Secrets__DbCredentials"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret),
                 ["Secrets__ApiKeys"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.ApiKeysSecret)
             }

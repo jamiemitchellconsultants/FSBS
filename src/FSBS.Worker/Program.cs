@@ -21,8 +21,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // ── Database (Dapper — lightweight read queries for user contact lookup) ───────
 builder.Services.AddTransient<IDbConnection>(_ =>
 {
-    var connStr = builder.Configuration["Database:ConnectionString"]
-        ?? throw new InvalidOperationException("Database:ConnectionString is required.");
+    var connStr = ResolveConnectionString(builder.Configuration);
     return new NpgsqlConnection(connStr);
 });
 
@@ -46,3 +45,18 @@ builder.Services.AddHostedService<SqsConsumerService>();
 
 var host = builder.Build();
 host.Run();
+
+static string ResolveConnectionString(IConfiguration config)
+{
+    var direct = config["Database:ConnectionString"];
+    if (!string.IsNullOrWhiteSpace(direct))
+        return direct;
+
+    var host     = config["FSBS_DB_HOST"]     ?? throw new InvalidOperationException("FSBS_DB_HOST is not configured.");
+    var port     = config["FSBS_DB_PORT"]     ?? "5432";
+    var database = config["FSBS_DB_NAME"]     ?? "fsbs";
+    var username = config["FSBS_DB_USERNAME"] ?? throw new InvalidOperationException("FSBS_DB_USERNAME is not configured.");
+    var password = config["FSBS_DB_PASSWORD"] ?? throw new InvalidOperationException("FSBS_DB_PASSWORD is not configured.");
+
+    return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+}
