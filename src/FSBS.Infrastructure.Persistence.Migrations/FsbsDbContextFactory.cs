@@ -3,6 +3,7 @@ using FSBS.Domain.Enums;
 using FSBS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Npgsql;
 
 namespace FSBS.Infrastructure.Persistence.Migrations;
 
@@ -10,9 +11,20 @@ public class FsbsDbContextFactory : IDesignTimeDbContextFactory<FsbsDbContext>
 {
     public FsbsDbContext CreateDbContext(string[] args)
     {
+        var csb = new NpgsqlConnectionStringBuilder
+        {
+            Host     = Environment.GetEnvironmentVariable("FSBS_DB_HOST")     ?? "localhost",
+            Port     = int.Parse(Environment.GetEnvironmentVariable("FSBS_DB_PORT") ?? "5432"),
+            Database = Environment.GetEnvironmentVariable("FSBS_DB_NAME")     ?? "fsbs",
+            Username = Environment.GetEnvironmentVariable("FSBS_DB_USERNAME") ?? "postgres",
+            Password = Environment.GetEnvironmentVariable("FSBS_DB_PASSWORD") ?? "localdev"
+        };
+
+        var connectionString = csb.ConnectionString;
+
         var options = new DbContextOptionsBuilder<FsbsDbContext>()
             .UseNpgsql(
-                "Host=localhost;Port=5432;Database=fsbs;Username=postgres;Password=localdev",
+                connectionString,
                 o =>
                 {
                     o.MigrationsHistoryTable("__ef_migrations_history", "fsbs");

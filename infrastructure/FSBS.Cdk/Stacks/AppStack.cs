@@ -22,7 +22,6 @@ using AlbTargetGroupProps = Amazon.CDK.AWS.ElasticLoadBalancingV2.ApplicationTar
 using AlbProtocol = Amazon.CDK.AWS.ElasticLoadBalancingV2.ApplicationProtocol;
 using AlbHealthCheck = Amazon.CDK.AWS.ElasticLoadBalancingV2.HealthCheck;
 using AlbListenerProps = Amazon.CDK.AWS.ElasticLoadBalancingV2.BaseApplicationListenerProps;
-using AlbListenerCert = Amazon.CDK.AWS.ElasticLoadBalancingV2.ListenerCertificate;
 using CfDistribution = Amazon.CDK.AWS.CloudFront.Distribution;
 using CfDistributionProps = Amazon.CDK.AWS.CloudFront.DistributionProps;
 using LambdaFunction = Amazon.CDK.AWS.Lambda.Function;
@@ -86,14 +85,9 @@ public class AppStack : Stack
         // ── ACM certificates ──────────────────────────────────────────────────
         // CloudFront requires a certificate in us-east-1 — passed in via CertStack.
         var cfCert = props.Certificate;
-
-        // ALB requires a certificate in the same region as the load balancer.
-        // A separate cert is created here so it lands in the app region.
-        var albCert = new Certificate(this, "AlbCert", new CertificateProps
-        {
-            DomainName = $"*.{props.RootDomain}",
-            Validation = CertificateValidation.FromDns()
-        });
+        // No ALB-region cert: CloudFront → ALB uses HTTP (port 80) to avoid the
+        // TLS hostname mismatch caused by CF connecting via the ELB AWS hostname
+        // rather than the custom domain. Port 443 is not open in the ALB SG.
 
         // ── SQS queues ────────────────────────────────────────────────────────
         var bookingEventsDlq = new Queue(this, "BookingEventsDlq", new QueueProps
@@ -130,6 +124,12 @@ public class AppStack : Stack
         // The secret is written by the Entra script in StagingRunbook Step 6.
         var entraClientSecretRef = SecretsManagerSecret.FromSecretNameV2(
             this, "EntraClientSecretRef", "fsbs/entra/client-secret");
+
+        // Cognito staff pool client secret — fetched by deploy.sh after CDK pass 1
+        // and injected via CDK context in pass 2 (-c staffClientSecret=...).
+        // Pass 1 uses an empty string; the API starts fine because the secret is
+        // only used at request time (token exchange), not at startup.
+        var staffClientSecretValue = Node.TryGetContext("staffClientSecret") as string ?? string.Empty;
 
         var dbEndpointEnv = new Dictionary<string, string>
         {
@@ -210,12 +210,19 @@ public class AppStack : Stack
             UserPool = staffPool,
             Name = "EntraID",
             ClientId = props.EntraClientId,
-            ClientSecret = entraClientSecretRef.SecretValue.UnsafeUnwrap(),
+            // SecretValue.SecretsManager generates a name-based CloudFormation dynamic
+            // reference: {{resolve:secretsmanager:fsbs/entra/client-secret::SecretString::}}
+            // Using the name (not the ARN) avoids the ResourceNotFoundException that
+            // occurs when FromSecretNameV2 produces an ARN without the required 6-char
+            // Secrets Manager suffix (e.g. -lffFNp).
+            ClientSecret = SecretValue.SecretsManager("fsbs/entra/client-secret").UnsafeUnwrap(),
             IssuerUrl = $"https://login.microsoftonline.com/{props.EntraTenantId}/v2.0",
             Scopes = ["openid", "email", "profile"],
             AttributeMapping = new AttributeMapping
             {
-                Email = ProviderAttribute.Other("email"),
+                // Entra v2.0 org accounts expose the address in preferred_username,
+                // not in the email claim (which is often absent for work accounts).
+                Email = ProviderAttribute.Other("preferred_username"),
                 Custom = new Dictionary<string, ProviderAttribute>
                 {
                     ["custom:entra_groups"] = ProviderAttribute.Other("groups")
@@ -231,7 +238,9 @@ public class AppStack : Stack
             {
                 Flows = new OAuthFlows { AuthorizationCodeGrant = true },
                 Scopes = [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE],
-                CallbackUrls = [$"https://{appDomain}/auth/callback/staff"],
+                // Cognito redirects to the API callback so it can exchange the code,
+                // set the HttpOnly cookie, and then redirect the browser to the SPA.
+                CallbackUrls = [$"https://{appDomain}/v1/auth/callback"],
                 LogoutUrls = [$"https://{appDomain}/logout"]
             },
             GenerateSecret = true
@@ -299,7 +308,7 @@ public class AppStack : Stack
             {
                 Flows = new OAuthFlows { AuthorizationCodeGrant = true },
                 Scopes = [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE],
-                CallbackUrls = [$"https://{appDomain}/auth/callback/customer"],
+                CallbackUrls = [$"https://{appDomain}/v1/auth/callback"],
                 LogoutUrls = [$"https://{appDomain}/logout"]
             },
             GenerateSecret = false
@@ -410,11 +419,18 @@ public class AppStack : Stack
                 ["FSBS_DB_PORT"]              = data.Postgres.DbInstanceEndpointPort,
                 ["FSBS_DB_NAME"]              = "fsbs",
                 // Cognito — appsettings.json has these empty; CDK overrides them.
-                ["Cognito__AwsRegion"]        = Region,
-                ["Cognito__StaffPoolId"]      = staffPool.UserPoolId,
-                ["Cognito__StaffClientId"]    = staffPoolClient.UserPoolClientId,
-                ["Cognito__CustomerPoolId"]   = customerPool.UserPoolId,
-                ["Cognito__CustomerClientId"] = customerPoolClient.UserPoolClientId,
+                ["Cognito__AwsRegion"]           = Region,
+                ["Cognito__StaffPoolId"]         = staffPool.UserPoolId,
+                ["Cognito__StaffClientId"]       = staffPoolClient.UserPoolClientId,
+                ["Cognito__StaffDomain"]         = $"fsbs-staff-{Account}",
+                ["Cognito__StaffCallbackUrl"]    = $"https://{appDomain}/v1/auth/callback",
+                ["Cognito__CustomerPoolId"]      = customerPool.UserPoolId,
+                ["Cognito__CustomerClientId"]    = customerPoolClient.UserPoolClientId,
+                ["Cognito__CustomerDomain"]      = $"fsbs-customer-{Account}",
+                ["Cognito__CustomerCallbackUrl"] = $"https://{appDomain}/v1/auth/callback",
+                // Injected empty in pass 1; deploy.sh provides the real value in pass 2
+                // via -c staffClientSecret=... context. No SM injection needed.
+                ["Cognito__StaffClientSecret"]   = staffClientSecretValue,
                 // Redis — InfrastructureServiceExtensions reads Redis:ConnectionString.
                 // ElastiCache TLS uses port 6380; abortConnect=false prevents startup
                 // failures if the multiplexer connects before the cluster is fully ready.
@@ -423,10 +439,10 @@ public class AppStack : Stack
             },
             Secrets = new Dictionary<string, Amazon.CDK.AWS.ECS.Secret>
             {
-                ["FSBS_DB_USERNAME"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret, "username"),
-                ["FSBS_DB_PASSWORD"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret, "password"),
+                ["FSBS_DB_USERNAME"]       = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret, "username"),
+                ["FSBS_DB_PASSWORD"]       = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret, "password"),
                 ["Secrets__DbCredentials"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.AppDbSecret),
-                ["Secrets__ApiKeys"] = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.ApiKeysSecret)
+                ["Secrets__ApiKeys"]       = Amazon.CDK.AWS.ECS.Secret.FromSecretsManager(data.ApiKeysSecret)
             }
         });
 
@@ -473,11 +489,13 @@ public class AppStack : Stack
             DeregistrationDelay = Duration.Seconds(30)
         });
 
-        alb.AddListener("HttpsListener", new AlbListenerProps
+        // Port 80 HTTP listener — the CloudFront → ALB origin.
+        // CloudFront uses HTTP_ONLY to avoid TLS hostname mismatch.
+        // Traffic is encrypted CloudFront → viewer; ALB → ECS stays inside the VPC.
+        alb.AddListener("HttpListener", new AlbListenerProps
         {
-            Port = 443,
-            Protocol = AlbProtocol.HTTPS,
-            Certificates = [AlbListenerCert.FromCertificateManager(albCert)],
+            Port = 80,
+            Protocol = AlbProtocol.HTTP,
             DefaultTargetGroups = [targetGroup]
         });
 
@@ -534,8 +552,8 @@ public class AppStack : Stack
         // ── DB grants Custom Resource ─────────────────────────────────────────
         // Provisions the runtime fsbs_app + fsbs_readonly roles inside the RDS
         // instance using the master credentials. Idempotent — safe to re-run.
-        // Skip on first deploy (pass -c skipDbGrants=true) until the schema
-        // has been applied via fsbs_schema.sql.
+        // Skip on first deploy (pass -c skipDbGrants=true) until EF Core
+        // migrations have been applied via deploy.sh.
         var skipDbGrants = Node.TryGetContext("skipDbGrants") as string == "true";
 
         CustomResource? dbGrants = null;
@@ -589,8 +607,8 @@ public class AppStack : Stack
 
         var apiOrigin = new LoadBalancerV2Origin(alb, new LoadBalancerV2OriginProps
         {
-            ProtocolPolicy = OriginProtocolPolicy.HTTPS_ONLY,
-            HttpsPort = 443
+            ProtocolPolicy = OriginProtocolPolicy.HTTP_ONLY,
+            HttpPort = 80
         });
 
         var distribution = new CfDistribution(this, "Cdn", new CfDistributionProps

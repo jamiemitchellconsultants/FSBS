@@ -28,7 +28,7 @@ public sealed class CognitoHostedUiService(
         var clientId = isStaff ? config["Cognito:StaffClientId"] : config["Cognito:CustomerClientId"];
         var clientSecret = isStaff ? config["Cognito:StaffClientSecret"] : config["Cognito:CustomerClientSecret"];
         var redirectUri = isStaff ? config["Cognito:StaffCallbackUrl"] : config["Cognito:CustomerCallbackUrl"];
-        var domain = config["Cognito:Domain"];
+        var domain = isStaff ? config["Cognito:StaffDomain"] : config["Cognito:CustomerDomain"];
 
         if (string.IsNullOrWhiteSpace(poolId)
             || string.IsNullOrWhiteSpace(clientId)

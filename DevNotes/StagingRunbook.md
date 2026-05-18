@@ -208,14 +208,16 @@ aws ecr get-login-password --region eu-west-1 | \
   679777944071.dkr.ecr.eu-west-1.amazonaws.com
 
 # Build and push API
-docker build -t fsbs-api -f src/FSBS.Api/Dockerfile .
+# --platform linux/amd64 is required when building on Apple Silicon (arm64) —
+# ECS Fargate tasks run on x86_64 by default.
+docker build --platform linux/amd64 -t fsbs-api -f src/FSBS.Api/Dockerfile .
 docker tag fsbs-api:latest \
   679777944071.dkr.ecr.eu-west-1.amazonaws.com/fsbs-api:latest
 docker push \
   679777944071.dkr.ecr.eu-west-1.amazonaws.com/fsbs-api:latest
 
 # Build and push Worker
-docker build -t fsbs-worker -f src/FSBS.Worker/Dockerfile .
+docker build --platform linux/amd64 -t fsbs-worker -f src/FSBS.Worker/Dockerfile .
 docker tag fsbs-worker:latest \
   679777944071.dkr.ecr.eu-west-1.amazonaws.com/fsbs-worker:latest
 docker push \

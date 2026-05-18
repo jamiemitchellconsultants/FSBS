@@ -169,12 +169,27 @@ public static class AuthEndpoints
         string? error,
         HttpContext context,
         ISender sender,
+        ILogger<Program> logger,
         CancellationToken ct)
     {
+        // If the session cookie is already present the browser is replaying the
+        // callback (e.g. a second navigation from the browser history, or a
+        // round-robin hit to a second ECS task after a successful exchange on the
+        // first). Skip re-processing and hand off to the SPA callback page which
+        // will verify the existing session and navigate to /availability.
+        if (!string.IsNullOrWhiteSpace(context.Request.Cookies["fsbs_id_token"]))
+            return Results.Redirect("/auth/callback");
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            var desc = context.Request.Query["error_description"].FirstOrDefault();
+            logger.LogWarning("Cognito callback error={Error} error_description={ErrorDescription}", error, desc);
+        }
+
         var callback = await sender.Send(new ProcessHostedUiCallbackCommand(code, state, error), ct);
 
         if (!callback.Success)
-            return Results.Redirect($"/?auth_error={Uri.EscapeDataString(callback.ErrorCode ?? "token_exchange_failed")}");
+            return Results.Redirect($"/auth/callback?auth_error={Uri.EscapeDataString(callback.ErrorCode ?? "token_exchange_failed")}");
 
         var cookieOptions = new CookieOptions
         {
@@ -199,7 +214,9 @@ public static class AuthEndpoints
             });
         }
 
-        return Results.Redirect("/availability");
+        // Redirect to the SPA callback page, which calls NotifyAuthChanged() and
+        // verifies the new session before navigating the user to /availability.
+        return Results.Redirect("/auth/callback");
     }
 
     private static IResult LogoutAsync(HttpContext context)

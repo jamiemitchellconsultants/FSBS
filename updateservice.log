@@ -1,0 +1,647 @@
+{
+    "service": {
+        "serviceArn": "arn:aws:ecs:eu-west-1:679777944071:service/fsbs/fsbs-api",
+        "serviceName": "fsbs-api",
+        "clusterArn": "arn:aws:ecs:eu-west-1:679777944071:cluster/fsbs",
+        "loadBalancers": [
+            {
+                "targetGroupArn": "arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3",
+                "containerName": "Api",
+                "containerPort": 8080
+            }
+        ],
+        "serviceRegistries": [],
+        "status": "ACTIVE",
+        "desiredCount": 2,
+        "runningCount": 2,
+        "pendingCount": 0,
+        "launchType": "FARGATE",
+        "platformVersion": "1.4.0",
+        "platformFamily": "Linux",
+        "taskDefinition": "arn:aws:ecs:eu-west-1:679777944071:task-definition/FsbsAppStackApiTaskDef3A222C45:20",
+        "deploymentConfiguration": {
+            "deploymentCircuitBreaker": {
+                "enable": true,
+                "rollback": true
+            },
+            "maximumPercent": 200,
+            "minimumHealthyPercent": 50,
+            "alarms": {
+                "alarmNames": [],
+                "rollback": false,
+                "enable": false
+            },
+            "strategy": "ROLLING",
+            "bakeTimeInMinutes": 0
+        },
+        "deployments": [
+            {
+                "id": "ecs-svc/8115400081732389892",
+                "status": "PRIMARY",
+                "taskDefinition": "arn:aws:ecs:eu-west-1:679777944071:task-definition/FsbsAppStackApiTaskDef3A222C45:20",
+                "desiredCount": 0,
+                "pendingCount": 0,
+                "runningCount": 0,
+                "failedTasks": 0,
+                "createdAt": "2026-05-18T08:11:43.006000+01:00",
+                "updatedAt": "2026-05-18T08:11:43.006000+01:00",
+                "launchType": "FARGATE",
+                "platformVersion": "1.4.0",
+                "platformFamily": "Linux",
+                "networkConfiguration": {
+                    "awsvpcConfiguration": {
+                        "subnets": [
+                            "subnet-090982bdeb6a63729",
+                            "subnet-0eeb69e32a15b5a5a",
+                            "subnet-0a5686282d12cd72f"
+                        ],
+                        "securityGroups": [
+                            "sg-0492a765c488d87b5"
+                        ],
+                        "assignPublicIp": "DISABLED"
+                    }
+                },
+                "rolloutState": "IN_PROGRESS",
+                "rolloutStateReason": "ECS deployment ecs-svc/8115400081732389892 in progress."
+            },
+            {
+                "id": "ecs-svc/4296472388429330387",
+                "status": "ACTIVE",
+                "taskDefinition": "arn:aws:ecs:eu-west-1:679777944071:task-definition/FsbsAppStackApiTaskDef3A222C45:20",
+                "desiredCount": 2,
+                "pendingCount": 0,
+                "runningCount": 2,
+                "failedTasks": 0,
+                "createdAt": "2026-05-18T08:09:25.256000+01:00",
+                "updatedAt": "2026-05-18T08:10:40.562000+01:00",
+                "launchType": "FARGATE",
+                "platformVersion": "1.4.0",
+                "platformFamily": "Linux",
+                "networkConfiguration": {
+                    "awsvpcConfiguration": {
+                        "subnets": [
+                            "subnet-090982bdeb6a63729",
+                            "subnet-0eeb69e32a15b5a5a",
+                            "subnet-0a5686282d12cd72f"
+                        ],
+                        "securityGroups": [
+                            "sg-0492a765c488d87b5"
+                        ],
+                        "assignPublicIp": "DISABLED"
+                    }
+                },
+                "rolloutState": "IN_PROGRESS",
+                "rolloutStateReason": "ECS deployment ecs-svc/4296472388429330387 in progress."
+            },
+            {
+                "id": "ecs-svc/5305335696813971970",
+                "status": "DRAINING",
+                "taskDefinition": "arn:aws:ecs:eu-west-1:679777944071:task-definition/FsbsAppStackApiTaskDef3A222C45:20",
+                "desiredCount": 0,
+                "pendingCount": 0,
+                "runningCount": 0,
+                "failedTasks": 0,
+                "createdAt": "2026-05-18T06:24:20.250000+01:00",
+                "updatedAt": "2026-05-18T08:11:21.566000+01:00",
+                "launchType": "FARGATE",
+                "platformVersion": "1.4.0",
+                "platformFamily": "Linux",
+                "networkConfiguration": {
+                    "awsvpcConfiguration": {
+                        "subnets": [
+                            "subnet-090982bdeb6a63729",
+                            "subnet-0eeb69e32a15b5a5a",
+                            "subnet-0a5686282d12cd72f"
+                        ],
+                        "securityGroups": [
+                            "sg-0492a765c488d87b5"
+                        ],
+                        "assignPublicIp": "DISABLED"
+                    }
+                },
+                "rolloutState": "COMPLETED",
+                "rolloutStateReason": "ECS deployment ecs-svc/5305335696813971970 completed."
+            }
+        ],
+        "roleArn": "arn:aws:iam::679777944071:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+        "events": [
+            {
+                "id": "ea488eac-8b15-41aa-a441-6e7f4c874587",
+                "createdAt": "2026-05-18T08:11:00.795000+01:00",
+                "message": "(service fsbs-api, taskSet ecs-svc/5305335696813971970) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "6059d095-0309-40dd-ae83-76a05e0d0e5c",
+                "createdAt": "2026-05-18T08:11:00.790000+01:00",
+                "message": "(service fsbs-api) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "bb3cb7fc-dac3-464a-8a97-f2a48f6a255e",
+                "createdAt": "2026-05-18T08:10:50.392000+01:00",
+                "message": "(service fsbs-api) has stopped 1 running tasks: (task 6546af12e568425e93002253fbcfba96)."
+            },
+            {
+                "id": "ef9b5cd7-a1f4-4929-8275-2dbd492b17a6",
+                "createdAt": "2026-05-18T08:10:31.847000+01:00",
+                "message": "(service fsbs-api) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "811a042a-fa48-483f-b2ca-90fd84b4c962",
+                "createdAt": "2026-05-18T08:10:02.007000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task d06cd42eca2040978f788b65b43e86cf)."
+            },
+            {
+                "id": "746a519f-6b29-46bb-bb56-47e9942c5177",
+                "createdAt": "2026-05-18T08:10:01.362000+01:00",
+                "message": "(service fsbs-api) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "126df07d-861c-4421-a2b2-bb6181194b8c",
+                "createdAt": "2026-05-18T08:09:51.464000+01:00",
+                "message": "(service fsbs-api, taskSet ecs-svc/5305335696813971970) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "60368caf-0115-4dde-b2b5-1f52d6b59d8a",
+                "createdAt": "2026-05-18T08:09:51.440000+01:00",
+                "message": "(service fsbs-api) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "a458ac25-d33c-4729-b767-feb6a9abb830",
+                "createdAt": "2026-05-18T08:09:42.211000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 31bf1d0a108d498f88a551c0f05c5d93)."
+            },
+            {
+                "id": "77fc9b91-12a5-4c45-918a-8bdd4b3df880",
+                "createdAt": "2026-05-18T08:09:41.393000+01:00",
+                "message": "(service fsbs-api) has stopped 1 running tasks: (task 7a43bb9aae1a4a668b01fe2d5e676271)."
+            },
+            {
+                "id": "4b09cfd1-62a7-4f1f-85e8-bf2c6bad70c3",
+                "createdAt": "2026-05-18T06:27:15.407000+01:00",
+                "message": "(service fsbs-api) has reached a steady state."
+            },
+            {
+                "id": "5006ce3f-3b1e-4c0b-b116-246bb8049348",
+                "createdAt": "2026-05-18T06:27:15.406000+01:00",
+                "message": "(service fsbs-api) (deployment ecs-svc/5305335696813971970) deployment completed."
+            },
+            {
+                "id": "1fc1c576-25d2-48ed-9ad6-a99febc01f14",
+                "createdAt": "2026-05-18T06:26:05.340000+01:00",
+                "message": "(service fsbs-api, taskSet ecs-svc/0780566590337649026) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "57527335-4311-4e1c-863e-640db0b1fd99",
+                "createdAt": "2026-05-18T06:26:05.336000+01:00",
+                "message": "(service fsbs-api) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "f0b07484-6f2d-4367-b52a-e39002bbc815",
+                "createdAt": "2026-05-18T06:25:55.279000+01:00",
+                "message": "(service fsbs-api) has stopped 1 running tasks: (task 1529901f61d6482c9c36fd26d8a06f7e)."
+            },
+            {
+                "id": "cf627b52-3616-458e-be2d-05175d5859a2",
+                "createdAt": "2026-05-18T06:25:35.549000+01:00",
+                "message": "(service fsbs-api) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "04d91558-8582-469f-af12-465ee6b6d919",
+                "createdAt": "2026-05-18T06:25:14.699000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 7a43bb9aae1a4a668b01fe2d5e676271)."
+            },
+            {
+                "id": "e9bac5c1-2f7c-4202-9f52-8ee9931b3a4c",
+                "createdAt": "2026-05-18T06:25:04.923000+01:00",
+                "message": "(service fsbs-api) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "28da874c-05cf-4b6e-980d-70ca92b92fe2",
+                "createdAt": "2026-05-18T06:24:45.250000+01:00",
+                "message": "(service fsbs-api, taskSet ecs-svc/0780566590337649026) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "c49a4252-ff52-4510-a5ec-e43cd3ad40b8",
+                "createdAt": "2026-05-18T06:24:45.225000+01:00",
+                "message": "(service fsbs-api) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "47708be3-5ce9-4bfa-91d5-4aa4fcffac83",
+                "createdAt": "2026-05-18T06:24:36.084000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 6546af12e568425e93002253fbcfba96)."
+            },
+            {
+                "id": "b99a269a-d8c6-495b-9ae5-1aa906b6c7a7",
+                "createdAt": "2026-05-18T06:24:35.489000+01:00",
+                "message": "(service fsbs-api) has stopped 1 running tasks: (task 394e93594bec44dc9dd0c82e9d6f8161)."
+            },
+            {
+                "id": "a1a90def-83a5-468c-8334-f53e991a8f72",
+                "createdAt": "2026-05-18T05:02:49.239000+01:00",
+                "message": "(service fsbs-api) has reached a steady state."
+            },
+            {
+                "id": "e7bdb024-c665-4b19-adf8-a5c7e8767195",
+                "createdAt": "2026-05-18T05:02:49.238000+01:00",
+                "message": "(service fsbs-api) (deployment ecs-svc/0780566590337649026) deployment completed."
+            },
+            {
+                "id": "4fe46247-8ba0-4f4b-b06e-82b7957f09a9",
+                "createdAt": "2026-05-18T05:01:49.166000+01:00",
+                "message": "(service fsbs-api, taskSet ecs-svc/6550910114134394144) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "fb4761a4-5c79-4995-a93f-f527585c3b3a",
+                "createdAt": "2026-05-18T05:01:49.162000+01:00",
+                "message": "(service fsbs-api) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "81f82f85-4169-42bd-834d-893262613329",
+                "createdAt": "2026-05-18T05:01:47.793000+01:00",
+                "message": "(service fsbs-api) has stopped 1 running tasks: (task eeb983344c8545728d043915cf25fe85)."
+            },
+            {
+                "id": "84c4f0f0-312a-4e62-845f-c16c36297a8d",
+                "createdAt": "2026-05-18T05:01:28.582000+01:00",
+                "message": "(service fsbs-api) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "65cca241-c853-4821-b34f-382380e05bff",
+                "createdAt": "2026-05-18T05:00:59.385000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 1529901f61d6482c9c36fd26d8a06f7e)."
+            },
+            {
+                "id": "e6648f7d-9933-41b7-9118-46dae35aa6c2",
+                "createdAt": "2026-05-18T05:00:58.690000+01:00",
+                "message": "(service fsbs-api) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "472e8c36-c48b-4f15-8c3f-c90d1014a11b",
+                "createdAt": "2026-05-18T05:00:38.034000+01:00",
+                "message": "(service fsbs-api, taskSet ecs-svc/6550910114134394144) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "a6d93c00-edc1-41f5-9e80-88a8b477e0a1",
+                "createdAt": "2026-05-18T05:00:38.030000+01:00",
+                "message": "(service fsbs-api) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "dccac833-b6f3-42ab-b6f0-9681569d16b4",
+                "createdAt": "2026-05-18T05:00:29.148000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 394e93594bec44dc9dd0c82e9d6f8161)."
+            },
+            {
+                "id": "92dd3d3b-11ac-4955-9f7d-18974edfaeaf",
+                "createdAt": "2026-05-18T05:00:28.563000+01:00",
+                "message": "(service fsbs-api) has stopped 1 running tasks: (task 0149afa8d50e461096617c08626f2315)."
+            },
+            {
+                "id": "eae20a62-0b69-44c9-95ed-231e3e8a9b78",
+                "createdAt": "2026-05-18T03:10:03.817000+01:00",
+                "message": "(service fsbs-api) has reached a steady state."
+            },
+            {
+                "id": "b6e90486-3879-44db-bbf6-567565742f7f",
+                "createdAt": "2026-05-17T21:09:33.860000+01:00",
+                "message": "(service fsbs-api) has reached a steady state."
+            },
+            {
+                "id": "fee3fb06-a0b5-4a9e-b9cd-03970b8f364d",
+                "createdAt": "2026-05-17T21:09:33.859000+01:00",
+                "message": "(service fsbs-api) (deployment ecs-svc/6550910114134394144) deployment completed."
+            },
+            {
+                "id": "6e5beec1-7dc7-40b6-bcae-3a583475ee68",
+                "createdAt": "2026-05-17T21:09:23.326000+01:00",
+                "message": "(service fsbs-api) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "1ce0925d-566b-4e11-987e-6921cf490299",
+                "createdAt": "2026-05-17T21:08:54.553000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 0149afa8d50e461096617c08626f2315)."
+            },
+            {
+                "id": "a8704371-77c0-4e17-a520-412518cef382",
+                "createdAt": "2026-05-17T21:08:53.853000+01:00",
+                "message": "(service fsbs-api) stopped 1 pending tasks."
+            },
+            {
+                "id": "73ee6bca-d18f-471a-9d6f-f5bf532a935d",
+                "createdAt": "2026-05-17T21:08:46.039000+01:00",
+                "message": "(service fsbs-api) rolling back to deployment ecs-svc/6550910114134394144."
+            },
+            {
+                "id": "d043b221-a4e5-4058-8ea2-17c59126c24a",
+                "createdAt": "2026-05-17T21:08:46.038000+01:00",
+                "message": "(service fsbs-api) (deployment ecs-svc/6350762947568103568) deployment failed: tasks failed to start."
+            },
+            {
+                "id": "284c861f-a4a8-4bfe-a31a-14c6cb83ef21",
+                "createdAt": "2026-05-17T21:08:35.356000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 6376c0479571422883d42660cf3c2d8e)."
+            },
+            {
+                "id": "56d2cd16-3158-4793-8079-6c7997f90b3b",
+                "createdAt": "2026-05-17T21:03:32.901000+01:00",
+                "message": "(service fsbs-api) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): failed to fetch secret arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret from secrets manager: operation error Secrets Manager: GetSecretValue, https response error StatusCode: 400, RequestID: 7400d359-ed94-4e06-bd5e-75246f2dee5a, api error AccessDeniedException: User: arn:aws:sts::679777944071:assumed-role/FsbsAppStack-ApiExecutionRole6C67842D-8TeNbv2esfyM/7a66dd96c57a41b4aa258327b51c0b7c is not authorized to perform: secretsmanager:GetSecretValue on resource: arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret because no identity-based policy allows the secretsmanager:GetSecretValue action."
+            },
+            {
+                "id": "d9fc2b29-7de4-4035-a5fe-f6f106e5bc6c",
+                "createdAt": "2026-05-17T21:03:04.447000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 7a66dd96c57a41b4aa258327b51c0b7c)."
+            },
+            {
+                "id": "2596890f-f345-4f15-952f-b02bfa561568",
+                "createdAt": "2026-05-17T21:02:32.622000+01:00",
+                "message": "(service fsbs-api) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): failed to fetch secret arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret from secrets manager: operation error Secrets Manager: GetSecretValue, https response error StatusCode: 400, RequestID: 70edf89f-b71e-4d2d-b1a8-dc461ef8d096, api error AccessDeniedException: User: arn:aws:sts::679777944071:assumed-role/FsbsAppStack-ApiExecutionRole6C67842D-8TeNbv2esfyM/606e6c87b75c47a2a6a4d6d958057120 is not authorized to perform: secretsmanager:GetSecretValue on resource: arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret because no identity-based policy allows the secretsmanager:GetSecretValue action."
+            },
+            {
+                "id": "00cfbbe0-68da-4386-9e28-ea818292772e",
+                "createdAt": "2026-05-17T21:02:04.878000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 606e6c87b75c47a2a6a4d6d958057120)."
+            },
+            {
+                "id": "9793ea51-2f9b-4e99-8918-49c8859bf9d8",
+                "createdAt": "2026-05-17T21:01:32.629000+01:00",
+                "message": "(service fsbs-api) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): failed to fetch secret arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret from secrets manager: operation error Secrets Manager: GetSecretValue, https response error StatusCode: 400, RequestID: 8271fe56-3cdf-4107-a5e3-062394973251, api error AccessDeniedException: User: arn:aws:sts::679777944071:assumed-role/FsbsAppStack-ApiExecutionRole6C67842D-8TeNbv2esfyM/0486a5b9c4a74860b4d7e257631ec6b4 is not authorized to perform: secretsmanager:GetSecretValue on resource: arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret because no identity-based policy allows the secretsmanager:GetSecretValue action."
+            },
+            {
+                "id": "fd5fac76-fe41-45bd-aa3a-037ac4c08cca",
+                "createdAt": "2026-05-17T21:01:12.476000+01:00",
+                "message": "(service fsbs-api, taskSet ecs-svc/6550910114134394144) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "6bcd8439-23aa-4a9c-881d-cf10d58680bb",
+                "createdAt": "2026-05-17T21:01:12.452000+01:00",
+                "message": "(service fsbs-api) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "f7fb12b1-dc7b-4df8-8b44-9171a4fa36d8",
+                "createdAt": "2026-05-17T21:01:03.832000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 0486a5b9c4a74860b4d7e257631ec6b4)."
+            },
+            {
+                "id": "8361c882-ffaa-4cdf-bf53-478041df8310",
+                "createdAt": "2026-05-17T21:01:03.095000+01:00",
+                "message": "(service fsbs-api) has stopped 1 running tasks: (task 2c1f63b1935a49c49f3985a054bbc3ef)."
+            },
+            {
+                "id": "1b009bfe-2213-47f8-95b3-ab418798c0e5",
+                "createdAt": "2026-05-17T20:47:52.400000+01:00",
+                "message": "(service fsbs-api) has reached a steady state."
+            },
+            {
+                "id": "f73d8ee7-6d59-43a6-865e-87c31f268672",
+                "createdAt": "2026-05-17T20:47:52.399000+01:00",
+                "message": "(service fsbs-api) (deployment ecs-svc/6550910114134394144) deployment completed."
+            },
+            {
+                "id": "4c49af68-13ff-4eb7-b4a2-9c69d66aaf24",
+                "createdAt": "2026-05-17T20:47:41.995000+01:00",
+                "message": "(service fsbs-api) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "e62d7a37-9b70-4630-9ed3-84e13f73bb02",
+                "createdAt": "2026-05-17T20:47:12.982000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 2c1f63b1935a49c49f3985a054bbc3ef)."
+            },
+            {
+                "id": "9cf80670-b00c-4499-8204-94cfb177fb8b",
+                "createdAt": "2026-05-17T20:47:12.381000+01:00",
+                "message": "(service fsbs-api) stopped 1 pending tasks."
+            },
+            {
+                "id": "c06f145d-eed5-493d-9af9-12b114beccf7",
+                "createdAt": "2026-05-17T20:47:11.233000+01:00",
+                "message": "(service fsbs-api) rolling back to deployment ecs-svc/6550910114134394144."
+            },
+            {
+                "id": "f6ed42a9-2be4-4ed0-9e2e-1ab4e5eeb4fe",
+                "createdAt": "2026-05-17T20:47:11.232000+01:00",
+                "message": "(service fsbs-api) (deployment ecs-svc/3535458327185269811) deployment failed: tasks failed to start."
+            },
+            {
+                "id": "bdc09c7f-a278-4d2f-a7c3-c4d7e6799671",
+                "createdAt": "2026-05-17T20:46:49.639000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 594cb1b6c51c454dabf7605a439f1350)."
+            },
+            {
+                "id": "5df9768d-25f5-49d9-9b0f-7a68c08c6937",
+                "createdAt": "2026-05-17T20:41:59.138000+01:00",
+                "message": "(service fsbs-api) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): failed to fetch secret arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret from secrets manager: operation error Secrets Manager: GetSecretValue, https response error StatusCode: 400, RequestID: dbff8e02-ecb7-413c-bf8b-ce527ddbcac4, api error AccessDeniedException: User: arn:aws:sts::679777944071:assumed-role/FsbsAppStack-ApiExecutionRole6C67842D-8TeNbv2esfyM/72f5717dc78549e1bc6a45a2088bb3a9 is not authorized to perform: secretsmanager:GetSecretValue on resource: arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret because no identity-based policy allows the secretsmanager:GetSecretValue action."
+            },
+            {
+                "id": "94b8b200-24b6-4e6e-a601-6f67c5bc2bc6",
+                "createdAt": "2026-05-17T20:41:31.818000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 72f5717dc78549e1bc6a45a2088bb3a9)."
+            },
+            {
+                "id": "b2a79c95-ee72-492a-9e16-ff4983043b61",
+                "createdAt": "2026-05-17T20:36:19.848000+01:00",
+                "message": "(service fsbs-api) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): failed to fetch secret arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret from secrets manager: operation error Secrets Manager: GetSecretValue, https response error StatusCode: 400, RequestID: 1ecc6b01-47e9-4e90-9e00-e8c5c9cb5315, api error AccessDeniedException: User: arn:aws:sts::679777944071:assumed-role/FsbsAppStack-ApiExecutionRole6C67842D-8TeNbv2esfyM/baf952aaa29a42b8a20f3e04f4e8e6a9 is not authorized to perform: secretsmanager:GetSecretValue on resource: arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret because no identity-based policy allows the secretsmanager:GetSecretValue action."
+            },
+            {
+                "id": "f8ac1fd1-0e16-472c-85b4-dbea23f7365e",
+                "createdAt": "2026-05-17T20:35:52.394000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task baf952aaa29a42b8a20f3e04f4e8e6a9)."
+            },
+            {
+                "id": "2ec0e1d2-acaf-4ba3-8b70-1104dbc32bb7",
+                "createdAt": "2026-05-17T20:35:20.553000+01:00",
+                "message": "(service fsbs-api) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): failed to fetch secret arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret from secrets manager: operation error Secrets Manager: GetSecretValue, https response error StatusCode: 400, RequestID: 059c9e93-2ebb-4b4c-af89-805cf083c35e, api error AccessDeniedException: User: arn:aws:sts::679777944071:assumed-role/FsbsAppStack-ApiExecutionRole6C67842D-8TeNbv2esfyM/62791830b317490181474c51feb9d743 is not authorized to perform: secretsmanager:GetSecretValue on resource: arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret because no identity-based policy allows the secretsmanager:GetSecretValue action."
+            },
+            {
+                "id": "128d0695-9d6f-444e-b254-22ccde2ca07c",
+                "createdAt": "2026-05-17T20:34:53.528000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 62791830b317490181474c51feb9d743)."
+            },
+            {
+                "id": "9b6ffe59-323b-44dc-98cb-dff2ec64b36b",
+                "createdAt": "2026-05-17T20:34:20.873000+01:00",
+                "message": "(service fsbs-api) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): failed to fetch secret arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret from secrets manager: operation error Secrets Manager: GetSecretValue, https response error StatusCode: 400, RequestID: 0c72501b-2c32-42ec-8bbc-aaadb91298c4, api error AccessDeniedException: User: arn:aws:sts::679777944071:assumed-role/FsbsAppStack-ApiExecutionRole6C67842D-8TeNbv2esfyM/382ce6593b844f2f920dcf25f34a1b17 is not authorized to perform: secretsmanager:GetSecretValue on resource: arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret because no identity-based policy allows the secretsmanager:GetSecretValue action."
+            },
+            {
+                "id": "595bac56-2a2e-44b8-ac1b-dde0c0eccd6b",
+                "createdAt": "2026-05-17T20:34:01.213000+01:00",
+                "message": "(service fsbs-api, taskSet ecs-svc/6550910114134394144) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "b2dc2bbc-5cc3-4ba2-9bdd-c0dc0aaaa4db",
+                "createdAt": "2026-05-17T20:34:01.208000+01:00",
+                "message": "(service fsbs-api) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "18ab6ff0-de92-4184-9f87-6bc2b5863c04",
+                "createdAt": "2026-05-17T20:33:51.849000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 382ce6593b844f2f920dcf25f34a1b17)."
+            },
+            {
+                "id": "0aa47236-209e-4a7c-9afc-8129ccd4bb79",
+                "createdAt": "2026-05-17T20:33:51.337000+01:00",
+                "message": "(service fsbs-api) has stopped 1 running tasks: (task 11f781e374c84042b3ddda800dbe6239)."
+            },
+            {
+                "id": "e4678011-7917-4b97-aad9-24763df447e5",
+                "createdAt": "2026-05-17T19:59:48.954000+01:00",
+                "message": "(service fsbs-api) has reached a steady state."
+            },
+            {
+                "id": "2de176c6-72e7-4e51-91c9-5b426c720665",
+                "createdAt": "2026-05-17T19:59:48.953000+01:00",
+                "message": "(service fsbs-api) (deployment ecs-svc/6550910114134394144) deployment completed."
+            },
+            {
+                "id": "7d6730b5-3b5a-48c3-bd80-36e88d2ee262",
+                "createdAt": "2026-05-17T19:59:39.121000+01:00",
+                "message": "(service fsbs-api) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "9eff3cee-97e4-4abd-8376-7d0c044ffb9d",
+                "createdAt": "2026-05-17T19:59:09.620000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task eeb983344c8545728d043915cf25fe85)."
+            },
+            {
+                "id": "28b7e6e8-f9b0-4227-8df4-c6973cd63f94",
+                "createdAt": "2026-05-17T19:59:08.918000+01:00",
+                "message": "(service fsbs-api) stopped 1 pending tasks."
+            },
+            {
+                "id": "c6c7f76d-bfa7-48d5-9663-b2caf0a3fddc",
+                "createdAt": "2026-05-17T19:59:06.734000+01:00",
+                "message": "(service fsbs-api) rolling back to deployment ecs-svc/6550910114134394144."
+            },
+            {
+                "id": "25a6d8ce-8872-4a4c-b547-c0d34d267fbc",
+                "createdAt": "2026-05-17T19:59:06.733000+01:00",
+                "message": "(service fsbs-api) (deployment ecs-svc/0597590598139085601) deployment failed: tasks failed to start."
+            },
+            {
+                "id": "a1fcceb7-6278-44bd-a07d-482bd772e36d",
+                "createdAt": "2026-05-17T19:59:02.572000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 5f1486d131ca459ab2247fed6b49f730)."
+            },
+            {
+                "id": "b1d05acb-9669-4507-a191-866e0511da6b",
+                "createdAt": "2026-05-17T19:53:56.372000+01:00",
+                "message": "(service fsbs-api) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): failed to fetch secret arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret from secrets manager: operation error Secrets Manager: GetSecretValue, https response error StatusCode: 400, RequestID: fcb4ee80-a88c-4ee4-8841-a9fcd084580a, api error AccessDeniedException: User: arn:aws:sts::679777944071:assumed-role/FsbsAppStack-ApiExecutionRole6C67842D-8TeNbv2esfyM/50aa46908f064086abe4c47c3dbd0253 is not authorized to perform: secretsmanager:GetSecretValue on resource: arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret because no identity-based policy allows the secretsmanager:GetSecretValue action."
+            },
+            {
+                "id": "38182f10-3b49-4ffe-8db3-e52a9e414b38",
+                "createdAt": "2026-05-17T19:53:27.331000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 50aa46908f064086abe4c47c3dbd0253)."
+            },
+            {
+                "id": "1d57a55a-8767-40fc-9d96-1e5ee03be838",
+                "createdAt": "2026-05-17T19:52:56.779000+01:00",
+                "message": "(service fsbs-api) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): failed to fetch secret arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret from secrets manager: operation error Secrets Manager: GetSecretValue, https response error StatusCode: 400, RequestID: e5546eb5-c0a5-426f-a030-6332c5ed962f, api error AccessDeniedException: User: arn:aws:sts::679777944071:assumed-role/FsbsAppStack-ApiExecutionRole6C67842D-8TeNbv2esfyM/1a02987f48814f9db9cfb4f8035a8517 is not authorized to perform: secretsmanager:GetSecretValue on resource: arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret because no identity-based policy allows the secretsmanager:GetSecretValue action."
+            },
+            {
+                "id": "c7d8f2c2-938f-457f-aab9-03487a0a3be0",
+                "createdAt": "2026-05-17T19:52:28.076000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 1a02987f48814f9db9cfb4f8035a8517)."
+            },
+            {
+                "id": "1b8d4b1c-1d53-42c8-afb2-8c1377dd18f2",
+                "createdAt": "2026-05-17T19:51:57.493000+01:00",
+                "message": "(service fsbs-api) was unable to place a task. Reason: ResourceInitializationError: unable to pull secrets or registry auth: execution resource retrieval failed: unable to retrieve secret from asm: service call has been retried 1 time(s): failed to fetch secret arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret from secrets manager: operation error Secrets Manager: GetSecretValue, https response error StatusCode: 400, RequestID: 218e2d76-a15d-455c-acc1-d0e50012e7a6, api error AccessDeniedException: User: arn:aws:sts::679777944071:assumed-role/FsbsAppStack-ApiExecutionRole6C67842D-8TeNbv2esfyM/2563f6a6654a4e7e9f3c0322b2fa9bae is not authorized to perform: secretsmanager:GetSecretValue on resource: arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/cognito/staff-client-secret because no identity-based policy allows the secretsmanager:GetSecretValue action."
+            },
+            {
+                "id": "2ab0bc36-5657-4c8c-bc45-b3426f36dec2",
+                "createdAt": "2026-05-17T19:51:37.255000+01:00",
+                "message": "(service fsbs-api, taskSet ecs-svc/6550910114134394144) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "88b7c0e0-ea92-437b-86dc-56ba0cd2ba18",
+                "createdAt": "2026-05-17T19:51:37.220000+01:00",
+                "message": "(service fsbs-api) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "94d41c1b-7771-474b-bdb1-fa3a94e243b9",
+                "createdAt": "2026-05-17T19:51:27.649000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 2563f6a6654a4e7e9f3c0322b2fa9bae)."
+            },
+            {
+                "id": "ebe429e5-710c-420a-bc6c-1d1f62a3a6fc",
+                "createdAt": "2026-05-17T19:51:27.083000+01:00",
+                "message": "(service fsbs-api) has stopped 1 running tasks: (task 843b98936ec3455689b308deb7390e05)."
+            },
+            {
+                "id": "75817965-c1e6-4180-8ef2-e3056980d2a7",
+                "createdAt": "2026-05-17T16:32:43.543000+01:00",
+                "message": "(service fsbs-api) has reached a steady state."
+            },
+            {
+                "id": "4778510d-6568-4a75-887b-e84fccac4af2",
+                "createdAt": "2026-05-17T16:32:43.542000+01:00",
+                "message": "(service fsbs-api) (deployment ecs-svc/6550910114134394144) deployment completed."
+            },
+            {
+                "id": "07f08a56-9316-4a09-bb46-cf2f80347592",
+                "createdAt": "2026-05-17T16:32:33.943000+01:00",
+                "message": "(service fsbs-api) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "d0072ba8-9f09-4f76-86d3-d785b27079b6",
+                "createdAt": "2026-05-17T16:32:04.729000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 11f781e374c84042b3ddda800dbe6239)."
+            },
+            {
+                "id": "54b5096f-d3aa-4ea2-befc-1a99d2b0ffe8",
+                "createdAt": "2026-05-17T16:32:04.020000+01:00",
+                "message": "(service fsbs-api) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-west-1:679777944071:targetgroup/FsbsAp-ApiTa-MKBRVAXUSIX5/91c0ed35a0de79b3)"
+            },
+            {
+                "id": "05bc11cf-f9e5-496b-a862-624a12a8737e",
+                "createdAt": "2026-05-17T16:31:34.311000+01:00",
+                "message": "(service fsbs-api) has started 1 tasks: (task 843b98936ec3455689b308deb7390e05)."
+            }
+        ],
+        "createdAt": "2026-05-17T16:31:16.681000+01:00",
+        "currentServiceRevisions": [
+            {
+                "arn": "arn:aws:ecs:eu-west-1:679777944071:service-revision/fsbs/fsbs-api/8115400081732389892",
+                "requestedTaskCount": 0,
+                "runningTaskCount": 0,
+                "pendingTaskCount": 0
+            },
+            {
+                "arn": "arn:aws:ecs:eu-west-1:679777944071:service-revision/fsbs/fsbs-api/4296472388429330387",
+                "requestedTaskCount": 2,
+                "runningTaskCount": 2,
+                "pendingTaskCount": 0
+            },
+            {
+                "arn": "arn:aws:ecs:eu-west-1:679777944071:service-revision/fsbs/fsbs-api/5305335696813971970",
+                "requestedTaskCount": 0,
+                "runningTaskCount": 0,
+                "pendingTaskCount": 0
+            }
+        ],
+        "placementConstraints": [],
+        "placementStrategy": [],
+        "networkConfiguration": {
+            "awsvpcConfiguration": {
+                "subnets": [
+                    "subnet-090982bdeb6a63729",
+                    "subnet-0eeb69e32a15b5a5a",
+                    "subnet-0a5686282d12cd72f"
+                ],
+                "securityGroups": [
+                    "sg-0492a765c488d87b5"
+                ],
+                "assignPublicIp": "DISABLED"
+            }
+        },
+        "healthCheckGracePeriodSeconds": 120,
+        "schedulingStrategy": "REPLICA",
+        "deploymentController": {
+            "type": "ECS"
+        },
+        "createdBy": "arn:aws:iam::679777944071:role/cdk-hnb659fds-cfn-exec-role-679777944071-eu-west-1",
+        "enableECSManagedTags": false,
+        "propagateTags": "NONE",
+        "enableExecuteCommand": true,
+        "availabilityZoneRebalancing": "ENABLED",
+        "resourceManagementType": "CUSTOMER"
+    }
+}

@@ -1,0 +1,304 @@
+[Warning at /FsbsAppStack/ApiService] minHealthyPercent has not been configured so the default value of 50% is used. The number of running tasks will decrease below the desired count during deployments etc. See https://github.com/aws/aws-cdk/issues/31705 [ack: @aws-cdk/aws-ecs:minHealthyPercent]
+[Warning at /FsbsAppStack/WorkerService] minHealthyPercent has not been configured so the default value of 50% is used. The number of running tasks will decrease below the desired count during deployments etc. See https://github.com/aws/aws-cdk/issues/31705 [ack: @aws-cdk/aws-ecs:minHealthyPercent]
+[Warning at /FsbsAppStack/ApiTaskDef/Api] Proper policies need to be attached before pulling from ECR repository, or use 'fromEcrRepository'. [ack: @aws-cdk/aws-ecs:ecrImageRequiresPolicy]
+[Warning at /FsbsAppStack/WorkerTaskDef/Worker] Proper policies need to be attached before pulling from ECR repository, or use 'fromEcrRepository'. [ack: @aws-cdk/aws-ecs:ecrImageRequiresPolicy]
+[Warning at /FsbsAppStack/Cdn/Origin1] Cannot update bucket policy of an imported bucket. You will need to update the policy manually instead.
+See the "Setting up OAC with imported S3 buckets" section of module's README for more info. [ack: @aws-cdk/aws-cloudfront-origins:updateImportedBucketPolicyOac]
+
+✨  Synthesis time: 3s
+
+FsbsNetworkStack
+FsbsNetworkStack: creating CloudFormation changeset...
+Changeset arn:aws:cloudformation:eu-west-1:679777944071:changeSet/cdk-deploy-change-set/e095ce65-f7c0-438f-a158-c581e3b4deb7 created and waiting in review for manual execution (--no-execute)
+FsbsNetworkStack: deploying... [1/5]
+FsbsNetworkStack | 0/6 | 06:20:15 | UPDATE_IN_PROGRESS   | AWS::CloudFormation::Stack            | FsbsNetworkStack User Initiated
+FsbsNetworkStack | 0/6 | 06:20:18 | UPDATE_IN_PROGRESS   | AWS::EC2::SecurityGroup               | AlbSg (AlbSg1155C1BE) 
+FsbsNetworkStack | 1/6 | 06:20:20 | UPDATE_COMPLETE      | AWS::EC2::SecurityGroup               | AlbSg (AlbSg1155C1BE) 
+FsbsNetworkStack | 1/6 | 06:20:21 | CREATE_IN_PROGRESS   | AWS::EC2::SecurityGroupIngress        | AlbSg/from pl-4fa04526:80 (AlbSgfrompl4fa0452680655F098A) 
+FsbsNetworkStack | 1/6 | 06:20:22 | CREATE_IN_PROGRESS   | AWS::EC2::SecurityGroupIngress        | AlbSg/from pl-4fa04526:80 (AlbSgfrompl4fa0452680655F098A) Resource creation Initiated
+FsbsNetworkStack | 2/6 | 06:20:23 | CREATE_COMPLETE      | AWS::EC2::SecurityGroupIngress        | AlbSg/from pl-4fa04526:80 (AlbSgfrompl4fa0452680655F098A) 
+FsbsNetworkStack | 3/6 | 06:20:25 | UPDATE_COMPLETE_CLEA | AWS::CloudFormation::Stack            | FsbsNetworkStack 
+FsbsNetworkStack | 3/6 | 06:20:26 | DELETE_IN_PROGRESS   | AWS::EC2::SecurityGroupIngress        | AlbSgfrompl4fa045264435696920E 
+FsbsNetworkStack | 4/6 | 06:20:26 | DELETE_COMPLETE      | AWS::EC2::SecurityGroupIngress        | AlbSgfrompl4fa045264435696920E 
+FsbsNetworkStack | 5/6 | 06:20:27 | UPDATE_COMPLETE      | AWS::CloudFormation::Stack            | FsbsNetworkStack 
+
+ ✅  FsbsNetworkStack
+
+✨  Deployment time: 16.13s
+
+Outputs:
+FsbsNetworkStack.ExportsOutputFnGetAttAlbSg1155C1BEGroupIdF2A72E65 = sg-0e5a86baadfffb115
+FsbsNetworkStack.ExportsOutputFnGetAttApiSg8419ACD7GroupId576383C6 = sg-0492a765c488d87b5
+FsbsNetworkStack.ExportsOutputFnGetAttLambdaSg30A6108CGroupId30BB2F0D = sg-0acb9bcc2c50663df
+FsbsNetworkStack.ExportsOutputFnGetAttRdsSg7F9F43B6GroupId133E31A8 = sg-0c80931f2f8d783bf
+FsbsNetworkStack.ExportsOutputFnGetAttRedisSgFB48DCCDGroupIdDFA83897 = sg-000514148d0a4f4de
+FsbsNetworkStack.ExportsOutputRefVpc8378EB38272D6E3A = vpc-002e529514ef08ba9
+FsbsNetworkStack.ExportsOutputRefVpcIsolatedSubnet1SubnetE48C57379FE391D3 = subnet-0ce106cb3e5bd2054
+FsbsNetworkStack.ExportsOutputRefVpcIsolatedSubnet2Subnet16364B914643ED68 = subnet-0ddeff7eedac5c1f2
+FsbsNetworkStack.ExportsOutputRefVpcIsolatedSubnet3Subnet6840A2D4F9E008CF = subnet-086d827b3037e59d8
+FsbsNetworkStack.ExportsOutputRefVpcPrivateSubnet1Subnet536B997AFD4CC940 = subnet-090982bdeb6a63729
+FsbsNetworkStack.ExportsOutputRefVpcPrivateSubnet2Subnet3788AAA1380949A3 = subnet-0a5686282d12cd72f
+FsbsNetworkStack.ExportsOutputRefVpcPrivateSubnet3SubnetF258B56EC7CF32DD = subnet-0eeb69e32a15b5a5a
+FsbsNetworkStack.ExportsOutputRefVpcPublicSubnet1Subnet5C2D37C4FFA2B456 = subnet-06b79003ffd6a3da9
+FsbsNetworkStack.ExportsOutputRefVpcPublicSubnet2Subnet691E08A351552740 = subnet-0ccc9f88fff50359d
+FsbsNetworkStack.ExportsOutputRefVpcPublicSubnet3SubnetBE12F0B65CC33245 = subnet-055024801c8ee502f
+Stack ARN:
+arn:aws:cloudformation:eu-west-1:679777944071:stack/FsbsNetworkStack/74ba91d0-5017-11f1-ae02-0ac495cd974d
+
+✨  Total time: 19.13s
+
+FsbsWafStack
+FsbsWafStack: creating CloudFormation changeset...
+FsbsWafStack: deploying... [3/5]
+
+ ✅  FsbsWafStack (no changes)
+
+✨  Deployment time: 0s
+
+Stack ARN:
+arn:aws:cloudformation:us-east-1:679777944071:stack/FsbsWafStack/3f79b210-5028-11f1-ab8b-0afff441847d
+
+✨  Total time: 3s
+
+FsbsCertStack
+FsbsCertStack: creating CloudFormation changeset...
+FsbsCertStack: deploying... [4/5]
+
+ ✅  FsbsCertStack (no changes)
+
+✨  Deployment time: 0s
+
+Stack ARN:
+arn:aws:cloudformation:us-east-1:679777944071:stack/FsbsCertStack/bebc3ce0-504c-11f1-a74b-0e239c622681
+
+✨  Total time: 3s
+
+FsbsDataStack
+FsbsDataStack: creating CloudFormation changeset...
+Changeset arn:aws:cloudformation:eu-west-1:679777944071:changeSet/cdk-deploy-change-set/3b8e02ba-a4b8-4167-ae59-a7c256002838 created and waiting in review for manual execution (--no-execute)
+FsbsDataStack: deploying... [2/5]
+FsbsDataStack | 0/4 | 06:20:50 | UPDATE_IN_PROGRESS   | AWS::CloudFormation::Stack                  | FsbsDataStack User Initiated
+FsbsDataStack | 0/4 | 06:20:52 | UPDATE_IN_PROGRESS   | AWS::CloudFormation::Stack                  | DbSecretRotation52B44966HostedRotationLambda 
+FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 | 0/4 | 06:20:53 | UPDATE_IN_PROGRESS   | AWS::CloudFormation::Stack                  | FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 User Initiated
+FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 | 0/4 | 06:20:55 | UPDATE_IN_PROGRESS   | AWS::CloudFormation::Stack                  | FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 Transformation succeeded
+FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 | 0/4 | 06:20:57 | UPDATE_COMPLETE_CLEA | AWS::CloudFormation::Stack                  | FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 
+FsbsDataStack | 1/4 | 06:21:03 | UPDATE_COMPLETE      | AWS::CloudFormation::Stack                  | DbSecretRotation52B44966HostedRotationLambda 
+FsbsDataStack | 2/4 | 06:21:06 | UPDATE_COMPLETE_CLEA | AWS::CloudFormation::Stack                  | FsbsDataStack 
+FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 | 2/4 | 06:21:07 | UPDATE_COMPLETE      | AWS::CloudFormation::Stack                  | FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 
+FsbsDataStack | 1/4 | 06:21:17 | UPDATE_COMPLETE      | AWS::CloudFormation::Stack                  | DbSecretRotation52B44966HostedRotationLambda 
+FsbsDataStack | 2/4 | 06:21:17 | UPDATE_COMPLETE      | AWS::CloudFormation::Stack                  | FsbsDataStack 
+
+ ✅  FsbsDataStack
+
+✨  Deployment time: 31.26s
+
+Outputs:
+FsbsDataStack.ExportsOutputFnGetAttPostgres9DC8BB04EndpointAddress36F9722A = fsbsdatastack-postgres9dc8bb04-qollreojzwf6.c3oqcomokoao.eu-west-1.rds.amazonaws.com
+FsbsDataStack.ExportsOutputFnGetAttPostgres9DC8BB04EndpointPortB3107ED8 = 5432
+FsbsDataStack.ExportsOutputFnGetAttRedisPrimaryEndPointAddressA9CCB941 = master.fsrgn1waakpwu82.vttal3.euw1.cache.amazonaws.com
+FsbsDataStack.ExportsOutputFnGetAttRedisPrimaryEndPointPort202F7409 = 6379
+FsbsDataStack.ExportsOutputRefApiKeysSecret5A58C5CD210D4A4C = arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/api/keys-bFzWWa
+FsbsDataStack.ExportsOutputRefAppDbSecretE6515E4A6411322C = arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/rds/app-gnSQus
+Stack ARN:
+arn:aws:cloudformation:eu-west-1:679777944071:stack/FsbsDataStack/5de1d070-5028-11f1-af8f-0a465030edb5
+
+✨  Total time: 34.26s
+
+FsbsAppStack
+FsbsAppStack: creating CloudFormation changeset...
+FsbsAppStack: deploying... [5/5]
+
+ ✅  FsbsAppStack (no changes)
+
+✨  Deployment time: 0s
+
+Outputs:
+FsbsAppStack.AppUrl = https://staging.fsbs.tqaentry.com
+FsbsAppStack.CdnDomain = d3uker2aipx0ol.cloudfront.net
+FsbsAppStack.CustomerPoolClientId = 7rlss11me46s742shne0vp8i0n
+FsbsAppStack.CustomerPoolId = eu-west-1_BXceNCcIU
+FsbsAppStack.NotificationsQueueUrl = https://sqs.eu-west-1.amazonaws.com/679777944071/fsbs-booking-events
+FsbsAppStack.StaffPoolClientId = 45tqhamujapsfgqjgbnkl6bvcq
+FsbsAppStack.StaffPoolDomain = https://fsbs-staff-679777944071.auth.eu-west-1.amazoncognito.com
+FsbsAppStack.StaffPoolId = eu-west-1_oUDjezQpT
+Stack ARN:
+arn:aws:cloudformation:eu-west-1:679777944071:stack/FsbsAppStack/e00ab160-5204-11f1-8439-02699aba2b93
+
+✨  Total time: 3s
+
+[WARNING] aws-cdk-lib.aws_lambda.FunctionOptions#logRetention is deprecated.
+  use `logGroup` instead
+  This API will be removed in the next major release.
+Including dependency stacks: FsbsWafStack, FsbsCertStack, FsbsNetworkStack, FsbsDataStack
+[Warning at /FsbsAppStack/ApiService] minHealthyPercent has not been configured so the default value of 50% is used. The number of running tasks will decrease below the desired count during deployments etc. See https://github.com/aws/aws-cdk/issues/31705 [ack: @aws-cdk/aws-ecs:minHealthyPercent]
+[Warning at /FsbsAppStack/WorkerService] minHealthyPercent has not been configured so the default value of 50% is used. The number of running tasks will decrease below the desired count during deployments etc. See https://github.com/aws/aws-cdk/issues/31705 [ack: @aws-cdk/aws-ecs:minHealthyPercent]
+[Warning at /FsbsAppStack/ApiTaskDef/Api] Proper policies need to be attached before pulling from ECR repository, or use 'fromEcrRepository'. [ack: @aws-cdk/aws-ecs:ecrImageRequiresPolicy]
+[Warning at /FsbsAppStack/WorkerTaskDef/Worker] Proper policies need to be attached before pulling from ECR repository, or use 'fromEcrRepository'. [ack: @aws-cdk/aws-ecs:ecrImageRequiresPolicy]
+[Warning at /FsbsAppStack/Cdn/Origin1] Cannot update bucket policy of an imported bucket. You will need to update the policy manually instead.
+See the "Setting up OAC with imported S3 buckets" section of module's README for more info. [ack: @aws-cdk/aws-cloudfront-origins:updateImportedBucketPolicyOac]
+
+✨  Synthesis time: 2.78s
+
+FsbsNetworkStack
+FsbsAppStack: start: Building FsbsAppStack Template
+FsbsAppStack: success: Built FsbsAppStack Template
+FsbsNetworkStack: creating CloudFormation changeset...
+FsbsNetworkStack: deploying... [1/5]
+
+ ✅  FsbsNetworkStack (no changes)
+
+✨  Deployment time: 0s
+
+Outputs:
+FsbsNetworkStack.ExportsOutputFnGetAttAlbSg1155C1BEGroupIdF2A72E65 = sg-0e5a86baadfffb115
+FsbsNetworkStack.ExportsOutputFnGetAttApiSg8419ACD7GroupId576383C6 = sg-0492a765c488d87b5
+FsbsNetworkStack.ExportsOutputFnGetAttLambdaSg30A6108CGroupId30BB2F0D = sg-0acb9bcc2c50663df
+FsbsNetworkStack.ExportsOutputFnGetAttRdsSg7F9F43B6GroupId133E31A8 = sg-0c80931f2f8d783bf
+FsbsNetworkStack.ExportsOutputFnGetAttRedisSgFB48DCCDGroupIdDFA83897 = sg-000514148d0a4f4de
+FsbsNetworkStack.ExportsOutputRefVpc8378EB38272D6E3A = vpc-002e529514ef08ba9
+FsbsNetworkStack.ExportsOutputRefVpcIsolatedSubnet1SubnetE48C57379FE391D3 = subnet-0ce106cb3e5bd2054
+FsbsNetworkStack.ExportsOutputRefVpcIsolatedSubnet2Subnet16364B914643ED68 = subnet-0ddeff7eedac5c1f2
+FsbsNetworkStack.ExportsOutputRefVpcIsolatedSubnet3Subnet6840A2D4F9E008CF = subnet-086d827b3037e59d8
+FsbsNetworkStack.ExportsOutputRefVpcPrivateSubnet1Subnet536B997AFD4CC940 = subnet-090982bdeb6a63729
+FsbsNetworkStack.ExportsOutputRefVpcPrivateSubnet2Subnet3788AAA1380949A3 = subnet-0a5686282d12cd72f
+FsbsNetworkStack.ExportsOutputRefVpcPrivateSubnet3SubnetF258B56EC7CF32DD = subnet-0eeb69e32a15b5a5a
+FsbsNetworkStack.ExportsOutputRefVpcPublicSubnet1Subnet5C2D37C4FFA2B456 = subnet-06b79003ffd6a3da9
+FsbsNetworkStack.ExportsOutputRefVpcPublicSubnet2Subnet691E08A351552740 = subnet-0ccc9f88fff50359d
+FsbsNetworkStack.ExportsOutputRefVpcPublicSubnet3SubnetBE12F0B65CC33245 = subnet-055024801c8ee502f
+Stack ARN:
+arn:aws:cloudformation:eu-west-1:679777944071:stack/FsbsNetworkStack/74ba91d0-5017-11f1-ae02-0ac495cd974d
+
+✨  Total time: 2.78s
+
+FsbsWafStack
+FsbsWafStack: creating CloudFormation changeset...
+FsbsWafStack: deploying... [3/5]
+
+ ✅  FsbsWafStack (no changes)
+
+✨  Deployment time: 0s
+
+Stack ARN:
+arn:aws:cloudformation:us-east-1:679777944071:stack/FsbsWafStack/3f79b210-5028-11f1-ab8b-0afff441847d
+
+✨  Total time: 2.78s
+
+FsbsCertStack
+FsbsCertStack: creating CloudFormation changeset...
+FsbsCertStack: deploying... [4/5]
+
+ ✅  FsbsCertStack (no changes)
+
+✨  Deployment time: 0s
+
+Stack ARN:
+arn:aws:cloudformation:us-east-1:679777944071:stack/FsbsCertStack/bebc3ce0-504c-11f1-a74b-0e239c622681
+
+✨  Total time: 2.78s
+
+FsbsDataStack
+FsbsDataStack: creating CloudFormation changeset...
+Changeset arn:aws:cloudformation:eu-west-1:679777944071:changeSet/cdk-deploy-change-set/104e1e6b-eb30-48c7-a34c-f351561a0afc created and waiting in review for manual execution (--no-execute)
+FsbsDataStack: deploying... [2/5]
+FsbsDataStack | 0/4 | 06:22:08 | UPDATE_IN_PROGRESS   | AWS::CloudFormation::Stack                  | FsbsDataStack User Initiated
+FsbsDataStack | 0/4 | 06:22:11 | UPDATE_IN_PROGRESS   | AWS::CloudFormation::Stack                  | DbSecretRotation52B44966HostedRotationLambda 
+FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 | 0/4 | 06:22:11 | UPDATE_IN_PROGRESS   | AWS::CloudFormation::Stack                  | FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 User Initiated
+FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 | 0/4 | 06:22:14 | UPDATE_IN_PROGRESS   | AWS::CloudFormation::Stack                  | FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 Transformation succeeded
+FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 | 0/4 | 06:22:16 | UPDATE_COMPLETE_CLEA | AWS::CloudFormation::Stack                  | FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 
+FsbsDataStack | 1/4 | 06:22:21 | UPDATE_COMPLETE      | AWS::CloudFormation::Stack                  | DbSecretRotation52B44966HostedRotationLambda 
+FsbsDataStack | 2/4 | 06:22:24 | UPDATE_COMPLETE_CLEA | AWS::CloudFormation::Stack                  | FsbsDataStack 
+FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 | 2/4 | 06:22:25 | UPDATE_COMPLETE      | AWS::CloudFormation::Stack                  | FsbsDataStack-DbSecretRotation52B44966HostedRotationLambda-1852Y0GKR5HN2 
+FsbsDataStack | 1/4 | 06:22:35 | UPDATE_COMPLETE      | AWS::CloudFormation::Stack                  | DbSecretRotation52B44966HostedRotationLambda 
+FsbsDataStack | 2/4 | 06:22:35 | UPDATE_COMPLETE      | AWS::CloudFormation::Stack                  | FsbsDataStack 
+
+ ✅  FsbsDataStack
+
+✨  Deployment time: 31.25s
+
+Outputs:
+FsbsDataStack.ExportsOutputFnGetAttPostgres9DC8BB04EndpointAddress36F9722A = fsbsdatastack-postgres9dc8bb04-qollreojzwf6.c3oqcomokoao.eu-west-1.rds.amazonaws.com
+FsbsDataStack.ExportsOutputFnGetAttPostgres9DC8BB04EndpointPortB3107ED8 = 5432
+FsbsDataStack.ExportsOutputFnGetAttRedisPrimaryEndPointAddressA9CCB941 = master.fsrgn1waakpwu82.vttal3.euw1.cache.amazonaws.com
+FsbsDataStack.ExportsOutputFnGetAttRedisPrimaryEndPointPort202F7409 = 6379
+FsbsDataStack.ExportsOutputRefApiKeysSecret5A58C5CD210D4A4C = arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/api/keys-bFzWWa
+FsbsDataStack.ExportsOutputRefAppDbSecretE6515E4A6411322C = arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/rds/app-gnSQus
+FsbsDataStack.ExportsOutputRefDbSecret685A0FA57881E1C6 = arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/rds/master-FUNySL
+FsbsDataStack.ExportsOutputRefReadonlyDbSecret60731DF95DA2E255 = arn:aws:secretsmanager:eu-west-1:679777944071:secret:fsbs/rds/readonly-YJ0kIC
+Stack ARN:
+arn:aws:cloudformation:eu-west-1:679777944071:stack/FsbsDataStack/5de1d070-5028-11f1-af8f-0a465030edb5
+
+✨  Total time: 34.04s
+
+FsbsAppStack: start: Publishing FsbsAppStack Template (679777944071-eu-west-1-5daae019)
+FsbsAppStack: success: Published FsbsAppStack Template (679777944071-eu-west-1-5daae019)
+FsbsAppStack
+FsbsAppStack: creating CloudFormation changeset...
+Changeset arn:aws:cloudformation:eu-west-1:679777944071:changeSet/cdk-deploy-change-set/8d399c39-9202-4729-a5ca-466a60198f5b created and waiting in review for manual execution (--no-execute)
+FsbsAppStack: deploying... [5/5]
+FsbsAppStack |  0/20 | 06:22:56 | UPDATE_IN_PROGRESS   | AWS::CloudFormation::Stack                  | FsbsAppStack User Initiated
+FsbsAppStack |  0/20 | 06:23:00 | CREATE_IN_PROGRESS   | AWS::IAM::Role                              | DbGrantsProvider/framework-onEvent/ServiceRole (DbGrantsProviderframeworkonEventServiceRole4BCA2A53) 
+FsbsAppStack |  0/20 | 06:23:00 | CREATE_IN_PROGRESS   | AWS::IAM::Role                              | DbGrantsFn/ServiceRole (DbGrantsFnServiceRole0538D31D) 
+FsbsAppStack |  0/20 | 06:23:00 | CREATE_IN_PROGRESS   | AWS::IAM::Role                              | LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole (LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB) 
+FsbsAppStack |  0/20 | 06:23:00 | UPDATE_IN_PROGRESS   | AWS::CDK::Metadata                          | CDKMetadata/Default (CDKMetadata) 
+FsbsAppStack |  0/20 | 06:23:01 | CREATE_IN_PROGRESS   | AWS::IAM::Role                              | DbGrantsProvider/framework-onEvent/ServiceRole (DbGrantsProviderframeworkonEventServiceRole4BCA2A53) Resource creation Initiated
+FsbsAppStack |  1/20 | 06:23:01 | UPDATE_COMPLETE      | AWS::CDK::Metadata                          | CDKMetadata/Default (CDKMetadata) 
+FsbsAppStack |  1/20 | 06:23:02 | CREATE_IN_PROGRESS   | AWS::IAM::Role                              | LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole (LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB) Resource creation Initiated
+FsbsAppStack |  1/20 | 06:23:02 | UPDATE_IN_PROGRESS   | AWS::ECS::TaskDefinition                    | ApiTaskDef (ApiTaskDef37DBDBD0) Requested update requires the creation of a new physical resource; hence creating one.
+FsbsAppStack |  1/20 | 06:23:02 | CREATE_IN_PROGRESS   | AWS::IAM::Role                              | DbGrantsFn/ServiceRole (DbGrantsFnServiceRole0538D31D) Resource creation Initiated
+FsbsAppStack |  1/20 | 06:23:03 | UPDATE_IN_PROGRESS   | AWS::ECS::TaskDefinition                    | ApiTaskDef (ApiTaskDef37DBDBD0) Resource creation Initiated
+FsbsAppStack |  2/20 | 06:23:04 | UPDATE_COMPLETE      | AWS::ECS::TaskDefinition                    | ApiTaskDef (ApiTaskDef37DBDBD0) 
+FsbsAppStack |  3/20 | 06:23:17 | CREATE_COMPLETE      | AWS::IAM::Role                              | DbGrantsProvider/framework-onEvent/ServiceRole (DbGrantsProviderframeworkonEventServiceRole4BCA2A53) 
+FsbsAppStack |  4/20 | 06:23:18 | CREATE_COMPLETE      | AWS::IAM::Role                              | LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole (LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB) 
+FsbsAppStack |  4/20 | 06:23:19 | CREATE_IN_PROGRESS   | AWS::IAM::Policy                            | LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole/DefaultPolicy (LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB) 
+FsbsAppStack |  5/20 | 06:23:19 | CREATE_COMPLETE      | AWS::IAM::Role                              | DbGrantsFn/ServiceRole (DbGrantsFnServiceRole0538D31D) 
+FsbsAppStack |  5/20 | 06:23:19 | CREATE_IN_PROGRESS   | AWS::IAM::Policy                            | DbGrantsFn/ServiceRole/DefaultPolicy (DbGrantsFnServiceRoleDefaultPolicy1CF3CDCF) 
+FsbsAppStack |  5/20 | 06:23:20 | CREATE_IN_PROGRESS   | AWS::IAM::Policy                            | LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole/DefaultPolicy (LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB) Resource creation Initiated
+FsbsAppStack |  5/20 | 06:23:21 | CREATE_IN_PROGRESS   | AWS::IAM::Policy                            | DbGrantsFn/ServiceRole/DefaultPolicy (DbGrantsFnServiceRoleDefaultPolicy1CF3CDCF) Resource creation Initiated
+FsbsAppStack |  6/20 | 06:23:35 | CREATE_COMPLETE      | AWS::IAM::Policy                            | LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole/DefaultPolicy (LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB) 
+FsbsAppStack |  7/20 | 06:23:36 | CREATE_COMPLETE      | AWS::IAM::Policy                            | DbGrantsFn/ServiceRole/DefaultPolicy (DbGrantsFnServiceRoleDefaultPolicy1CF3CDCF) 
+FsbsAppStack |  7/20 | 06:23:36 | CREATE_IN_PROGRESS   | AWS::Lambda::Function                       | LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a (LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A) 
+FsbsAppStack |  7/20 | 06:23:37 | CREATE_IN_PROGRESS   | AWS::Lambda::Function                       | DbGrantsFn (DbGrantsFn00BE4C1E) 
+FsbsAppStack |  7/20 | 06:23:38 | CREATE_IN_PROGRESS   | AWS::Lambda::Function                       | LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a (LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A) Resource creation Initiated
+FsbsAppStack |  7/20 | 06:23:40 | CREATE_IN_PROGRESS   | AWS::Lambda::Function                       | DbGrantsFn (DbGrantsFn00BE4C1E) Resource creation Initiated
+FsbsAppStack |  8/20 | 06:23:44 | CREATE_COMPLETE      | AWS::Lambda::Function                       | LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a (LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A) 
+FsbsAppStack |  9/20 | 06:23:46 | CREATE_COMPLETE      | AWS::Lambda::Function                       | DbGrantsFn (DbGrantsFn00BE4C1E) 
+FsbsAppStack |  9/20 | 06:23:46 | CREATE_IN_PROGRESS   | AWS::IAM::Policy                            | DbGrantsProvider/framework-onEvent/ServiceRole/DefaultPolicy (DbGrantsProviderframeworkonEventServiceRoleDefaultPolicy5220E02C) 
+FsbsAppStack |  9/20 | 06:23:47 | CREATE_IN_PROGRESS   | AWS::IAM::Policy                            | DbGrantsProvider/framework-onEvent/ServiceRole/DefaultPolicy (DbGrantsProviderframeworkonEventServiceRoleDefaultPolicy5220E02C) Resource creation Initiated
+FsbsAppStack | 10/20 | 06:24:03 | CREATE_COMPLETE      | AWS::IAM::Policy                            | DbGrantsProvider/framework-onEvent/ServiceRole/DefaultPolicy (DbGrantsProviderframeworkonEventServiceRoleDefaultPolicy5220E02C) 
+FsbsAppStack | 10/20 | 06:24:04 | CREATE_IN_PROGRESS   | AWS::Lambda::Function                       | DbGrantsProvider/framework-onEvent (DbGrantsProviderframeworkonEvent7E8AE4D8) 
+FsbsAppStack | 10/20 | 06:24:05 | CREATE_IN_PROGRESS   | AWS::Lambda::Function                       | DbGrantsProvider/framework-onEvent (DbGrantsProviderframeworkonEvent7E8AE4D8) Resource creation Initiated
+FsbsAppStack | 11/20 | 06:24:11 | CREATE_COMPLETE      | AWS::Lambda::Function                       | DbGrantsProvider/framework-onEvent (DbGrantsProviderframeworkonEvent7E8AE4D8) 
+FsbsAppStack | 11/20 | 06:24:12 | CREATE_IN_PROGRESS   | AWS::CloudFormation::CustomResource         | DbGrants/Default (DbGrants) 
+FsbsAppStack | 11/20 | 06:24:12 | CREATE_IN_PROGRESS   | Custom::LogRetention                        | DbGrantsProvider/framework-onEvent/LogRetention (DbGrantsProviderframeworkonEventLogRetentionA0EF5760) 
+FsbsAppStack | 11/20 | 06:24:15 | CREATE_IN_PROGRESS   | Custom::LogRetention                        | DbGrantsProvider/framework-onEvent/LogRetention (DbGrantsProviderframeworkonEventLogRetentionA0EF5760) Resource creation Initiated
+FsbsAppStack | 12/20 | 06:24:15 | CREATE_COMPLETE      | Custom::LogRetention                        | DbGrantsProvider/framework-onEvent/LogRetention (DbGrantsProviderframeworkonEventLogRetentionA0EF5760) 
+FsbsAppStack | 12/20 | 06:24:17 | CREATE_IN_PROGRESS   | AWS::CloudFormation::CustomResource         | DbGrants/Default (DbGrants) Resource creation Initiated
+FsbsAppStack | 13/20 | 06:24:17 | CREATE_COMPLETE      | AWS::CloudFormation::CustomResource         | DbGrants/Default (DbGrants) 
+FsbsAppStack | 14/20 | 06:24:18 | UPDATE_COMPLETE      | AWS::ECS::Service                           | WorkerService/Service (WorkerService99815FA9) 
+FsbsAppStack | 14/20 | 06:24:18 | UPDATE_IN_PROGRESS   | AWS::ECS::Service                           | ApiService/Service (ApiServiceC9037CF0) 
+FsbsAppStack | 15/20 | 06:27:41 | UPDATE_COMPLETE      | AWS::ECS::Service                           | ApiService/Service (ApiServiceC9037CF0) 
+FsbsAppStack | 16/20 | 06:27:42 | UPDATE_COMPLETE      | AWS::ApplicationAutoScaling::ScalableTarget | ApiService/TaskCount/Target (ApiServiceTaskCountTargetBFC64025) 
+FsbsAppStack | 17/20 | 06:27:43 | UPDATE_COMPLETE      | AWS::ApplicationAutoScaling::ScalingPolicy  | ApiService/TaskCount/Target/CpuScaling (ApiServiceTaskCountTargetCpuScaling9EAFB075) 
+FsbsAppStack | 18/20 | 06:27:45 | UPDATE_COMPLETE_CLEA | AWS::CloudFormation::Stack                  | FsbsAppStack 
+FsbsAppStack | 18/20 | 06:27:46 | DELETE_IN_PROGRESS   | AWS::ECS::TaskDefinition                    | ApiTaskDef (ApiTaskDef37DBDBD0) 
+FsbsAppStack | 17/20 | 06:27:47 | DELETE_COMPLETE      | AWS::ECS::TaskDefinition                    | ApiTaskDef (ApiTaskDef37DBDBD0) 
+FsbsAppStack | 18/20 | 06:27:47 | UPDATE_COMPLETE      | AWS::CloudFormation::Stack                  | FsbsAppStack 
+
+ ✅  FsbsAppStack
+
+✨  Deployment time: 295.94s
+
+Outputs:
+FsbsAppStack.AppUrl = https://staging.fsbs.tqaentry.com
+FsbsAppStack.CdnDomain = d3uker2aipx0ol.cloudfront.net
+FsbsAppStack.CustomerPoolClientId = 7rlss11me46s742shne0vp8i0n
+FsbsAppStack.CustomerPoolId = eu-west-1_BXceNCcIU
+FsbsAppStack.NotificationsQueueUrl = https://sqs.eu-west-1.amazonaws.com/679777944071/fsbs-booking-events
+FsbsAppStack.StaffPoolClientId = 45tqhamujapsfgqjgbnkl6bvcq
+FsbsAppStack.StaffPoolDomain = https://fsbs-staff-679777944071.auth.eu-west-1.amazoncognito.com
+FsbsAppStack.StaffPoolId = eu-west-1_oUDjezQpT
+Stack ARN:
+arn:aws:cloudformation:eu-west-1:679777944071:stack/FsbsAppStack/e00ab160-5204-11f1-8439-02699aba2b93
+
+✨  Total time: 298.72s
+

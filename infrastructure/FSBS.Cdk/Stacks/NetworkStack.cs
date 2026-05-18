@@ -41,7 +41,14 @@ public class NetworkStack : Stack
             ]
         });
 
-        // ALB — accepts HTTPS from CloudFront managed prefix list only
+        // ALB — accepts HTTP from CloudFront managed prefix list only.
+        // CloudFront → ALB uses HTTP (port 80) to avoid TLS cert hostname mismatch
+        // (ALB cert covers *.fsbs.tqaentry.com, but CF connects via the ELB AWS hostname).
+        // Only one prefix list ingress rule is allowed: the CloudFront managed prefix
+        // list has ~55 entries, and the default SG rule quota is 60 — adding both
+        // port 80 and port 443 would exceed the quota. Port 443 is not needed since
+        // CloudFront uses HTTP_ONLY to reach the origin.
+        // NOTE: GroupDescription is immutable (requires SG replacement). Do not change it.
         AlbSg = new SecurityGroup(this, "AlbSg", new SecurityGroupProps
         {
             Vpc = Vpc,
@@ -50,8 +57,8 @@ public class NetworkStack : Stack
         });
         AlbSg.AddIngressRule(
             Peer.PrefixList(cloudFrontPrefixListId),
-            Port.Tcp(443),
-            "HTTPS from CloudFront"
+            Port.Tcp(80),
+            "HTTP from CloudFront"
         );
 
         // API Fargate tasks — inbound from ALB only

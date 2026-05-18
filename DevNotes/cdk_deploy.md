@@ -1,0 +1,11 @@
+cdk deploy --all \
+-c deployEnv=staging \
+-c rootDomain=fsbs.tqaentry.com \
+-c apiImageUri=679777944071.dkr.ecr.eu-west-1.amazonaws.com/fsbs-api:latest \
+-c workerImageUri=679777944071.dkr.ecr.eu-west-1.amazonaws.com/fsbs-worker:latest \
+-c rootTenantId=f98e1104-fb79-4273-91cc-24165ebae395 \
+-c entraClientId=7c4d9b67-713b-4bf6-bb58-2a096590d574 \
+-c entraTenantId=ad999378-23c8-46ed-9254-c191aae0fc77 \
+-c entraClientSecret=<entra-client-secret> \
+-c cloudFrontPrefixListId=pl-4fa04526 \
+-c skipDbGrants=true
